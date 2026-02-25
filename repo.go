@@ -456,10 +456,10 @@ func (r *repo) buildTree(files map[string]repoFileEntry, prefix string) (plumbin
 // set to the current UTC time.
 func (r *repo) writeNewCommit(parent, treeHash plumbing.Hash, src *object.Commit) (plumbing.Hash, error) {
 	commit := &object.Commit{
-		Author:    src.Author,
-		Committer: object.Signature{Name: src.Author.Name, Email: src.Author.Email, When: time.Now().UTC()},
-		Message:   src.Message,
-		TreeHash:  treeHash,
+		Author:       src.Author,
+		Committer:    object.Signature{Name: src.Author.Name, Email: src.Author.Email, When: time.Now().UTC()},
+		Message:      src.Message,
+		TreeHash:     treeHash,
 		ParentHashes: []plumbing.Hash{parent},
 	}
 	obj := r.git.Storer.NewEncodedObject()
