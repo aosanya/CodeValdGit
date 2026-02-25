@@ -21,21 +21,49 @@ Establish the Go module, public package structure, core interfaces, and shared t
 
 ```
 github.com/aosanya/CodeValdGit/
-├── codevaldgit.go          # Package-level doc, public interface declarations
+├── codevaldgit.go          # Package-level doc, RepoManager + Repo + Backend interfaces
 ├── types.go                # FileEntry, Commit, FileDiff, AuthorInfo, ErrMergeConflict
 ├── errors.go               # Sentinel errors (ErrRepoNotFound, ErrBranchNotFound, etc.)
+├── config.go               # NewRepoManager constructor
 ├── internal/
-│   ├── filesystem/         # Filesystem backend (MVP-GIT-002)
-│   ├── arango/             # ArangoDB backend (MVP-GIT-008)
+│   ├── manager/            # Concrete repoManager — implements RepoManager, delegates to Backend
+│   ├── repo/               # Shared Repo implementation — used by both storage backends
 │   └── gitutil/            # Shared go-git helper utilities
-└── config.go               # RepoManagerConfig (BasePath, ArchivePath, Backend selector)
+└── storage/
+    ├── filesystem/         # NewFilesystemBackend() — implements Backend (filesystem lifecycle)
+    └── arangodb/           # NewArangoBackend()    — implements Backend (ArangoDB lifecycle)
 ```
 
 ### Core Interfaces
 
 ```go
+// Backend abstracts storage-specific repo lifecycle.
+// Implemented by storage/filesystem and storage/arangodb.
+// The caller constructs the desired backend and passes it to NewRepoManager.
+type Backend interface {
+    // InitRepo provisions a new store for agencyID.
+    InitRepo(ctx context.Context, agencyID string) error
+
+    // OpenStorer returns a go-git storage.Storer and billy.Filesystem for agencyID.
+    // Called internally by RepoManager.OpenRepo to construct a Repo.
+    OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error)
+
+    // DeleteRepo archives or flags the repo as deleted (behaviour is backend-specific).
+    // Filesystem: os.Rename to ArchivePath. ArangoDB: sets deleted flag on agency documents.
+    DeleteRepo(ctx context.Context, agencyID string) error
+
+    // PurgeRepo permanently removes all storage for agencyID.
+    // Filesystem: os.RemoveAll. ArangoDB: deletes all agency documents.
+    PurgeRepo(ctx context.Context, agencyID string) error
+}
+
+// NewRepoManager constructs the shared RepoManager backed by the given Backend.
+// Use storage/filesystem.NewFilesystemBackend or storage/arangodb.NewArangoBackend
+// to obtain a Backend, then pass it here.
+func NewRepoManager(b Backend) (RepoManager, error)
+
 // RepoManager is the top-level entry point for creating and managing
-// per-agency Git repositories. Configure with NewRepoManager.
+// per-agency Git repositories. Obtain via NewRepoManager.
 type RepoManager interface {
     // InitRepo creates a new empty Git repository for the given agency.
     // Returns ErrRepoAlreadyExists if a repo already exists.
@@ -44,13 +72,12 @@ type RepoManager interface {
     // OpenRepo opens an existing repository. Returns ErrRepoNotFound if absent.
     OpenRepo(ctx context.Context, agencyID string) (Repo, error)
 
-    // DeleteRepo archives the repository by moving it to ArchivePath.
-    // The archived repo remains a valid .git directory and is never hard-deleted.
+    // DeleteRepo delegates to Backend.DeleteRepo.
+    // For the filesystem backend this archives the repo; for ArangoDB it sets a deleted flag.
     DeleteRepo(ctx context.Context, agencyID string) error
 
-    // PurgeRepo permanently removes an archived repository (os.RemoveAll).
-    // Only call after DeleteRepo has been called. Returns ErrRepoNotFound if
-    // the archive does not exist.
+    // PurgeRepo delegates to Backend.PurgeRepo and permanently removes all storage.
+    // Only call after DeleteRepo has been called. Returns ErrRepoNotFound if absent.
     PurgeRepo(ctx context.Context, agencyID string) error
 }
 

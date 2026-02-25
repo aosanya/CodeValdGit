@@ -16,6 +16,8 @@
 
 ## 2. Storage Backends
 
+### go-git Pluggable Interfaces
+
 go-git separates storage into two injectable interfaces:
 
 | Interface | Package | Purpose |
@@ -23,18 +25,54 @@ go-git separates storage into two injectable interfaces:
 | `storage.Storer` | `github.com/go-git/go-git/v5/storage` | Git objects, refs, index, config |
 | `billy.Filesystem` | `github.com/go-git/go-billy/v5` | Working tree (checked-out files) |
 
-CodeValdGit supports two backends out of the box:
+### CodeValdGit `Backend` Interface
 
-### Filesystem (default)
+CodeValdGit adds a thin `Backend` interface on top of `storage.Storer`. It captures the operations that differ per storage type — repo lifecycle (init, archive/flag, purge) and storer construction — while the shared `Repo` implementation (branches, files, history) sits in `internal/repo/` and is backend-agnostic.
+
+```go
+// Backend abstracts storage-specific repo lifecycle.
+// Implemented by storage/filesystem and storage/arangodb.
+type Backend interface {
+    // InitRepo provisions a new store for agencyID.
+    InitRepo(ctx context.Context, agencyID string) error
+    // OpenStorer returns a go-git storage.Storer and billy.Filesystem for agencyID.
+    OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error)
+    // DeleteRepo archives or flags the repo as deleted (behaviour is backend-specific).
+    DeleteRepo(ctx context.Context, agencyID string) error
+    // PurgeRepo permanently removes all storage for agencyID.
+    PurgeRepo(ctx context.Context, agencyID string) error
+}
+```
+
+The single `repoManager` implementation in `internal/manager/` holds a `Backend` and delegates lifecycle calls to it. `NewRepoManager(b Backend)` is the sole constructor — the caller (CodeValdCortex) picks and constructs the backend.
+
+### Filesystem Backend (`storage/filesystem/`)
+
 ```
 {base_path}/
 └── {agency-id}/          ← One real .git repo per Agency
     └── .git/
 ```
-Uses `storage/filesystem` + `osfs.New(path)`. Simple, portable, works on any mounted volume (local disk, PVC, NFS).
 
-### ArangoDB
-A custom `storage.Storer` implementation backed by ArangoDB collections:
+| Operation | Implementation |
+|---|---|
+| `InitRepo` | `git.PlainInit` on disk; empty commit on `main` |
+| `DeleteRepo` | `os.Rename` to `{archive_path}/{agency-id}/` (non-destructive) |
+| `PurgeRepo` | `os.RemoveAll` of archive directory |
+| `OpenStorer` | `filesystem.NewStorage` + `osfs.New` |
+
+Simple, portable, works on any mounted volume (local disk, PVC, NFS).
+
+### ArangoDB Backend (`storage/arangodb/`)
+
+| Operation | Implementation |
+|---|---|
+| `InitRepo` | Insert seed documents into `git_objects`, `git_refs`, `git_config`, `git_index` |
+| `DeleteRepo` | Set `deleted: true` flag on all agency documents (non-destructive; auditable) |
+| `PurgeRepo` | Delete all documents where `agencyID == target` from all four collections |
+| `OpenStorer` | `arango.NewStorage(db, agencyID)` + `memfs.New()` (or `osfs` for a durable worktree) |
+
+The working tree (`billy.Filesystem`) remains on a local or in-memory filesystem — only the Git object store moves to ArangoDB. This mirrors the existing database-per-agency model in CodeValdCortex and means repos survive container restarts without a mounted volume.
 
 | Collection | Contents |
 |---|---|
@@ -43,9 +81,24 @@ A custom `storage.Storer` implementation backed by ArangoDB collections:
 | `git_index` | Staging area index |
 | `git_config` | Per-repo Git config |
 
-The working tree (`billy.Filesystem`) remains on a local or in-memory filesystem — only the Git object store moves to ArangoDB. This mirrors the existing database-per-agency model in CodeValdCortex and means repos survive container restarts without a mounted volume.
+> **Selection**: The caller (CodeValdCortex) constructs the desired `Backend` implementation and passes it to `NewRepoManager`. CodeValdGit's core logic is backend-agnostic.
 
-> **Selection**: The caller (CodeValdCortex) passes the chosen `storage.Storer` and `billy.Filesystem` when calling `InitRepo` / `OpenRepo`. CodeValdGit itself is backend-agnostic.
+### Package Layout
+
+```
+github.com/aosanya/CodeValdGit/
+├── codevaldgit.go          # RepoManager + Repo + Backend interfaces
+├── types.go                # FileEntry, Commit, FileDiff, AuthorInfo, ErrMergeConflict
+├── errors.go               # Sentinel errors (ErrRepoNotFound, ErrBranchNotFound, etc.)
+├── config.go               # NewRepoManager constructor
+├── internal/
+│   ├── manager/            # Concrete repoManager — implements RepoManager, delegates to Backend
+│   ├── repo/               # Shared Repo implementation — used by both storage backends
+│   └── gitutil/            # Shared go-git helper utilities
+└── storage/
+    ├── filesystem/         # NewFilesystemBackend() — implements Backend (filesystem lifecycle)
+    └── arangodb/           # NewArangoBackend()    — implements Backend (ArangoDB lifecycle)
+```
 
 ---
 
@@ -87,17 +140,32 @@ main
 ## 5. Proposed Library API (Draft)
 
 ```go
-// RepoManager is the top-level entry point.
-// Configured with BasePath (live repos) and ArchivePath (archived repos).
-type RepoManager interface {
-    // Lifecycle
+// Backend abstracts storage-specific repo lifecycle.
+// Implemented by storage/filesystem and storage/arangodb.
+// The caller constructs the desired backend and passes it to NewRepoManager.
+type Backend interface {
     InitRepo(ctx context.Context, agencyID string) error
-    OpenRepo(ctx context.Context, agencyID string) (Repo, error)
-    DeleteRepo(ctx context.Context, agencyID string) error  // moves repo to ArchivePath
-    PurgeRepo(ctx context.Context, agencyID string) error   // hard-deletes archived repo
+    OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error)
+    DeleteRepo(ctx context.Context, agencyID string) error
+    PurgeRepo(ctx context.Context, agencyID string) error
 }
 
-// Repo represents a single agency's Git repository
+// NewRepoManager constructs the shared RepoManager backed by the given Backend.
+// Use storage/filesystem.NewFilesystemBackend or storage/arangodb.NewArangoBackend
+// to obtain a Backend, then pass it here.
+func NewRepoManager(b Backend) RepoManager
+
+// RepoManager is the top-level entry point for managing per-agency Git repositories.
+// Obtain via NewRepoManager. One instance is typically shared process-wide.
+type RepoManager interface {
+    InitRepo(ctx context.Context, agencyID string) error                   // delegates to Backend.InitRepo
+    OpenRepo(ctx context.Context, agencyID string) (Repo, error)
+    DeleteRepo(ctx context.Context, agencyID string) error                 // delegates to Backend.DeleteRepo
+    PurgeRepo(ctx context.Context, agencyID string) error                  // delegates to Backend.PurgeRepo
+}
+
+// Repo represents a single agency's Git repository. Obtained via RepoManager.OpenRepo.
+// Backed by internal/repo — backend-agnostic; works over any storage.Storer.
 type Repo interface {
     // Branch operations
     CreateBranch(ctx context.Context, taskID string) error
