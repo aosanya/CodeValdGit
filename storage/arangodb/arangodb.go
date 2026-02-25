@@ -120,10 +120,18 @@ func ensureCollection(ctx context.Context, db driver.Database, name string) (dri
 // Backend — InitRepo / OpenStorer / DeleteRepo / PurgeRepo
 // ──────────────────────────────────────────────────────────────────────────────
 
-// agencyKey builds a compound ArangoDB document key: "{agencyID}/{suffix}".
-// Slashes are safe in ArangoDB document keys.
+// encKey replaces "/" with ":" so the result is a legal ArangoDB document
+// key. ArangoDB uses "/" as the collection/key separator in document handles,
+// so "/" is not allowed inside a key string.
+func encKey(s string) string {
+	return strings.ReplaceAll(s, "/", ":")
+}
+
+// agencyKey builds a compound ArangoDB document key: "{agencyID}:{suffix}".
+// All "/" characters are encoded as ":" because ArangoDB document keys must
+// not contain "/".
 func agencyKey(agencyID, suffix string) string {
-	return agencyID + "/" + suffix
+	return encKey(agencyID) + ":" + encKey(suffix)
 }
 
 // existsDoc returns true if a document with the given key exists in col.
@@ -161,6 +169,13 @@ func (b *arangoBackend) InitRepo(ctx context.Context, agencyID string) error {
 	r, err := gogit.Init(s, wt)
 	if err != nil {
 		return fmt.Errorf("InitRepo %s: git.Init: %w", agencyID, err)
+	}
+
+	// go-git's Init only calls SetConfig for filesystem-backed storers.
+	// For ArangoDB we must write the config sentinel explicitly so that
+	// OpenStorer (and PurgeRepo / DeleteRepo existence checks) work.
+	if err := s.SetConfig(config.NewConfig()); err != nil {
+		return fmt.Errorf("InitRepo %s: write config sentinel: %w", agencyID, err)
 	}
 
 	// Point HEAD at refs/heads/main (go-git defaults to master).
@@ -246,7 +261,7 @@ func (b *arangoBackend) PurgeRepo(ctx context.Context, agencyID string) error {
 		return codevaldgit.ErrRepoNotFound
 	}
 
-	prefix := agencyID + "/"
+	prefix := encKey(agencyID) + ":"
 	for _, collName := range []string{collObjects, collRefs, collIndex, collConfig} {
 		if err := b.purgeCollection(ctx, collName, prefix); err != nil {
 			return fmt.Errorf("PurgeRepo %s: purge %s: %w", agencyID, collName, err)
