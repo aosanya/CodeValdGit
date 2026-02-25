@@ -122,11 +122,11 @@ _(None)_
 
 ### P1 (Important — Core Library Features)
 - **History & Diff**: ~~1 task (MVP-GIT-007)~~ ✅ complete
-- **Storage & Integration**: 2 tasks (MVP-GIT-008, MVP-GIT-009)
+- **Storage & Integration**: ~~MVP-GIT-008~~ ✅ complete, 1 task remaining (MVP-GIT-009)
 
-**Total P1**: 3 tasks (1 complete, 2 remaining)
+**Total P1**: 3 tasks (2 complete, 1 remaining)
 
-**Grand Total Active Tasks**: 9 tasks (7 complete, 2 remaining)
+**Grand Total Active Tasks**: 9 tasks (8 complete, 1 remaining)
 
 ---
 
@@ -144,7 +144,7 @@ Follow this sequence:
 
 **Phase 2 — Read Access & Persistence:**
 7. ~~MVP-GIT-007~~ ✅ — History & Diff
-8. MVP-GIT-008 — ArangoDB Storage Backend (can start after MVP-GIT-002)
+8. ~~MVP-GIT-008~~ ✅ — ArangoDB Storage Backend
 
 **Phase 3 — Integration:**
 9. MVP-GIT-009 — CodeValdCortex Integration (after MVP-GIT-006, MVP-GIT-007, MVP-GIT-008)
