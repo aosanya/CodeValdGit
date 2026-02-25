@@ -64,8 +64,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-001 | Library Scaffolding | Establish the Go module (`github.com/aosanya/CodeValdGit`), public package structure, core interfaces (`RepoManager`, `Repo`), shared types (`FileEntry`, `Commit`, `FileDiff`, `ErrMergeConflict`), and sentinel errors (`ErrRepoNotFound`, `ErrBranchNotFound`, `ErrFileNotFound`). GoDoc on every exported symbol | 📋 Not Started | P0 | Low | Go, Library Design | None | [repo-management.md](mvp-details/repo-management.md#mvp-git-001--library-scaffolding) |
-| MVP-GIT-002 | Filesystem Repo Lifecycle | Implement filesystem-backed `RepoManager`: `InitRepo` creates `{base_path}/{agency-id}/.git` with initial empty commit; `OpenRepo` returns a `Repo` backed by on-disk `.git`; `DeleteRepo` archives to `{archive_path}/{agency-id}/` (non-destructive); `PurgeRepo` hard-deletes archived repo via `os.RemoveAll` | 📋 Not Started | P0 | Low | Go, go-git | MVP-GIT-001 | [repo-management.md](mvp-details/repo-management.md#mvp-git-002--filesystem-repo-lifecycle) |
+| MVP-GIT-002 | Filesystem Repo Lifecycle | Implement filesystem-backed `RepoManager`: `InitRepo` creates `{base_path}/{agency-id}/.git` with initial empty commit; `OpenRepo` returns a `Repo` backed by on-disk `.git`; `DeleteRepo` archives to `{archive_path}/{agency-id}/` (non-destructive); `PurgeRepo` hard-deletes archived repo via `os.RemoveAll` | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅ | [repo-management.md](mvp-details/repo-management.md#mvp-git-002--filesystem-repo-lifecycle) |
 
 ---
 
@@ -107,7 +106,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | MVP-GIT-002 | [storage-backends.md](mvp-details/storage-backends.md) |
+| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, MVP-GIT-002 | [storage-backends.md](mvp-details/storage-backends.md) |
 | MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | MVP-GIT-006, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
 
 ---

@@ -224,27 +224,55 @@ Use the official ArangoDB Go driver. Connection is passed in by the caller (Code
 
 ### Backend Selection in RepoManager
 
+The caller constructs the desired `Backend` implementation and passes it to the single `NewRepoManager` constructor. There is no `BackendType` enum — the backend is injected, not selected by string.
+
 ```go
-type BackendType string
+// --- storage/arangodb/arangodb.go ---
 
-const (
-    BackendFilesystem BackendType = "filesystem"
-    BackendArangoDB   BackendType = "arangodb"
-)
-
-type RepoManagerConfig struct {
-    Backend     BackendType
-    BasePath    string          // used when Backend == BackendFilesystem
-    ArchivePath string          // used when Backend == BackendFilesystem
-    ArangoDB    *ArangoConfig   // used when Backend == BackendArangoDB
-}
-
+// ArangoConfig holds the ArangoDB connection and worktree settings
+// for the ArangoDB backend.
 type ArangoConfig struct {
     Database driver.Database
     // WorktreePath is the local path for the billy.Filesystem worktree.
-    // Use "" for in-memory worktree (memfs).
+    // Use "" for an in-memory worktree (memfs) — the default for ArangoDB backend.
     WorktreePath string
 }
+
+// NewArangoBackend constructs an ArangoDB-backed Backend.
+// The four collections (git_objects, git_refs, git_index, git_config) must
+// already exist in the provided database.
+func NewArangoBackend(cfg ArangoConfig) (codevaldgit.Backend, error)
+
+// --- storage/filesystem/filesystem.go ---
+
+// FilesystemConfig holds path settings for the filesystem backend.
+type FilesystemConfig struct {
+    // BasePath is the root directory for live repositories.
+    BasePath string
+    // ArchivePath is the root directory for archived repositories.
+    ArchivePath string
+}
+
+// NewFilesystemBackend constructs a filesystem-backed Backend.
+func NewFilesystemBackend(cfg FilesystemConfig) (codevaldgit.Backend, error)
+```
+
+**Wiring in CodeValdCortex:**
+
+```go
+// Filesystem backend (default / dev)
+b, err := filesystem.NewFilesystemBackend(filesystem.FilesystemConfig{
+    BasePath:    "/data/repos",
+    ArchivePath: "/data/archive",
+})
+mgr, err := codevaldgit.NewRepoManager(b)
+
+// ArangoDB backend (production / containerised)
+b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{
+    Database:     db, // existing driver.Database from CodeValdCortex
+    WorktreePath: "",  // "" = in-memory worktree
+})
+mgr, err := codevaldgit.NewRepoManager(b)
 ```
 
 ### Dependencies

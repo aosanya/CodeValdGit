@@ -75,20 +75,27 @@ repo.WriteFile(ctx, "main", "output/report.md", content, agentID, "Add report")
 
 ## Storage Backend Rules
 
+The `Backend` interface is the injection point. The caller (CodeValdCortex) constructs the desired `Backend` implementation from `storage/filesystem` or `storage/arangodb` and passes it to `NewRepoManager`. The root package never imports either storage driver.
+
 ```go
-// ✅ CORRECT — storage injected by caller
-func NewRepoManager(basePath, archivePath string, storer storage.Storer, fs billy.Filesystem) RepoManager {
-    // ...
-}
+// ✅ CORRECT — Backend injected by caller; root package stays backend-agnostic
+b, _ := filesystem.NewFilesystemBackend(filesystem.FilesystemConfig{
+    BasePath:    "/data/repos",
+    ArchivePath: "/data/archive",
+})
+mgr, _ := codevaldgit.NewRepoManager(b)
 
 // ❌ WRONG — hardcoded backend inside library
 func NewRepoManager(basePath string) RepoManager {
-    storer := filesystem.NewStorage(osfs.New(basePath), cache.NewObjectLRUDefault())
+    storer := filestorage.NewStorage(osfs.New(basePath), cache.NewObjectLRUDefault())
     // ...
 }
 ```
 
-The ArangoDB `storage.Storer` lives in `storage/arangodb/` — **never import ArangoDB drivers from the root package.**
+- `storage/filesystem/` and `storage/arangodb/` are **public** packages — callers can import them directly
+- `internal/manager/` holds the concrete `repoManager` — not importable outside this module
+- `internal/repo/` holds the shared `Repo` implementation — not importable outside this module
+- **Never import ArangoDB drivers from the root package or `internal/manager/`**
 
 ---
 
