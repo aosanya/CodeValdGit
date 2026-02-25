@@ -72,11 +72,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Merge Workflow (CRITICAL)
 
-*~~MVP-GIT-005~~ ✅ complete — see `mvp_done.md`.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-006 | Auto-Rebase & Conflict Resolution | Implement `MergeBranch` fallback: when `main` has advanced, attempt auto-rebase by cherry-picking task branch commits onto latest `main` using go-git plumbing layer. On success → fast-forward merge. On content conflict → return `*ErrMergeConflict{TaskID, ConflictingFiles}` to caller; task branch left in clean state for agent retry | 📋 Not Started | P0 | High | Go, go-git | ~~MVP-GIT-005~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-006--auto-rebase--conflict-resolution) |
+*~~MVP-GIT-005~~ ✅ and ~~MVP-GIT-006~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -97,7 +93,7 @@ git branch -d feature/MVP-GIT-XXX_description
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
 | MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [storage-backends.md](mvp-details/storage-backends.md) |
-| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | MVP-GIT-006, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
+| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | ~~MVP-GIT-006~~ ✅, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
 
 ---
 
@@ -124,9 +120,9 @@ _(None)_
 ### P0 (Blocking — Must Complete First)
 - **Foundation**: ~~2 tasks (MVP-GIT-001, MVP-GIT-002)~~ ✅ both complete
 - **Core Operations**: ~~2 tasks (MVP-GIT-003, MVP-GIT-004)~~ ✅ both complete
-- **Merge Workflow**: ~~MVP-GIT-005~~ ✅ complete; 1 task remaining (MVP-GIT-006)
+- **Merge Workflow**: ~~2 tasks (MVP-GIT-005, MVP-GIT-006)~~ ✅ both complete
 
-**Total P0**: 6 tasks (5 complete)
+**Total P0**: 6 tasks ✅ ALL COMPLETE
 
 ### P1 (Important — Core Library Features)
 - **History & Diff**: 1 task (MVP-GIT-007)
@@ -148,7 +144,7 @@ Follow this sequence:
 3. ~~MVP-GIT-003~~ ✅ — Branch-Per-Task Workflow
 4. ~~MVP-GIT-004~~ ✅ — File Operations & Commit Attribution
 5. ~~MVP-GIT-005~~ ✅ — Fast-Forward Merge
-6. MVP-GIT-006 — Auto-Rebase & Conflict Resolution
+6. ~~MVP-GIT-006~~ ✅ — Auto-Rebase & Conflict Resolution
 
 **Phase 2 — Read Access & Persistence:**
 7. MVP-GIT-007 — History & Diff (can start after MVP-GIT-004)
