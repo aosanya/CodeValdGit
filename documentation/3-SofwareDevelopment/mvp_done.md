@@ -10,3 +10,4 @@ Completed tasks are removed from `mvp.md` and recorded here with their completio
 | MVP-GIT-004 | File Operations & Commit Attribution | 2026-02-25 | `feature/GIT-004_file_operations` | [GIT-004_file_operations.md](coding_sessions/GIT-004_file_operations.md) |
 | MVP-GIT-005 | Fast-Forward Merge | 2026-02-25 | `feature/GIT-005_fast_forward_merge` | [GIT-005_fast_forward_merge.md](coding_sessions/GIT-005_fast_forward_merge.md) |
 | MVP-GIT-006 | Auto-Rebase & Conflict Resolution | 2026-02-25 | `feature/GIT-006_auto_rebase` | [GIT-006_auto_rebase.md](coding_sessions/GIT-006_auto_rebase.md) |
+| MVP-GIT-007 | History & Diff — UI Read Access | 2026-02-25 | `feature/GIT-007_history_and_diff` | [GIT-007_history_and_diff.md](coding_sessions/GIT-007_history_and_diff.md) |

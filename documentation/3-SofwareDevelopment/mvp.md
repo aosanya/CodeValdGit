@@ -78,11 +78,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P1: History & Diff (IMPORTANT)
 
-*Read access to historical state for the CodeValdCortex UI. Non-mutating operations.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-007 | History & Diff — UI Read Access | Implement `Log(ref, path)` → commits touching `path`, ordered newest-first; `Diff(fromRef, toRef)` → per-file changes with unified diff patch. All operations non-mutating and safe for concurrent access. Supports branch names, tag names, and full commit SHAs as refs | 📋 Not Started | P1 | Medium | Go, go-git | ~~MVP-GIT-004~~ ✅ | [history-and-diff.md](mvp-details/history-and-diff.md) |
+*~~MVP-GIT-007~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -93,7 +89,7 @@ git branch -d feature/MVP-GIT-XXX_description
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
 | MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [storage-backends.md](mvp-details/storage-backends.md) |
-| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | ~~MVP-GIT-006~~ ✅, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
+| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | ~~MVP-GIT-006~~ ✅, ~~MVP-GIT-007~~ ✅, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
 
 ---
 
@@ -125,12 +121,12 @@ _(None)_
 **Total P0**: 6 tasks ✅ ALL COMPLETE
 
 ### P1 (Important — Core Library Features)
-- **History & Diff**: 1 task (MVP-GIT-007)
+- **History & Diff**: ~~1 task (MVP-GIT-007)~~ ✅ complete
 - **Storage & Integration**: 2 tasks (MVP-GIT-008, MVP-GIT-009)
 
-**Total P1**: 3 tasks
+**Total P1**: 3 tasks (1 complete, 2 remaining)
 
-**Grand Total Active Tasks**: 9 tasks
+**Grand Total Active Tasks**: 9 tasks (7 complete, 2 remaining)
 
 ---
 
@@ -147,7 +143,7 @@ Follow this sequence:
 6. ~~MVP-GIT-006~~ ✅ — Auto-Rebase & Conflict Resolution
 
 **Phase 2 — Read Access & Persistence:**
-7. MVP-GIT-007 — History & Diff (can start after MVP-GIT-004)
+7. ~~MVP-GIT-007~~ ✅ — History & Diff
 8. MVP-GIT-008 — ArangoDB Storage Backend (can start after MVP-GIT-002)
 
 **Phase 3 — Integration:**
