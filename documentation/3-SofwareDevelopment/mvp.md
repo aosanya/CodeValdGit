@@ -66,12 +66,11 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Core Operations (CRITICAL)
 
-*Agent write primitives. Enables file-level work on isolated task branches.*
+*~~MVP-GIT-003~~ ✅ complete — see `mvp_done.md`.*
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-003 | Branch-Per-Task Workflow | Implement `CreateBranch(taskID)` → creates `refs/heads/task/{task-id}` from current `main` HEAD; `DeleteBranch(taskID)` → removes the branch ref. Agents must never commit directly to `main`. Returns `ErrBranchExists` / `ErrBranchNotFound` as appropriate. Both operations safe for concurrent callers | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-003--branch-per-task-workflow) |
-| MVP-GIT-004 | File Operations & Commit Attribution | Implement `WriteFile` (commits any file type to a task branch with agent author + structured message), `ReadFile` (content at any ref: branch, tag, or SHA), `DeleteFile` (removes file as a commit), `ListDirectory` (immediate children at any ref). All writes include task ID in commit message | 📋 Not Started | P0 | Medium | Go, go-git | MVP-GIT-003 | [file-operations.md](mvp-details/file-operations.md) |
+| MVP-GIT-004 | File Operations & Commit Attribution | Implement `WriteFile` (commits any file type to a task branch with agent author + structured message), `ReadFile` (content at any ref: branch, tag, or SHA), `DeleteFile` (removes file as a commit), `ListDirectory` (immediate children at any ref). All writes include task ID in commit message | 🚀 In Progress | P0 | Medium | Go, go-git | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅, ~~MVP-GIT-003~~ ✅ | [file-operations.md](mvp-details/file-operations.md) |
 
 ---
 

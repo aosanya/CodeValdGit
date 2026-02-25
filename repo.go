@@ -2,10 +2,12 @@ package codevaldgit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-git/go-billy/v5"
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage"
 )
 
@@ -14,8 +16,9 @@ import (
 // storage.Storer and billy.Filesystem. The same implementation is used
 // regardless of whether the filesystem or ArangoDB backend is active.
 //
-// Branch, file, history, and diff operations are implemented in
-// MVP-GIT-003 through MVP-GIT-007.
+// Branch and file operations are implemented in MVP-GIT-003 and MVP-GIT-004.
+// Merge is implemented in MVP-GIT-005 and MVP-GIT-006.
+// History and diff are implemented in MVP-GIT-007.
 type repo struct {
 	git *gogit.Repository
 }
@@ -30,10 +33,36 @@ func newRepo(storer storage.Storer, wt billy.Filesystem) (Repo, error) {
 	return &repo{git: r}, nil
 }
 
-// CreateBranch creates refs/heads/task/{taskID} from the current main HEAD.
-// Implemented in MVP-GIT-003.
+// taskBranchName returns the full branch name for a task ID.
+func taskBranchName(taskID string) string {
+	return "task/" + taskID
+}
+
+// CreateBranch creates refs/heads/task/{taskID} pointing at the current HEAD
+// of main. Returns [ErrBranchExists] if the branch already exists.
+// Returns an error if taskID is empty or main cannot be resolved.
 func (r *repo) CreateBranch(_ context.Context, taskID string) error {
-	return fmt.Errorf("CreateBranch %q: not yet implemented — see MVP-GIT-003", taskID)
+	if taskID == "" {
+		return fmt.Errorf("CreateBranch: taskID must not be empty")
+	}
+
+	mainRefName := plumbing.NewBranchReferenceName("main")
+	mainRef, err := r.git.Reference(mainRefName, true)
+	if err != nil {
+		return fmt.Errorf("CreateBranch: resolve main: %w", err)
+	}
+
+	branchRefName := plumbing.NewBranchReferenceName(taskBranchName(taskID))
+	if _, err := r.git.Reference(branchRefName, false); err == nil {
+		// Reference already exists.
+		return ErrBranchExists
+	}
+
+	newRef := plumbing.NewHashReference(branchRefName, mainRef.Hash())
+	if err := r.git.Storer.SetReference(newRef); err != nil {
+		return fmt.Errorf("CreateBranch %q: set reference: %w", taskID, err)
+	}
+	return nil
 }
 
 // MergeBranch merges task/{taskID} into main.
@@ -43,9 +72,28 @@ func (r *repo) MergeBranch(_ context.Context, taskID string) error {
 }
 
 // DeleteBranch removes refs/heads/task/{taskID}.
-// Implemented in MVP-GIT-003.
+// Returns [ErrBranchNotFound] if the branch does not exist.
+// Returns an error if taskID is empty or equals "main" (protected).
 func (r *repo) DeleteBranch(_ context.Context, taskID string) error {
-	return fmt.Errorf("DeleteBranch %q: not yet implemented — see MVP-GIT-003", taskID)
+	if taskID == "" {
+		return fmt.Errorf("DeleteBranch: taskID must not be empty")
+	}
+	if taskID == "main" {
+		return fmt.Errorf("DeleteBranch: cannot delete the main branch")
+	}
+
+	branchRefName := plumbing.NewBranchReferenceName(taskBranchName(taskID))
+	if _, err := r.git.Reference(branchRefName, false); err != nil {
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			return ErrBranchNotFound
+		}
+		return fmt.Errorf("DeleteBranch %q: lookup: %w", taskID, err)
+	}
+
+	if err := r.git.Storer.RemoveReference(branchRefName); err != nil {
+		return fmt.Errorf("DeleteBranch %q: remove reference: %w", taskID, err)
+	}
+	return nil
 }
 
 // WriteFile commits content to path on task/{taskID}.
