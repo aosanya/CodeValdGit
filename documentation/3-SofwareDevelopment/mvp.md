@@ -60,11 +60,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Foundation (CRITICAL)
 
-*Nothing else can proceed without these. Establishes the Go module, public interfaces, shared types, and filesystem repo lifecycle.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-002 | Filesystem Repo Lifecycle | Implement filesystem-backed `RepoManager`: `InitRepo` creates `{base_path}/{agency-id}/.git` with initial empty commit; `OpenRepo` returns a `Repo` backed by on-disk `.git`; `DeleteRepo` archives to `{archive_path}/{agency-id}/` (non-destructive); `PurgeRepo` hard-deletes archived repo via `os.RemoveAll` | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅ | [repo-management.md](mvp-details/repo-management.md#mvp-git-002--filesystem-repo-lifecycle) |
+*~~MVP-GIT-001~~ ✅ and ~~MVP-GIT-002~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -74,7 +70,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-003 | Branch-Per-Task Workflow | Implement `CreateBranch(taskID)` → creates `refs/heads/task/{task-id}` from current `main` HEAD; `DeleteBranch(taskID)` → removes the branch ref. Agents must never commit directly to `main`. Returns `ErrBranchExists` / `ErrBranchNotFound` as appropriate. Both operations safe for concurrent callers | 📋 Not Started | P0 | Low | Go, go-git | MVP-GIT-002 | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-003--branch-per-task-workflow) |
+| MVP-GIT-003 | Branch-Per-Task Workflow | Implement `CreateBranch(taskID)` → creates `refs/heads/task/{task-id}` from current `main` HEAD; `DeleteBranch(taskID)` → removes the branch ref. Agents must never commit directly to `main`. Returns `ErrBranchExists` / `ErrBranchNotFound` as appropriate. Both operations safe for concurrent callers | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-003--branch-per-task-workflow) |
 | MVP-GIT-004 | File Operations & Commit Attribution | Implement `WriteFile` (commits any file type to a task branch with agent author + structured message), `ReadFile` (content at any ref: branch, tag, or SHA), `DeleteFile` (removes file as a commit), `ListDirectory` (immediate children at any ref). All writes include task ID in commit message | 📋 Not Started | P0 | Medium | Go, go-git | MVP-GIT-003 | [file-operations.md](mvp-details/file-operations.md) |
 
 ---
@@ -106,7 +102,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, MVP-GIT-002 | [storage-backends.md](mvp-details/storage-backends.md) |
+| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [storage-backends.md](mvp-details/storage-backends.md) |
 | MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | MVP-GIT-006, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
 
 ---
@@ -132,7 +128,7 @@ _(None)_
 ## Task Summary by Priority
 
 ### P0 (Blocking — Must Complete First)
-- **Foundation**: 2 tasks (MVP-GIT-001, MVP-GIT-002)
+- **Foundation**: ~~2 tasks (MVP-GIT-001, MVP-GIT-002)~~ ✅ both complete
 - **Core Operations**: 2 tasks (MVP-GIT-003, MVP-GIT-004)
 - **Merge Workflow**: 2 tasks (MVP-GIT-005, MVP-GIT-006)
 
