@@ -64,7 +64,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-002 | Filesystem Repo Lifecycle | Implement filesystem-backed `RepoManager`: `InitRepo` creates `{base_path}/{agency-id}/.git` with initial empty commit; `OpenRepo` returns a `Repo` backed by on-disk `.git`; `DeleteRepo` archives to `{archive_path}/{agency-id}/` (non-destructive); `PurgeRepo` hard-deletes archived repo via `os.RemoveAll` | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅ | [repo-management.md](mvp-details/repo-management.md#mvp-git-002--filesystem-repo-lifecycle) |
+| MVP-GIT-003 | Branch-Per-Task Workflow | Implement `CreateBranch(taskID)` → creates `refs/heads/task/{task-id}` from current `main` HEAD; `DeleteBranch(taskID)` → removes the branch ref. Agents must never commit directly to `main`. Returns `ErrBranchExists` / `ErrBranchNotFound` as appropriate. Both operations safe for concurrent callers | 🚀 In Progress | P0 | Low | Go, go-git | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-003--branch-per-task-workflow) |
 
 ---
 
