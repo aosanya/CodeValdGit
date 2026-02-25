@@ -72,12 +72,11 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Merge Workflow (CRITICAL)
 
-*Task completion pathway. Merges agent work back to `main`.*
+*~~MVP-GIT-005~~ ✅ complete — see `mvp_done.md`.*
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-005 | Fast-Forward Merge | Implement `MergeBranch` happy path: if `main` has not advanced since the task branch was created, perform a fast-forward merge using go-git's `FastForwardMerge` strategy (v5.12.0+). After merge, `main` HEAD points at the task branch tip | 📋 Not Started | P0 | Low | Go, go-git | ~~MVP-GIT-004~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-005--fast-forward-merge) |
-| MVP-GIT-006 | Auto-Rebase & Conflict Resolution | Implement `MergeBranch` fallback: when `main` has advanced, attempt auto-rebase by cherry-picking task branch commits onto latest `main` using go-git plumbing layer. On success → fast-forward merge. On content conflict → return `*ErrMergeConflict{TaskID, ConflictingFiles}` to caller; task branch left in clean state for agent retry | 📋 Not Started | P0 | High | Go, go-git | MVP-GIT-005 | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-006--auto-rebase--conflict-resolution) |
+| MVP-GIT-006 | Auto-Rebase & Conflict Resolution | Implement `MergeBranch` fallback: when `main` has advanced, attempt auto-rebase by cherry-picking task branch commits onto latest `main` using go-git plumbing layer. On success → fast-forward merge. On content conflict → return `*ErrMergeConflict{TaskID, ConflictingFiles}` to caller; task branch left in clean state for agent retry | 📋 Not Started | P0 | High | Go, go-git | ~~MVP-GIT-005~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-006--auto-rebase--conflict-resolution) |
 
 ---
 
@@ -124,10 +123,10 @@ _(None)_
 
 ### P0 (Blocking — Must Complete First)
 - **Foundation**: ~~2 tasks (MVP-GIT-001, MVP-GIT-002)~~ ✅ both complete
-- **Core Operations**: 2 tasks (MVP-GIT-003, MVP-GIT-004)
-- **Merge Workflow**: 2 tasks (MVP-GIT-005, MVP-GIT-006)
+- **Core Operations**: ~~2 tasks (MVP-GIT-003, MVP-GIT-004)~~ ✅ both complete
+- **Merge Workflow**: ~~MVP-GIT-005~~ ✅ complete; 1 task remaining (MVP-GIT-006)
 
-**Total P0**: 6 tasks
+**Total P0**: 6 tasks (5 complete)
 
 ### P1 (Important — Core Library Features)
 - **History & Diff**: 1 task (MVP-GIT-007)
@@ -144,11 +143,11 @@ _(None)_
 Follow this sequence:
 
 **Phase 1 — Foundation & Core:**
-1. MVP-GIT-001 — Library Scaffolding
-2. MVP-GIT-002 — Filesystem Repo Lifecycle
-3. MVP-GIT-003 — Branch-Per-Task Workflow
-4. MVP-GIT-004 — File Operations & Commit Attribution
-5. MVP-GIT-005 — Fast-Forward Merge
+1. ~~MVP-GIT-001~~ ✅ — Library Scaffolding
+2. ~~MVP-GIT-002~~ ✅ — Filesystem Repo Lifecycle
+3. ~~MVP-GIT-003~~ ✅ — Branch-Per-Task Workflow
+4. ~~MVP-GIT-004~~ ✅ — File Operations & Commit Attribution
+5. ~~MVP-GIT-005~~ ✅ — Fast-Forward Merge
 6. MVP-GIT-006 — Auto-Rebase & Conflict Resolution
 
 **Phase 2 — Read Access & Persistence:**

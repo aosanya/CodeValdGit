@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,9 +72,92 @@ func (r *repo) CreateBranch(_ context.Context, taskID string) error {
 }
 
 // MergeBranch merges task/{taskID} into main.
-// Implemented in MVP-GIT-005 and MVP-GIT-006.
-func (r *repo) MergeBranch(_ context.Context, taskID string) error {
-	return fmt.Errorf("MergeBranch %q: not yet implemented — see MVP-GIT-005", taskID)
+//
+// If main HEAD is an ancestor of the task branch HEAD (fast-forward possible),
+// main is advanced to the task branch tip with no new merge commit.
+//
+// If main has advanced since the task branch was created (fast-forward not
+// possible), an auto-rebase is attempted by cherry-picking task commits onto
+// the latest main (MVP-GIT-006). On rebase conflict, [*ErrMergeConflict] is
+// returned and the task branch is left in its original pre-rebase state.
+//
+// The operation is idempotent: if main and task/{taskID} already point at the
+// same commit, nil is returned immediately.
+// Returns [ErrBranchNotFound] if task/{taskID} does not exist.
+func (r *repo) MergeBranch(ctx context.Context, taskID string) error {
+	taskRef, err := r.git.Reference(
+		plumbing.NewBranchReferenceName(taskBranchName(taskID)), true)
+	if err != nil {
+		return ErrBranchNotFound
+	}
+
+	mainRef, err := r.git.Reference(
+		plumbing.NewBranchReferenceName("main"), true)
+	if err != nil {
+		return fmt.Errorf("MergeBranch %q: resolve main: %w", taskID, err)
+	}
+
+	// Idempotent: already merged.
+	if mainRef.Hash() == taskRef.Hash() {
+		return nil
+	}
+
+	// Fast-forward check: is main HEAD an ancestor of task HEAD?
+	ok, err := r.isAncestor(mainRef.Hash(), taskRef.Hash())
+	if err != nil {
+		return fmt.Errorf("MergeBranch %q: ancestor check: %w", taskID, err)
+	}
+	if ok {
+		// Fast-forward: advance main HEAD to the task branch tip.
+		newMain := plumbing.NewHashReference(
+			plumbing.NewBranchReferenceName("main"), taskRef.Hash())
+		if err := r.git.Storer.SetReference(newMain); err != nil {
+			return fmt.Errorf("MergeBranch %q: set main reference: %w", taskID, err)
+		}
+		return nil
+	}
+
+	// Main has advanced — auto-rebase required (MVP-GIT-006).
+	return r.rebaseAndMerge(ctx, taskID, taskRef, mainRef)
+}
+
+// isAncestor reports whether candidateAncestor is reachable by walking
+// backwards from tip through the commit graph. Returns (true, nil) when
+// candidateAncestor appears in the history of tip, (false, nil) when it does
+// not, or (false, error) on graph traversal failure.
+func (r *repo) isAncestor(candidateAncestor, tip plumbing.Hash) (bool, error) {
+	iter, err := r.git.Log(&gogit.LogOptions{From: tip})
+	if err != nil {
+		return false, err
+	}
+	defer iter.Close()
+	for {
+		c, err := iter.Next()
+		if err == io.EOF {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if c.Hash == candidateAncestor {
+			return true, nil
+		}
+	}
+}
+
+// rebaseAndMerge is the fallback path for MergeBranch when a fast-forward is
+// not possible. It cherry-picks each task branch commit (since the common
+// ancestor with main) onto the current main tip, then fast-forwards main.
+//
+// On a content conflict, [*ErrMergeConflict] is returned and the task branch
+// ref is left unchanged (clean state for agent retry).
+//
+// Implementation note: go-git v5 does not provide a native rebase — the
+// cherry-pick loop is manual (see FR-006 and architecture.md). This stub
+// returns an error until MVP-GIT-006 is implemented.
+func (r *repo) rebaseAndMerge(ctx context.Context, taskID string,
+	taskRef, mainRef *plumbing.Reference) error {
+	return fmt.Errorf("MergeBranch %q: auto-rebase not yet implemented — see MVP-GIT-006", taskID)
 }
 
 // DeleteBranch removes refs/heads/task/{taskID}.
