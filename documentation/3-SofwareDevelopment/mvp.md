@@ -66,11 +66,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Core Operations (CRITICAL)
 
-*~~MVP-GIT-003~~ ✅ complete — see `mvp_done.md`.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-004 | File Operations & Commit Attribution | Implement `WriteFile` (commits any file type to a task branch with agent author + structured message), `ReadFile` (content at any ref: branch, tag, or SHA), `DeleteFile` (removes file as a commit), `ListDirectory` (immediate children at any ref). All writes include task ID in commit message | 🚀 In Progress | P0 | Medium | Go, go-git | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅, ~~MVP-GIT-003~~ ✅ | [file-operations.md](mvp-details/file-operations.md) |
+*~~MVP-GIT-003~~ ✅ and ~~MVP-GIT-004~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -80,7 +76,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-005 | Fast-Forward Merge | Implement `MergeBranch` happy path: if `main` has not advanced since the task branch was created, perform a fast-forward merge using go-git's `FastForwardMerge` strategy (v5.12.0+). After merge, `main` HEAD points at the task branch tip | 📋 Not Started | P0 | Low | Go, go-git | MVP-GIT-004 | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-005--fast-forward-merge) |
+| MVP-GIT-005 | Fast-Forward Merge | Implement `MergeBranch` happy path: if `main` has not advanced since the task branch was created, perform a fast-forward merge using go-git's `FastForwardMerge` strategy (v5.12.0+). After merge, `main` HEAD points at the task branch tip | 📋 Not Started | P0 | Low | Go, go-git | ~~MVP-GIT-004~~ ✅ | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-005--fast-forward-merge) |
 | MVP-GIT-006 | Auto-Rebase & Conflict Resolution | Implement `MergeBranch` fallback: when `main` has advanced, attempt auto-rebase by cherry-picking task branch commits onto latest `main` using go-git plumbing layer. On success → fast-forward merge. On content conflict → return `*ErrMergeConflict{TaskID, ConflictingFiles}` to caller; task branch left in clean state for agent retry | 📋 Not Started | P0 | High | Go, go-git | MVP-GIT-005 | [branch-workflow.md](mvp-details/branch-workflow.md#mvp-git-006--auto-rebase--conflict-resolution) |
 
 ---
@@ -91,7 +87,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
 |---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-007 | History & Diff — UI Read Access | Implement `Log(ref, path)` → commits touching `path`, ordered newest-first; `Diff(fromRef, toRef)` → per-file changes with unified diff patch. All operations non-mutating and safe for concurrent access. Supports branch names, tag names, and full commit SHAs as refs | 📋 Not Started | P1 | Medium | Go, go-git | MVP-GIT-004 | [history-and-diff.md](mvp-details/history-and-diff.md) |
+| MVP-GIT-007 | History & Diff — UI Read Access | Implement `Log(ref, path)` → commits touching `path`, ordered newest-first; `Diff(fromRef, toRef)` → per-file changes with unified diff patch. All operations non-mutating and safe for concurrent access. Supports branch names, tag names, and full commit SHAs as refs | 📋 Not Started | P1 | Medium | Go, go-git | ~~MVP-GIT-004~~ ✅ | [history-and-diff.md](mvp-details/history-and-diff.md) |
 
 ---
 
