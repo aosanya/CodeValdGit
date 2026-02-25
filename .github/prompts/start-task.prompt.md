@@ -9,13 +9,15 @@ Follow the **mandatory task startup process** for CodeValdGit tasks:
 ## Task Startup Process (MANDATORY)
 
 1. **Select the next task**
-   - Check `documentation/requirements.md` for unimplemented functional requirements (FR-001–FR-008)
-   - Check `documentation/architecture.md` for design decisions that need implementation
+   - Check `documentation/3-SofwareDevelopment/mvp.md` for the task list and current status
+   - Check `documentation/3-SofwareDevelopment/mvp-details/` for detailed specs per topic
+   - Check `documentation/1-SoftwareRequirements/requirements.md` for unimplemented functional requirements (FR-001–FR-008)
    - Prefer foundational tasks (e.g., `RepoManager`, core `Repo` interface) before dependent ones
 
 2. **Read the specification**
-   - Re-read the relevant FR(s) in `documentation/requirements.md`
-   - Re-read the corresponding section in `documentation/architecture.md`
+   - Re-read the relevant FR(s) in `documentation/1-SoftwareRequirements/requirements.md`
+   - Re-read the corresponding section in `documentation/2-SoftwareDesignAndArchitecture/architecture.md`
+   - Read the task spec in `documentation/3-SofwareDevelopment/mvp-details/{topic-file}.md`
    - Understand how the task fits into the two-interface design (`RepoManager`, `Repo`)
    - Note any go-git constraints (e.g., FR-006: manual rebase required — no native rebase in go-git v5)
 

@@ -42,9 +42,17 @@ Consumer:
   Project: CodeValdCortex
   Integration: imported as Go module; replaces internal/git/
 
-Documentation:
-  requirements: documentation/requirements.md
-  architecture: documentation/architecture.md
+Documentation structure:
+  1-SoftwareRequirements:
+    requirements: documentation/1-SoftwareRequirements/requirements.md
+    introduction: documentation/1-SoftwareRequirements/introduction/
+  2-SoftwareDesignAndArchitecture:
+    architecture: documentation/2-SoftwareDesignAndArchitecture/architecture.md
+  3-SofwareDevelopment:
+    mvp: documentation/3-SofwareDevelopment/mvp.md
+    mvp-details: documentation/3-SofwareDevelopment/mvp-details/
+  4-QA:
+    qa: documentation/4-QA/README.md
 ```
 
 ---

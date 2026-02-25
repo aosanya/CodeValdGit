@@ -114,9 +114,30 @@ go-git separates storage into two injectable interfaces:
 ```
 /workspaces/CodeValdGit/
 ├── documentation/
-│   ├── README.md           # Documentation index
-│   ├── requirements.md     # FR / NFR / open questions (all resolved)
-│   └── architecture.md     # Design decisions, branching model, full API draft
+│   ├── README.md                          # Documentation index
+│   ├── 1-SoftwareRequirements/
+│   │   ├── README.md                      # Requirements overview
+│   │   ├── requirements.md                # FR-001–FR-008, NFR, open questions
+│   │   └── introduction/
+│   │       ├── problem-definition.md
+│   │       ├── high-level-features.md
+│   │       └── stakeholders.md
+│   ├── 2-SoftwareDesignAndArchitecture/
+│   │   ├── README.md                      # Architecture overview
+│   │   └── architecture.md                # Design decisions, branching model, API draft
+│   ├── 3-SofwareDevelopment/
+│   │   ├── README.md                      # Development overview
+│   │   ├── mvp.md                         # MVP task list and status
+│   │   └── mvp-details/
+│   │       ├── README.md                  # Task index
+│   │       ├── repo-management.md         # MVP-GIT-001, MVP-GIT-002
+│   │       ├── branch-workflow.md         # MVP-GIT-003, MVP-GIT-005, MVP-GIT-006
+│   │       ├── file-operations.md         # MVP-GIT-004
+│   │       ├── history-and-diff.md        # MVP-GIT-007
+│   │       ├── storage-backends.md        # MVP-GIT-008
+│   │       └── integration.md             # MVP-GIT-009
+│   └── 4-QA/
+│       └── README.md                      # Testing standards and QA
 ├── .github/
 │   ├── copilot-instructions.md
 │   ├── instructions/
@@ -273,15 +294,18 @@ Once CodeValdGit is integrated, the following will be deleted from CodeValdCorte
 
 ## Documentation References
 
-- `documentation/requirements.md` — functional requirements (FR-001–FR-008), NFR, resolved open questions
-- `documentation/architecture.md` — design decisions, storage backends, branching model, draft `Repo` + `RepoManager` interfaces, integration table
+- `documentation/1-SoftwareRequirements/requirements.md` — functional requirements (FR-001–FR-008), NFR, resolved open questions
+- `documentation/2-SoftwareDesignAndArchitecture/architecture.md` — design decisions, storage backends, branching model, draft `Repo` + `RepoManager` interfaces, integration table
+- `documentation/3-SofwareDevelopment/mvp.md` — MVP task list and status
+- `documentation/3-SofwareDevelopment/mvp-details/` — per-topic task specifications
+- `documentation/4-QA/README.md` — testing strategy and QA standards
 
 ---
 
 ## When in Doubt
 
-1. **Check documentation first**: `documentation/requirements.md` and `documentation/architecture.md` are the source of truth
+1. **Check documentation first**: `documentation/1-SoftwareRequirements/requirements.md` and `documentation/2-SoftwareDesignAndArchitecture/architecture.md` are the source of truth
 2. **Interface before implementation**: define the interface, write tests against the interface, then implement
 3. **Inject dependencies**: storage and filesystem are always caller-provided
 4. **Write tests for every exported function** — aim for >80% coverage; use table-driven tests
-5. **go-git plumbing layer for rebase**: `MergeBranch` requires manual cherry-pick via `object.Commit` and `Worktree.Commit` — no native rebase in go-git v5
+5. **go-git plumbing layer for rebase**: `MergeBranch` requires manual cherry-pick via `object.Commit` and `Worktree.Commit` — no native rebase in go-git v5; see `documentation/3-SofwareDevelopment/mvp-details/branch-workflow.md`

@@ -38,9 +38,11 @@ Follow the **mandatory completion process** for CodeValdGit tasks:
    - [ ] Write operations only via task branches, never directly to `main`
 
 4. **Update documentation if architecture changed**
-   - If the implementation deviated from `documentation/architecture.md`, update it to reflect the actual design
-   - If a new design decision was made, add it to the decision table in `documentation/architecture.md`
-   - If an open question in `documentation/requirements.md` was resolved, update it
+   - If the implementation deviated from `documentation/2-SoftwareDesignAndArchitecture/architecture.md`, update it to reflect the actual design
+   - If a new design decision was made, add it to the decision table in `documentation/2-SoftwareDesignAndArchitecture/architecture.md`
+   - If an open question in `documentation/1-SoftwareRequirements/requirements.md` was resolved, update it
+   - Update task status in `documentation/3-SofwareDevelopment/mvp.md` (🔲 → ✅)
+   - Update task status in `documentation/3-SofwareDevelopment/mvp-details/README.md`
 
 5. **Merge to main**
    ```bash

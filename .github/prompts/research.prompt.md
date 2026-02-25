@@ -5,7 +5,7 @@ agent: agent
 # Research & Documentation Gap Analysis Prompt
 
 ## Purpose
-This prompt guides a structured Q&A session to explore and complete documentation for any feature or architectural component in the CodeValdCortex project through **one question at a time**, allowing for deep dives into specific topics.
+This prompt guides a structured Q&A session to explore and complete documentation for any feature or architectural component in the **CodeValdGit** library through **one question at a time**, allowing for deep dives into specific topics.
 
 ---
 
@@ -15,14 +15,14 @@ This prompt guides a structured Q&A session to explore and complete documentatio
 
 ### Step 1: CHECK File Size
 ```bash
-wc -l documents/3-SofwareDevelopment/mvp-details/{domain-file}.md
+wc -l documentation/3-SofwareDevelopment/mvp-details/{topic-file}.md
 ```
 
 ### Step 2: IF >500 lines OR individual MVP-XXX.md files exist:
 
 **a. CREATE folder structure:**
 ```bash
-mvp-details/{domain-name}/
+documentation/3-SofwareDevelopment/mvp-details/{domain-name}/
 ├── README.md              # Domain overview, architecture, task index (MAX 300 lines)
 ├── {topic-1}.md           # Topic-based grouping of related tasks (MAX 500 lines)
 ├── {topic-2}.md           # Topic-based grouping of related tasks (MAX 500 lines)
@@ -443,7 +443,7 @@ User: Let's research instance management for MVP-PUB-007
 AI: 🔍 **Pre-Research: File Size Check**
     
     Checking documentation status...
-    $ wc -l documents/3-SofwareDevelopment/mvp-details/agency-publishing/instance-management.md
+    $ wc -l documentation/3-SofwareDevelopment/mvp-details/{topic-file}.md
     884 lines
     
     🛑 STOP CONDITION TRIGGERED: File exceeds 500 lines!

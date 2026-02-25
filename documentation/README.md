@@ -12,8 +12,19 @@ It replaces the custom hand-rolled Git engine (`internal/git/`) in CodeValdCorte
 
 | Document | Description |
 |---|---|
-| [requirements.md](requirements.md) | What the library must do — scope, constraints, open questions |
-| [architecture.md](architecture.md) | Design decisions, repo structure, branching model |
+| [1-SoftwareRequirements/](1-SoftwareRequirements/README.md) | What the library must do — scope, FR, NFR, introduction |
+| [2-SoftwareDesignAndArchitecture/](2-SoftwareDesignAndArchitecture/README.md) | Design decisions, storage backends, branching model, API draft |
+| [3-SofwareDevelopment/](3-SofwareDevelopment/README.md) | MVP task list, implementation details per topic |
+| [4-QA/](4-QA/README.md) | Testing strategy, acceptance criteria, QA standards |
+
+### Key Files
+
+| File | Description |
+|---|---|
+| [1-SoftwareRequirements/requirements.md](1-SoftwareRequirements/requirements.md) | Functional requirements (FR-001–FR-008), NFR, resolved open questions |
+| [2-SoftwareDesignAndArchitecture/architecture.md](2-SoftwareDesignAndArchitecture/architecture.md) | Core design decisions, repo structure, branching model, API interfaces |
+| [3-SofwareDevelopment/mvp.md](3-SofwareDevelopment/mvp.md) | MVP task list and status |
+| [3-SofwareDevelopment/mvp-details/](3-SofwareDevelopment/mvp-details/README.md) | Per-topic task specifications |
 
 ---
 
