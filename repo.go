@@ -7,14 +7,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-git/go-billy/v5"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
+	"github.com/go-git/go-git/v5/utils/merkletrie"
 )
 
 // repo is the concrete backend-agnostic implementation of [Repo].
@@ -145,19 +148,325 @@ func (r *repo) isAncestor(candidateAncestor, tip plumbing.Hash) (bool, error) {
 	}
 }
 
-// rebaseAndMerge is the fallback path for MergeBranch when a fast-forward is
-// not possible. It cherry-picks each task branch commit (since the common
-// ancestor with main) onto the current main tip, then fast-forwards main.
+// rebaseAndMerge cherry-picks each task branch commit (not yet in main) onto
+// the current main tip in oldest-first order, then fast-forwards main to the
+// rebased task HEAD.
 //
-// On a content conflict, [*ErrMergeConflict] is returned and the task branch
-// ref is left unchanged (clean state for agent retry).
+// If any cherry-pick encounters a content conflict, [*ErrMergeConflict] is
+// returned immediately and the task branch ref is left at its original hash
+// (clean state for agent retry). Respects context cancellation.
 //
-// Implementation note: go-git v5 does not provide a native rebase — the
-// cherry-pick loop is manual (see FR-006 and architecture.md). This stub
-// returns an error until MVP-GIT-006 is implemented.
+// go-git v5 has no native rebase — the cherry-pick loop is manual per FR-006.
 func (r *repo) rebaseAndMerge(ctx context.Context, taskID string,
 	taskRef, mainRef *plumbing.Reference) error {
-	return fmt.Errorf("MergeBranch %q: auto-rebase not yet implemented — see MVP-GIT-006", taskID)
+
+	// 1. Collect task-branch commits not yet in main, oldest-first.
+	taskCommits, err := r.commitsSinceAncestor(taskRef.Hash(), mainRef.Hash())
+	if err != nil {
+		return fmt.Errorf("MergeBranch %q: collect task commits: %w", taskID, err)
+	}
+	if len(taskCommits) == 0 {
+		// All task commits are already in main — idempotent no-op.
+		return nil
+	}
+
+	// 2. Cherry-pick each commit onto the current main tip.
+	currentBase := mainRef.Hash()
+	for _, commit := range taskCommits {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("MergeBranch %q: rebase cancelled: %w", taskID, err)
+		}
+		newHash, conflictFiles, err := r.cherryPick(ctx, currentBase, commit)
+		if err != nil {
+			return fmt.Errorf("MergeBranch %q: cherry-pick %s: %w", taskID, commit.Hash, err)
+		}
+		if len(conflictFiles) > 0 {
+			// Task branch ref is untouched — return conflict for agent retry.
+			return &ErrMergeConflict{
+				TaskID:           taskID,
+				ConflictingFiles: conflictFiles,
+			}
+		}
+		currentBase = newHash
+	}
+
+	// 3. All cherry-picks succeeded.
+	// Update task branch ref to rebased tip, then fast-forward main.
+	rebasedTaskRef := plumbing.NewHashReference(
+		plumbing.NewBranchReferenceName(taskBranchName(taskID)), currentBase)
+	if err := r.git.Storer.SetReference(rebasedTaskRef); err != nil {
+		return fmt.Errorf("MergeBranch %q: update task ref after rebase: %w", taskID, err)
+	}
+	newMainRef := plumbing.NewHashReference(
+		plumbing.NewBranchReferenceName("main"), currentBase)
+	if err := r.git.Storer.SetReference(newMainRef); err != nil {
+		return fmt.Errorf("MergeBranch %q: fast-forward main after rebase: %w", taskID, err)
+	}
+	return nil
+}
+
+// commitsSinceAncestor walks the commit graph backwards from tip and collects
+// all commits up to (but not including) ancestor. The returned slice is
+// ordered oldest-first, ready for cherry-pick replay.
+func (r *repo) commitsSinceAncestor(tip, ancestor plumbing.Hash) ([]*object.Commit, error) {
+	iter, err := r.git.Log(&gogit.LogOptions{From: tip})
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+
+	var commits []*object.Commit
+	for {
+		c, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if c.Hash == ancestor {
+			break
+		}
+		commits = append(commits, c)
+	}
+	// Log returns newest-first; reverse for oldest-first replay order.
+	for i, j := 0, len(commits)-1; i < j; i, j = i+1, j-1 {
+		commits[i], commits[j] = commits[j], commits[i]
+	}
+	return commits, nil
+}
+
+// repoFileEntry holds a blob hash and file mode for tree construction.
+type repoFileEntry struct {
+	hash plumbing.Hash
+	mode filemode.FileMode
+}
+
+// cherryPick applies the file changes introduced by src onto the commit at
+// base. Returns (newCommitHash, nil, nil) on success, or
+// (plumbing.ZeroHash, conflictPaths, nil) when content conflicts are detected.
+// The repository object store is not mutated on conflict.
+//
+// Conflict rules:
+//   - Insert: conflict when base already contains the file at a different hash
+//     (both sides independently added the same path with different content).
+//   - Modify: conflict when base changed the file since src's parent
+//     (both sides independently edited the same file).
+//   - Delete: conflict when base changed the file since src's parent
+//     (base edited a file that src is trying to delete).
+func (r *repo) cherryPick(ctx context.Context, base plumbing.Hash, src *object.Commit) (plumbing.Hash, []string, error) {
+	baseCommit, err := r.git.CommitObject(base)
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get base commit: %w", err)
+	}
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get base tree: %w", err)
+	}
+
+	// Get src's parent tree (what src was built on top of).
+	var srcParentTree *object.Tree
+	if src.NumParents() > 0 {
+		srcParent, err := src.Parent(0)
+		if err != nil {
+			return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get src parent: %w", err)
+		}
+		srcParentTree, err = srcParent.Tree()
+		if err != nil {
+			return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get src parent tree: %w", err)
+		}
+	} else {
+		srcParentTree = &object.Tree{}
+	}
+
+	srcTree, err := src.Tree()
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get src tree: %w", err)
+	}
+
+	// Diff srcParent → src to see what this commit changed.
+	srcChanges, err := object.DiffTree(srcParentTree, srcTree)
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: diff src: %w", err)
+	}
+
+	if len(srcChanges) == 0 {
+		// Empty commit — replay with the base tree unchanged.
+		h, err := r.writeNewCommit(base, baseTree.Hash, src)
+		return h, nil, err
+	}
+
+	// Flatten base and srcParent trees for O(1) lookup.
+	baseFiles, err := r.treeToFileMap(baseTree)
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: flatten base: %w", err)
+	}
+	srcParentFiles, err := r.treeToFileMap(srcParentTree)
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: flatten srcParent: %w", err)
+	}
+
+	// Apply changes to a mutable copy of baseFiles.
+	merged := make(map[string]repoFileEntry, len(baseFiles))
+	for k, v := range baseFiles {
+		merged[k] = v
+	}
+
+	var conflictFiles []string
+	for _, ch := range srcChanges {
+		action, err := ch.Action()
+		if err != nil {
+			return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: change action: %w", err)
+		}
+		switch action {
+		case merkletrie.Insert:
+			path := ch.To.Name
+			if existing, exists := baseFiles[path]; exists {
+				if existing.hash != ch.To.TreeEntry.Hash {
+					// Both sides independently added this path with different content.
+					conflictFiles = append(conflictFiles, path)
+					continue
+				}
+				// Same content added independently — no conflict.
+			}
+			merged[path] = repoFileEntry{hash: ch.To.TreeEntry.Hash, mode: ch.To.TreeEntry.Mode}
+
+		case merkletrie.Modify:
+			path := ch.From.Name
+			srcParentEntry, inSrcParent := srcParentFiles[path]
+			baseEntry, inBase := baseFiles[path]
+			if !inBase {
+				// File was deleted in base — conflict.
+				conflictFiles = append(conflictFiles, path)
+				continue
+			}
+			if inSrcParent && baseEntry.hash != srcParentEntry.hash {
+				// Base changed the file since the common ancestor — conflict.
+				conflictFiles = append(conflictFiles, path)
+				continue
+			}
+			merged[path] = repoFileEntry{hash: ch.To.TreeEntry.Hash, mode: ch.To.TreeEntry.Mode}
+
+		case merkletrie.Delete:
+			path := ch.From.Name
+			srcParentEntry, inSrcParent := srcParentFiles[path]
+			baseEntry, inBase := baseFiles[path]
+			if inBase && inSrcParent && baseEntry.hash != srcParentEntry.hash {
+				// Base changed the file that src is deleting — conflict.
+				conflictFiles = append(conflictFiles, path)
+				continue
+			}
+			delete(merged, path)
+		}
+	}
+
+	if len(conflictFiles) > 0 {
+		return plumbing.ZeroHash, conflictFiles, nil
+	}
+
+	// Write the new tree and commit.
+	newTreeHash, err := r.buildTree(merged, "")
+	if err != nil {
+		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: write tree: %w", err)
+	}
+	h, err := r.writeNewCommit(base, newTreeHash, src)
+	return h, nil, err
+}
+
+// treeToFileMap recursively flattens a git tree into a path → repoFileEntry
+// map. Only file blobs are included; directory tree nodes are expanded.
+func (r *repo) treeToFileMap(tree *object.Tree) (map[string]repoFileEntry, error) {
+	result := make(map[string]repoFileEntry)
+	files := tree.Files()
+	defer files.Close()
+	err := files.ForEach(func(f *object.File) error {
+		result[f.Name] = repoFileEntry{hash: f.Blob.Hash, mode: f.Mode}
+		return nil
+	})
+	return result, err
+}
+
+// buildTree recursively constructs git tree objects from a flat path→entry map
+// and writes them to the repository's object store. prefix selects the subtree
+// currently being built ("" for the root). Returns the hash of the written
+// tree object.
+//
+// O(n·d) in the number of files n and maximum directory depth d.
+func (r *repo) buildTree(files map[string]repoFileEntry, prefix string) (plumbing.Hash, error) {
+	dirFiles := make(map[string]map[string]repoFileEntry)
+	var entries []object.TreeEntry
+
+	for path, fe := range files {
+		rel := path
+		if prefix != "" {
+			if !strings.HasPrefix(path, prefix+"/") {
+				continue
+			}
+			rel = path[len(prefix)+1:]
+		}
+		slash := strings.IndexByte(rel, '/')
+		if slash == -1 {
+			entries = append(entries, object.TreeEntry{
+				Name: rel,
+				Mode: fe.mode,
+				Hash: fe.hash,
+			})
+		} else {
+			dirName := rel[:slash]
+			if dirFiles[dirName] == nil {
+				dirFiles[dirName] = make(map[string]repoFileEntry)
+			}
+			dirFiles[dirName][path] = fe
+		}
+	}
+
+	// Recursively build sub-trees and add them as Dir entries.
+	for dirName, subFiles := range dirFiles {
+		subPrefix := dirName
+		if prefix != "" {
+			subPrefix = prefix + "/" + dirName
+		}
+		subHash, err := r.buildTree(subFiles, subPrefix)
+		if err != nil {
+			return plumbing.ZeroHash, err
+		}
+		entries = append(entries, object.TreeEntry{
+			Name: dirName,
+			Mode: filemode.Dir,
+			Hash: subHash,
+		})
+	}
+
+	// Git requires tree entries sorted by name.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name < entries[j].Name
+	})
+
+	tree := object.Tree{Entries: entries}
+	obj := r.git.Storer.NewEncodedObject()
+	if err := tree.Encode(obj); err != nil {
+		return plumbing.ZeroHash, fmt.Errorf("buildTree %q: encode: %w", prefix, err)
+	}
+	return r.git.Storer.SetEncodedObject(obj)
+}
+
+// writeNewCommit writes a new commit object to the repository's object store.
+// The commit has parent as its sole parent, treeHash as its content tree, and
+// copies the author name/email and message from src. Committer timestamp is
+// set to the current UTC time.
+func (r *repo) writeNewCommit(parent, treeHash plumbing.Hash, src *object.Commit) (plumbing.Hash, error) {
+	commit := &object.Commit{
+		Author:       src.Author,
+		Committer:    object.Signature{Name: src.Author.Name, Email: src.Author.Email, When: time.Now().UTC()},
+		Message:      src.Message,
+		TreeHash:     treeHash,
+		ParentHashes: []plumbing.Hash{parent},
+	}
+	obj := r.git.Storer.NewEncodedObject()
+	if err := commit.Encode(obj); err != nil {
+		return plumbing.ZeroHash, fmt.Errorf("writeNewCommit: encode: %w", err)
+	}
+	return r.git.Storer.SetEncodedObject(obj)
 }
 
 // DeleteBranch removes refs/heads/task/{taskID}.
