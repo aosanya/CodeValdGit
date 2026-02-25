@@ -675,16 +675,137 @@ func (r *repo) ListDirectory(_ context.Context, ref, path string) ([]FileEntry, 
 	return entries, nil
 }
 
-// Log returns commits touching path at ref, newest first.
-// Implemented in MVP-GIT-007.
+// Log returns commits reachable from ref that touched path, ordered
+// newest-first. If path is "" all commits reachable from ref are returned.
+// ref may be a branch name, tag name, or full commit SHA.
+// Returns [ErrRefNotFound] if ref cannot be resolved.
+// A valid ref with a path that has no history returns an empty slice (not an error).
+// Safe for concurrent calls; does not touch the working tree.
 func (r *repo) Log(_ context.Context, ref, path string) ([]Commit, error) {
-	return nil, fmt.Errorf("Log %q %q: not yet implemented — see MVP-GIT-007", ref, path)
+	hash, err := r.resolveRef(ref)
+	if err != nil {
+		return nil, ErrRefNotFound
+	}
+
+	opts := &gogit.LogOptions{From: hash}
+	if path != "" {
+		opts.FileName = &path
+	}
+
+	iter, err := r.git.Log(opts)
+	if err != nil {
+		return nil, fmt.Errorf("Log %q %q: %w", ref, path, err)
+	}
+	defer iter.Close()
+
+	var commits []Commit
+	if err := iter.ForEach(func(c *object.Commit) error {
+		commits = append(commits, Commit{
+			SHA:       c.Hash.String(),
+			Author:    c.Author.Name,
+			Message:   c.Message,
+			Timestamp: c.Author.When.UTC(),
+		})
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("Log %q %q: iterate: %w", ref, path, err)
+	}
+	return commits, nil
 }
 
 // Diff returns per-file changes between fromRef and toRef.
-// Implemented in MVP-GIT-007.
+// Each [FileDiff] has Path, Operation ("add" | "modify" | "delete"), and
+// Patch (unified diff text; empty for binary files).
+// Returns [ErrRefNotFound] if either ref cannot be resolved.
+// Returns an empty slice when the two refs point at the same tree.
+// Safe for concurrent calls; does not touch the working tree.
 func (r *repo) Diff(_ context.Context, fromRef, toRef string) ([]FileDiff, error) {
-	return nil, fmt.Errorf("Diff %q %q: not yet implemented — see MVP-GIT-007", fromRef, toRef)
+	fromHash, err := r.resolveRef(fromRef)
+	if err != nil {
+		return nil, ErrRefNotFound
+	}
+	toHash, err := r.resolveRef(toRef)
+	if err != nil {
+		return nil, ErrRefNotFound
+	}
+
+	// Same commit — no diff.
+	if fromHash == toHash {
+		return nil, nil
+	}
+
+	fromCommit, err := r.git.CommitObject(fromHash)
+	if err != nil {
+		return nil, ErrRefNotFound
+	}
+	toCommit, err := r.git.CommitObject(toHash)
+	if err != nil {
+		return nil, ErrRefNotFound
+	}
+
+	fromTree, err := fromCommit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("Diff %q: get from-tree: %w", fromRef, err)
+	}
+	toTree, err := toCommit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("Diff %q: get to-tree: %w", toRef, err)
+	}
+
+	changes, err := object.DiffTree(fromTree, toTree)
+	if err != nil {
+		return nil, fmt.Errorf("Diff %q %q: tree diff: %w", fromRef, toRef, err)
+	}
+	if len(changes) == 0 {
+		return nil, nil
+	}
+
+	diffs := make([]FileDiff, 0, len(changes))
+	for _, ch := range changes {
+		action, err := ch.Action()
+		if err != nil {
+			return nil, fmt.Errorf("Diff: change action: %w", err)
+		}
+
+		// Determine the canonical path for this change.
+		path := ch.To.Name
+		if action == merkletrie.Delete {
+			path = ch.From.Name
+		}
+
+		// Get the unified patch text.
+		patch, err := ch.Patch()
+		if err != nil {
+			return nil, fmt.Errorf("Diff: patch %q: %w", path, err)
+		}
+
+		patchText := ""
+		for _, fp := range patch.FilePatches() {
+			if !fp.IsBinary() {
+				patchText = patch.String()
+			}
+			break // one file per change
+		}
+
+		diffs = append(diffs, FileDiff{
+			Path:      path,
+			Operation: diffOperation(action),
+			Patch:     patchText,
+		})
+	}
+	return diffs, nil
+}
+
+// diffOperation maps a merkletrie.Action to the FileDiff.Operation string.
+func diffOperation(a merkletrie.Action) string {
+	switch a {
+	case merkletrie.Insert:
+		return "add"
+	case merkletrie.Delete:
+		return "delete"
+	default:
+		return "modify"
+	}
 }
 
 // resolveRef resolves a branch name, tag name, or commit SHA to a plumbing.Hash.
