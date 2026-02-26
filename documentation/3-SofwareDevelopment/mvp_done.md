@@ -12,3 +12,5 @@ Completed tasks are removed from `mvp.md` and recorded here with their completio
 | MVP-GIT-006 | Auto-Rebase & Conflict Resolution | 2026-02-25 | `feature/GIT-006_auto_rebase` | [GIT-006_auto_rebase.md](coding_sessions/GIT-006_auto_rebase.md) |
 | MVP-GIT-007 | History & Diff — UI Read Access | 2026-02-25 | `feature/GIT-007_history_and_diff` | [GIT-007_history_and_diff.md](coding_sessions/GIT-007_history_and_diff.md) |
 | MVP-GIT-008 | ArangoDB Storage Backend | 2026-02-25 | `feature/GIT-008_arangodb_storage` | [GIT-008_arangodb_storage.md](coding_sessions/GIT-008_arangodb_storage.md) |
+| MVP-GIT-009 | gRPC Service Proto & Codegen | 2026-02-26 | `feature/GIT-009_grpc_proto_codegen` | — |
+| MVP-GIT-010 | gRPC Server Implementation | 2026-02-26 | `feature/GIT-010_grpc_server_implementation` | — |

@@ -90,12 +90,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P1: gRPC Microservice Integration (IMPORTANT)
 
-*CodeValdGit runs as a standalone gRPC microservice; CodeValdCortex communicates via generated client stubs instead of importing the library as a Go module dependency.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|------|
-| MVP-GIT-009 | gRPC Service Proto & Codegen | Define `proto/codevaldgit/v1/service.proto` with all RPCs mapping the `RepoManager`/`Repo` interfaces. Define `MergeConflictInfo` detail message. Set up `buf` toolchain. Generate Go server + client stubs under `gen/go/codevaldgit/v1/`. Add `make proto` target. | 📋 Not Started | P1 | Medium | Go, Protobuf, gRPC, buf | ~~MVP-GIT-001~~ ✅ through ~~MVP-GIT-008~~ ✅ | [grpc-service.md](mvp-details/grpc-service.md) |
-| MVP-GIT-010 | gRPC Server Implementation | Add `cmd/server/main.go` to start a gRPC listener. Implement `internal/grpcserver/server.go` wrapping `RepoManager`/`Repo`. Map all Go errors to gRPC status codes; pack `MergeConflictInfo` on conflict. Register `grpc.health.v1` health service. Graceful shutdown. `Dockerfile.server` for standalone deployment. | 📋 Not Started | P1 | Medium | Go, gRPC, Docker | MVP-GIT-009 | [grpc-service.md](mvp-details/grpc-service.md) |
+*~~MVP-GIT-009~~ ✅ and ~~MVP-GIT-010~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -129,11 +124,11 @@ _(None)_
 ### P1 (Important — Core Library Features)
 - **History & Diff**: ~~1 task (MVP-GIT-007)~~ ✅ complete
 - **Storage & Integration**: ~~MVP-GIT-008~~ ✅ complete
-- **gRPC Microservice Integration**: 2 tasks remaining (MVP-GIT-009, MVP-GIT-010)
+- **gRPC Microservice Integration**: ~~2 tasks (MVP-GIT-009, MVP-GIT-010)~~ ✅ both complete
 
-**Total P1**: 4 tasks (2 complete, 2 remaining)
+**Total P1**: 4 tasks ✅ ALL COMPLETE
 
-**Grand Total Active Tasks**: 10 tasks (8 complete, 2 remaining)
+**Grand Total Active Tasks**: 10 tasks ✅ ALL COMPLETE
 
 ---
 
@@ -154,8 +149,8 @@ Follow this sequence:
 8. ~~MVP-GIT-008~~ ✅ — ArangoDB Storage Backend
 
 **Phase 3 — gRPC Microservice Integration:**
-9. MVP-GIT-009 — gRPC Service Proto & Codegen (after MVP-GIT-001–008 ✅)
-10. MVP-GIT-010 — gRPC Server Implementation (after MVP-GIT-009)
+9. ~~MVP-GIT-009~~ ✅ — gRPC Service Proto & Codegen
+10. ~~MVP-GIT-010~~ ✅ — gRPC Server Implementation
 
 ---
 
