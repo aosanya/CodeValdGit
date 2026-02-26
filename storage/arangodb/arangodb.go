@@ -100,7 +100,7 @@ func NewArangoBackend(cfg ArangoConfig) (codevaldgit.Backend, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	db, err := cl.Database(ctx, cfg.Database)
+	db, err := ensureDatabase(ctx, cl, cfg.Database)
 	if err != nil {
 		return nil, fmt.Errorf("NewArangoBackend: open database %q: %w", cfg.Database, err)
 	}
@@ -122,6 +122,20 @@ const (
 	collIndex   = "git_index"
 	collConfig  = "git_config"
 )
+
+// ensureDatabase opens the named database, creating it if it doesn't exist.
+func ensureDatabase(ctx context.Context, cl driver.Client, name string) (driver.Database, error) {
+	exists, err := cl.DatabaseExists(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		if _, err := cl.CreateDatabase(ctx, name, nil); err != nil && !driver.IsConflict(err) {
+			return nil, err
+		}
+	}
+	return cl.Database(ctx, name)
+}
 
 // ensureCollection opens a collection, creating it if it doesn't exist.
 func ensureCollection(ctx context.Context, db driver.Database, name string) (driver.Collection, error) {

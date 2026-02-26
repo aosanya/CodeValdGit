@@ -8,7 +8,8 @@ build:
 
 ## Build the service binary to bin/codevaldgit.
 build-server:
-	go build -o bin/codevaldgit ./cmd/...
+	go build -o bin/codevaldgit ./cmd
+	go build -o bin/codevaldgit-server ./cmd/server
 
 ## Build and run the service.
 ## Override config with env vars or a .env file.
