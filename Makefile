@@ -9,11 +9,15 @@ build:
 build-server:
 	go build -o bin/codevaldgit-server ./cmd/server
 
-## Run the gRPC server locally using the filesystem backend.
-## Override with: CODEVALDGIT_BACKEND=arangodb make run-server
+## Run the gRPC server locally using the filesystem backend (default).
+## Override backend:  CODEVALDGIT_BACKEND=arangodb make run-server
+## ArangoDB vars can be placed in a .env file (loaded automatically).
 run-server: build-server
+	@if [ -f .env ]; then \
+		set -a && . ./.env && set +a; \
+	fi; \
 	CODEVALDGIT_PORT=$(or $(CODEVALDGIT_PORT),50051) \
-	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),arangodb) \
+	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),filesystem) \
 	./bin/codevaldgit-server
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────
