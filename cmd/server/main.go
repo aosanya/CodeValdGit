@@ -4,6 +4,8 @@
 //
 //	CODEVALDGIT_PORT      gRPC listener port (default 50051)
 //	CODEVALDGIT_BACKEND   storage backend: "filesystem" (default) or "arangodb"
+//	CODEVALDCROSS_ADDR    CodeValdCross gRPC address for service registration
+//	                       heartbeats (optional; omit to disable registration)
 //
 // Filesystem backend:
 //
@@ -38,6 +40,7 @@ import (
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
 	"github.com/aosanya/CodeValdGit/internal/grpcserver"
+	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
 )
@@ -74,6 +77,22 @@ func main() {
 	// Register reflection for non-production debugging (grpcurl, grpc-client-cli).
 	reflection.Register(grpcServer)
 
+	// Cancellable context — cancelled on shutdown to stop background goroutines.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start CodeValdCross registration heartbeat if an address is configured.
+	crossAddr := envOrDefault("CODEVALDCROSS_ADDR", "localhost:50052")
+	if crossAddr != "" {
+		reg, err := registrar.New(crossAddr)
+		if err != nil {
+			log.Printf("registrar: failed to create: %v — continuing without registration", err)
+		} else {
+			defer reg.Close()
+			go reg.Run(ctx)
+		}
+	}
+
 	// Graceful shutdown on SIGTERM / SIGINT.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
@@ -86,7 +105,8 @@ func main() {
 	}()
 
 	<-quit
-	log.Println("shutdown signal received — draining in-flight RPCs (up to 30 s)...")
+	cancel() // stop registrar goroutine before draining gRPC
+	log.Println("shutdown signal received — draining in-flight RPCs (up to 30 s)")
 
 	done := make(chan struct{})
 	go func() {

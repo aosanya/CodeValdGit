@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package codevaldcross.v1;
+
+option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1;codevaldcrossv1";
+
+// OrchestratorService is the inbound gRPC service exposed by CodeValdCross.
+// Downstream services call Register on startup and periodically to advertise
+// their availability and pub/sub topic contracts.
+service OrchestratorService {
+  // Register records the calling service as available and stores its pub/sub
+  // topic capabilities. It is safe to call repeatedly — each call acts as a
+  // liveness heartbeat. A successful response confirms the registration.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}
+
+// RegisterRequest carries the service identity and its pub/sub topic contracts.
+message RegisterRequest {
+  // service_name is the unique identifier of the registering service
+  // (e.g. "codevaldgit").
+  string service_name = 1;
+
+  // produces is the list of pub/sub topic strings this service publishes.
+  repeated string produces = 2;
+
+  // consumes is the list of pub/sub topic strings this service subscribes to.
+  repeated string consumes = 3;
+}
+
+// RegisterResponse is intentionally empty.
+// A successful RPC response is the confirmation of availability.
+message RegisterResponse {}
