@@ -1,7 +1,8 @@
 // Package registrar sends periodic availability heartbeats to CodeValdCross.
-// On startup it immediately registers, then repeats every 10 seconds until the
-// context is cancelled.  All errors are logged and retried on the next tick —
-// a transient CodeValdCross outage never crashes the CodeValdGit server.
+// On startup it immediately registers, then repeats at the configured interval
+// until the context is cancelled.  All errors are logged and retried on the
+// next tick — a transient CodeValdCross outage never crashes the CodeValdGit
+// server.
 package registrar
 
 import (
@@ -15,9 +16,15 @@ import (
 )
 
 const (
-	pingInterval = 10 * time.Second
-	pingTimeout  = 5 * time.Second
-	serviceName  = "codevaldgit"
+	serviceName = "codevaldgit"
+
+	// DefaultPingInterval is the fallback heartbeat cadence when
+	// CODEVALDGIT_PING_INTERVAL is not set.
+	DefaultPingInterval = 10 * time.Second
+
+	// DefaultPingTimeout is the fallback per-RPC timeout when
+	// CODEVALDGIT_PING_TIMEOUT is not set.
+	DefaultPingTimeout = 5 * time.Second
 )
 
 // producedTopics are the pub/sub topics that CodeValdGit events map to on
@@ -31,23 +38,33 @@ var producedTopics = []string{
 // Registrar holds a persistent gRPC connection to CodeValdCross and sends
 // periodic Register heartbeats. Create with New; start with Run in a goroutine.
 type Registrar struct {
-	addr   string
-	conn   *grpc.ClientConn
-	client crossv1.OrchestratorServiceClient
+	crossAddr    string
+	listenAddr   string
+	pingInterval time.Duration
+	pingTimeout  time.Duration
+	conn         *grpc.ClientConn
+	client       crossv1.OrchestratorServiceClient
 }
 
-// New constructs a Registrar that will heartbeat to the given CodeValdCross
-// gRPC address. The connection is lazy — no network I/O occurs until the first
-// Register call. Returns an error if the address cannot be parsed.
-func New(addr string) (*Registrar, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+// New constructs a Registrar that will heartbeat to the CodeValdCross gRPC
+// address at crossAddr. listenAddr is the host:port on which this service
+// listens — it is sent in each Register heartbeat so CodeValdCross can dial
+// back without a static config entry. pingInterval controls the heartbeat
+// cadence; pingTimeout caps each Register RPC. The connection to crossAddr is
+// lazy — no network I/O occurs until the first Register call.
+// Returns an error if the address cannot be parsed.
+func New(crossAddr, listenAddr string, pingInterval, pingTimeout time.Duration) (*Registrar, error) {
+	conn, err := grpc.NewClient(crossAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
 	return &Registrar{
-		addr:   addr,
-		conn:   conn,
-		client: crossv1.NewOrchestratorServiceClient(conn),
+		crossAddr:    crossAddr,
+		listenAddr:   listenAddr,
+		pingInterval: pingInterval,
+		pingTimeout:  pingTimeout,
+		conn:         conn,
+		client:       crossv1.NewOrchestratorServiceClient(conn),
 	}, nil
 }
 
@@ -59,14 +76,15 @@ func (r *Registrar) Close() {
 	}
 }
 
-// Run sends an immediate Register ping, then repeats every 10 seconds until
-// ctx is cancelled. It must be called inside a goroutine.
+// Run sends an immediate Register ping, then repeats at the configured
+// interval until ctx is cancelled. It must be called inside a goroutine.
 // Transient errors are logged and do not stop the loop.
 func (r *Registrar) Run(ctx context.Context) {
-	log.Printf("registrar: starting heartbeat to CodeValdCross at %s", r.addr)
+	log.Printf("registrar: starting heartbeat to CodeValdCross at %s (interval=%s timeout=%s)",
+		r.crossAddr, r.pingInterval, r.pingTimeout)
 	r.ping(ctx)
 
-	ticker := time.NewTicker(pingInterval)
+	ticker := time.NewTicker(r.pingInterval)
 	defer ticker.Stop()
 
 	for {
@@ -81,19 +99,20 @@ func (r *Registrar) Run(ctx context.Context) {
 }
 
 // ping sends a single Register RPC. Errors are logged; the caller is not
-// blocked beyond the 5-second timeout.
+// blocked beyond the configured timeout.
 func (r *Registrar) ping(ctx context.Context) {
-	callCtx, cancel := context.WithTimeout(ctx, pingTimeout)
+	callCtx, cancel := context.WithTimeout(ctx, r.pingTimeout)
 	defer cancel()
 
 	_, err := r.client.Register(callCtx, &crossv1.RegisterRequest{
 		ServiceName: serviceName,
 		Produces:    producedTopics,
 		Consumes:    []string{},
+		Addr:        r.listenAddr,
 	})
 	if err != nil {
-		log.Printf("registrar: Register to CodeValdCross %s: %v", r.addr, err)
+		log.Printf("registrar: Register to CodeValdCross %s: %v", r.crossAddr, err)
 		return
 	}
-	log.Printf("registrar: registered with CodeValdCross at %s", r.addr)
+	log.Printf("registrar: registered with CodeValdCross at %s", r.crossAddr)
 }

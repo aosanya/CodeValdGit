@@ -13,9 +13,7 @@ build-server:
 ## Override with: CODEVALDGIT_BACKEND=arangodb make run-server
 run-server: build-server
 	CODEVALDGIT_PORT=$(or $(CODEVALDGIT_PORT),50051) \
-	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),filesystem) \
-	CODEVALDGIT_FS_BASE=$(or $(CODEVALDGIT_FS_BASE),/tmp/codevaldgit/repos) \
-	CODEVALDGIT_FS_ARCHIVE=$(or $(CODEVALDGIT_FS_ARCHIVE),/tmp/codevaldgit/archive) \
+	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),arangodb) \
 	./bin/codevaldgit-server
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────

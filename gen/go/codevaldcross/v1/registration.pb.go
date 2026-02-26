@@ -30,7 +30,11 @@ type RegisterRequest struct {
 	// produces is the list of pub/sub topic strings this service publishes.
 	Produces []string `protobuf:"bytes,2,rep,name=produces,proto3" json:"produces,omitempty"`
 	// consumes is the list of pub/sub topic strings this service subscribes to.
-	Consumes      []string `protobuf:"bytes,3,rep,name=consumes,proto3" json:"consumes,omitempty"`
+	Consumes []string `protobuf:"bytes,3,rep,name=consumes,proto3" json:"consumes,omitempty"`
+	// addr is the gRPC address (host:port) at which the registering service is
+	// reachable. CodeValdCross uses this to dial the service after registration,
+	// eliminating the need for static downstream service addresses in config.
+	Addr          string `protobuf:"bytes,4,opt,name=addr,proto3" json:"addr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -86,6 +90,13 @@ func (x *RegisterRequest) GetConsumes() []string {
 	return nil
 }
 
+func (x *RegisterRequest) GetAddr() string {
+	if x != nil {
+		return x.Addr
+	}
+	return ""
+}
+
 // RegisterResponse is intentionally empty.
 // A successful RPC response is the confirmation of availability.
 type RegisterResponse struct {
@@ -128,11 +139,12 @@ var File_codevaldcross_v1_registration_proto protoreflect.FileDescriptor
 
 const file_codevaldcross_v1_registration_proto_rawDesc = "" +
 	"\n" +
-	"#codevaldcross/v1/registration.proto\x12\x10codevaldcross.v1\"l\n" +
+	"#codevaldcross/v1/registration.proto\x12\x10codevaldcross.v1\"\x80\x01\n" +
 	"\x0fRegisterRequest\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x1a\n" +
 	"\bproduces\x18\x02 \x03(\tR\bproduces\x12\x1a\n" +
-	"\bconsumes\x18\x03 \x03(\tR\bconsumes\"\x12\n" +
+	"\bconsumes\x18\x03 \x03(\tR\bconsumes\x12\x12\n" +
+	"\x04addr\x18\x04 \x01(\tR\x04addr\"\x12\n" +
 	"\x10RegisterResponse2h\n" +
 	"\x13OrchestratorService\x12Q\n" +
 	"\bRegister\x12!.codevaldcross.v1.RegisterRequest\x1a\".codevaldcross.v1.RegisterResponseBHZFgithub.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1;codevaldcrossv1b\x06proto3"

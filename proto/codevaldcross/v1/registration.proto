@@ -25,6 +25,11 @@ message RegisterRequest {
 
   // consumes is the list of pub/sub topic strings this service subscribes to.
   repeated string consumes = 3;
+
+  // addr is the gRPC address (host:port) at which the registering service is
+  // reachable. CodeValdCross uses this to dial the service after registration,
+  // eliminating the need for static downstream service addresses in config.
+  string addr = 4;
 }
 
 // RegisterResponse is intentionally empty.

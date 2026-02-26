@@ -2,10 +2,12 @@
 //
 // Configuration is via environment variables:
 //
-//	CODEVALDGIT_PORT      gRPC listener port (default 50051)
-//	CODEVALDGIT_BACKEND   storage backend: "filesystem" (default) or "arangodb"
-//	CODEVALDCROSS_ADDR    CodeValdCross gRPC address for service registration
-//	                       heartbeats (optional; omit to disable registration)
+//	CODEVALDGIT_PORT           gRPC listener port (default 50051)
+//	CODEVALDGIT_BACKEND        storage backend: "filesystem" (default) or "arangodb"
+//	CODEVALDCROSS_ADDR         CodeValdCross gRPC address for service registration
+//	                            heartbeats (optional; omit to disable registration)
+//	CODEVALDGIT_PING_INTERVAL  heartbeat cadence sent to CodeValdCross (default 10s)
+//	CODEVALDGIT_PING_TIMEOUT   per-RPC timeout for each Register call (default 5s)
 //
 // Filesystem backend:
 //
@@ -27,6 +29,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -82,9 +85,11 @@ func main() {
 	defer cancel()
 
 	// Start CodeValdCross registration heartbeat if an address is configured.
-	crossAddr := envOrDefault("CODEVALDCROSS_ADDR", "localhost:50052")
+	crossAddr := envOrDefault("CODEVALDCROSS_ADDR", "")
 	if crossAddr != "" {
-		reg, err := registrar.New(crossAddr)
+		pingInterval := parseDuration("CODEVALDGIT_PING_INTERVAL", registrar.DefaultPingInterval)
+		pingTimeout := parseDuration("CODEVALDGIT_PING_TIMEOUT", registrar.DefaultPingTimeout)
+		reg, err := registrar.New(crossAddr, ":"+port, pingInterval, pingTimeout)
 		if err != nil {
 			log.Printf("registrar: failed to create: %v — continuing without registration", err)
 		} else {
@@ -176,6 +181,22 @@ func initArangoBackend() (codevaldgit.Backend, error) {
 	}
 
 	return arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
+}
+
+// parseDuration reads key from the environment and parses it as a number of
+// seconds (integer). Falls back to def when the variable is unset, empty, or
+// unparseable.
+func parseDuration(key string, def time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	secs, err := strconv.Atoi(v)
+	if err != nil || secs <= 0 {
+		log.Printf("config: %s=%q is not a positive integer — using default %s", key, v, def)
+		return def
+	}
+	return time.Duration(secs) * time.Second
 }
 
 // envOrDefault returns the value of the environment variable key, or def if
