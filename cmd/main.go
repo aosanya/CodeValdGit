@@ -28,6 +28,11 @@ func main() {
 }
 
 func run() error {
+	agencyID := os.Getenv("CODEVALDGIT_AGENCY_ID")
+	if agencyID == "" {
+		return fmt.Errorf("CODEVALDGIT_AGENCY_ID must be set")
+	}
+
 	listenAddr := getEnv("GIT_GRPC_LISTEN_ADDR", ":"+getEnv("CODEVALDGIT_PORT", "50053"))
 
 	backend, err := buildBackend()
@@ -66,7 +71,7 @@ func run() error {
 
 	crossCtx, crossCancel := context.WithCancel(context.Background())
 	defer crossCancel()
-	go registerWithCross(crossCtx, crossAddr, advertiseAddr, pingInterval)
+	go registerWithCross(crossCtx, crossAddr, advertiseAddr, agencyID, pingInterval)
 
 	<-quit
 	log.Println("codevaldgit: shutdown signal received — draining in-flight requests (up to 30 s)")

@@ -34,9 +34,9 @@ func (s *repoServer) ListDirectory(ctx context.Context, req *gitv1.ListDirectory
 		return nil, err
 	}
 
-	entries := make([]*gitv1.DirectoryEntry, 0, len(files))
+	entries := make([]*gitv1.FileEntry, 0, len(files))
 	for _, f := range files {
-		entries = append(entries, &gitv1.DirectoryEntry{
+		entries = append(entries, &gitv1.FileEntry{
 			Name:  f.Name,
 			Path:  f.Path,
 			IsDir: f.IsDir,

@@ -47,6 +47,11 @@ import (
 )
 
 func main() {
+	agencyID := os.Getenv("CODEVALDGIT_AGENCY_ID")
+	if agencyID == "" {
+		log.Fatal("CODEVALDGIT_AGENCY_ID must be set")
+	}
+
 	port := envOrDefault("CODEVALDGIT_PORT", "50051")
 	backendName := envOrDefault("CODEVALDGIT_BACKEND", "filesystem")
 
@@ -87,7 +92,7 @@ func main() {
 	if crossAddr != "" {
 		pingInterval := parseDuration("CODEVALDGIT_PING_INTERVAL", registrar.DefaultPingInterval)
 		pingTimeout := parseDuration("CODEVALDGIT_PING_TIMEOUT", registrar.DefaultPingTimeout)
-		reg, err := registrar.New(crossAddr, ":"+port, pingInterval, pingTimeout)
+		reg, err := registrar.New(crossAddr, ":"+port, agencyID, pingInterval, pingTimeout)
 		if err != nil {
 			log.Printf("registrar: failed to create: %v — continuing without registration", err)
 		} else {

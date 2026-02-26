@@ -40,6 +40,7 @@ var producedTopics = []string{
 type Registrar struct {
 	crossAddr    string
 	listenAddr   string
+	agencyID     string
 	pingInterval time.Duration
 	pingTimeout  time.Duration
 	conn         *grpc.ClientConn
@@ -49,11 +50,13 @@ type Registrar struct {
 // New constructs a Registrar that will heartbeat to the CodeValdCross gRPC
 // address at crossAddr. listenAddr is the host:port on which this service
 // listens — it is sent in each Register heartbeat so CodeValdCross can dial
-// back without a static config entry. pingInterval controls the heartbeat
-// cadence; pingTimeout caps each Register RPC. The connection to crossAddr is
-// lazy — no network I/O occurs until the first Register call.
+// back without a static config entry. agencyID is the agency this instance
+// serves (read from CODEVALDGIT_AGENCY_ID); empty is valid for unscoped
+// instances. pingInterval controls the heartbeat cadence; pingTimeout caps
+// each Register RPC. The connection to crossAddr is lazy — no network I/O
+// occurs until the first Register call.
 // Returns an error if the address cannot be parsed.
-func New(crossAddr, listenAddr string, pingInterval, pingTimeout time.Duration) (*Registrar, error) {
+func New(crossAddr, listenAddr, agencyID string, pingInterval, pingTimeout time.Duration) (*Registrar, error) {
 	conn, err := grpc.NewClient(crossAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -61,6 +64,7 @@ func New(crossAddr, listenAddr string, pingInterval, pingTimeout time.Duration) 
 	return &Registrar{
 		crossAddr:    crossAddr,
 		listenAddr:   listenAddr,
+		agencyID:     agencyID,
 		pingInterval: pingInterval,
 		pingTimeout:  pingTimeout,
 		conn:         conn,
@@ -109,6 +113,7 @@ func (r *Registrar) ping(ctx context.Context) {
 		Produces:    producedTopics,
 		Consumes:    []string{},
 		Addr:        r.listenAddr,
+		AgencyId:    r.agencyID,
 	})
 	if err != nil {
 		log.Printf("registrar: Register to CodeValdCross %s: %v", r.crossAddr, err)

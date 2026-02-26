@@ -30,6 +30,11 @@ message RegisterRequest {
   // reachable. CodeValdCross uses this to dial the service after registration,
   // eliminating the need for static downstream service addresses in config.
   string addr = 4;
+
+  // agency_id is the agency this service instance is scoped to.
+  // Set from the CODEVALDGIT_AGENCY_ID environment variable.
+  // Empty string means the instance is not scoped to a specific agency.
+  string agency_id = 5;
 }
 
 // RegisterResponse is intentionally empty.
