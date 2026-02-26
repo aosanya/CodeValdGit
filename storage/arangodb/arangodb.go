@@ -52,10 +52,18 @@ import (
 // ArangoConfig holds the ArangoDB connection and worktree settings
 // for the ArangoDB backend.
 type ArangoConfig struct {
-	// Database is the ArangoDB database that holds the four Git collections.
-	// The four collections (git_objects, git_refs, git_index, git_config)
-	// must already exist or will be created on first use by [NewArangoBackend].
-	Database driver.Database
+	// Endpoint is the ArangoDB server URL (e.g. "http://localhost:8529").
+	Endpoint string
+
+	// Database is the ArangoDB database name that holds the four Git collections
+	// (git_objects, git_refs, git_index, git_config).
+	Database string
+
+	// User is the ArangoDB username.
+	User string
+
+	// Password is the ArangoDB password.
+	Password string
 
 	// WorktreePath is the local path for the billy.Filesystem working tree.
 	// Use "" for an in-memory worktree (memfs) — the recommended default for

@@ -1,6 +1,8 @@
 module github.com/aosanya/CodeValdGit
 
-go 1.25.3
+go 1.25
+
+toolchain go1.25.0
 
 require (
 	github.com/arangodb/go-driver v1.6.0
@@ -31,6 +33,6 @@ require (
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260223185530-2f722ef697dc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

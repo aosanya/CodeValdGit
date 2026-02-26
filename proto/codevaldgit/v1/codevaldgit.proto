@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package codevaldgit.v1;
+
+option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1";
+
+// ListDirectoryRequest asks CodeValdGit to list a directory at the given
+// ref (branch/tag/commit) inside an agency's repository.
+message ListDirectoryRequest {
+  string agency_id = 1;
+  string ref       = 2;
+  string path      = 3;
+}
+
+// DirectoryEntry represents a single item (file or directory) inside a listing.
+message DirectoryEntry {
+  string name   = 1;
+  string path   = 2;
+  bool   is_dir = 3;
+  int64  size   = 4;
+}
+
+// ListDirectoryResponse carries the entries found at the requested path.
+message ListDirectoryResponse {
+  repeated DirectoryEntry entries = 1;
+}
+
+// RepoService exposes read-only repository operations to other services.
+service RepoService {
+  rpc ListDirectory(ListDirectoryRequest) returns (ListDirectoryResponse);
+}
