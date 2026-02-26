@@ -48,15 +48,16 @@ type Repo interface {
 
 | Task ID | Title | Topic File | Status |
 |---|---|---|---|
-| [MVP-GIT-001](#) | Library Scaffolding | [repo-management.md](repo-management.md) | 🔲 Not Started |
-| [MVP-GIT-002](#) | Filesystem Repo Lifecycle | [repo-management.md](repo-management.md) | 🔲 Not Started |
-| [MVP-GIT-003](#) | Branch-Per-Task Workflow | [branch-workflow.md](branch-workflow.md) | 🔲 Not Started |
-| [MVP-GIT-004](#) | File Operations & Commit Attribution | [file-operations.md](file-operations.md) | 🔲 Not Started |
-| [MVP-GIT-005](#) | Fast-Forward Merge | [branch-workflow.md](branch-workflow.md) | 🔲 Not Started |
-| [MVP-GIT-006](#) | Auto-Rebase & Conflict Resolution | [branch-workflow.md](branch-workflow.md) | 🔲 Not Started |
-| [MVP-GIT-007](#) | History & Diff (UI Read Access) | [history-and-diff.md](history-and-diff.md) | 🔲 Not Started |
-| [MVP-GIT-008](#) | ArangoDB Storage Backend | [storage-backends.md](storage-backends.md) | 🔲 Not Started |
-| [MVP-GIT-009](#) | CodeValdCortex Integration | [integration.md](integration.md) | 🔲 Not Started |
+| [MVP-GIT-001](#) | Library Scaffolding | [repo-management.md](repo-management.md) | ✅ Complete |
+| [MVP-GIT-002](#) | Filesystem Repo Lifecycle | [repo-management.md](repo-management.md) | ✅ Complete |
+| [MVP-GIT-003](#) | Branch-Per-Task Workflow | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| [MVP-GIT-004](#) | File Operations & Commit Attribution | [file-operations.md](file-operations.md) | ✅ Complete |
+| [MVP-GIT-005](#) | Fast-Forward Merge | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| [MVP-GIT-006](#) | Auto-Rebase & Conflict Resolution | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| [MVP-GIT-007](#) | History & Diff (UI Read Access) | [history-and-diff.md](history-and-diff.md) | ✅ Complete |
+| [MVP-GIT-008](#) | ArangoDB Storage Backend | [storage-backends.md](storage-backends.md) | ✅ Complete |
+| [MVP-GIT-009](#) | gRPC Service Proto & Codegen | [grpc-service.md](grpc-service.md) | 📋 Not Started |
+| [MVP-GIT-010](#) | gRPC Server Implementation | [grpc-service.md](grpc-service.md) | 📋 Not Started |
 
 ---
 
@@ -106,4 +107,5 @@ MVP-GIT-009  ← CodeValdCortex integration (depends on all above)
 | [file-operations.md](file-operations.md) | MVP-GIT-004 |
 | [history-and-diff.md](history-and-diff.md) | MVP-GIT-007 |
 | [storage-backends.md](storage-backends.md) | MVP-GIT-008 |
-| [integration.md](integration.md) | MVP-GIT-009 |
+| [grpc-service.md](grpc-service.md) | MVP-GIT-009, MVP-GIT-010 |
+| [integration.md](integration.md) | ⚠️ Superseded — see grpc-service.md |

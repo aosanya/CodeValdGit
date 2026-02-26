@@ -1,6 +1,11 @@
 # CodeValdCortex Integration
 
-Topics: Replace internal/git/ · Lifecycle Hook Mapping · Migration Plan
+> ⚠️ **SUPERSEDED** — The original Go-module wiring approach described in this file has been replaced by the **gRPC Microservice Integration** design.
+> See [grpc-service.md](grpc-service.md) for the active specifications covering:
+> - **MVP-GIT-009**: gRPC Service Proto & Codegen
+> - **MVP-GIT-010**: gRPC Server Implementation
+>
+> This file is retained as historical context for the original design decisions.
 
 ---
 

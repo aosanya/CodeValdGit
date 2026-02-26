@@ -1,8 +1,8 @@
 # MVP - Minimum Viable Product Task Breakdown
 
 ## Task Overview
-- **Objective**: Deliver a complete Go library that provides real Git semantics for artifact versioning in CodeValdCortex, replacing the custom `internal/git/` implementation
-- **Success Criteria**: All 9 tasks (MVP-GIT-001 through MVP-GIT-009) implemented and tested; CodeValdCortex imports `github.com/aosanya/CodeValdGit`; legacy `internal/git/` deleted; ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`) dropped
+- **Objective**: Deliver CodeValdGit as a standalone gRPC microservice that provides real Git semantics for artifact versioning in CodeValdCortex, replacing the custom `internal/git/` implementation. CodeValdCortex communicates via generated gRPC client stubs rather than importing CodeValdGit as a Go module.
+- **Success Criteria**: All 10 tasks (MVP-GIT-001 through MVP-GIT-010) implemented and tested; CodeValdGit deployed as a standalone gRPC microservice; legacy `internal/git/` deleted from CodeValdCortex by a separate integration effort
 - **Dependencies**: Go module infrastructure, go-git v5, ArangoDB connectivity
 
 ## Platform Documentation
@@ -84,12 +84,18 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P1: Storage & Integration (IMPORTANT)
 
-*ArangoDB backend for container-restart persistence and final wiring into CodeValdCortex.*
+*~~MVP-GIT-008~~ ✅ complete — see `mvp_done.md`.*
+
+---
+
+## P1: gRPC Microservice Integration (IMPORTANT)
+
+*CodeValdGit runs as a standalone gRPC microservice; CodeValdCortex communicates via generated client stubs instead of importing the library as a Go module dependency.*
 
 | Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [storage-backends.md](mvp-details/storage-backends.md) |
-| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | ~~MVP-GIT-006~~ ✅, ~~MVP-GIT-007~~ ✅, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
+|---------|-------|-------------|--------|----------|--------|--------|--------------|------|
+| MVP-GIT-009 | gRPC Service Proto & Codegen | Define `proto/codevaldgit/v1/service.proto` with all RPCs mapping the `RepoManager`/`Repo` interfaces. Define `MergeConflictInfo` detail message. Set up `buf` toolchain. Generate Go server + client stubs under `gen/go/codevaldgit/v1/`. Add `make proto` target. | 📋 Not Started | P1 | Medium | Go, Protobuf, gRPC, buf | ~~MVP-GIT-001~~ ✅ through ~~MVP-GIT-008~~ ✅ | [grpc-service.md](mvp-details/grpc-service.md) |
+| MVP-GIT-010 | gRPC Server Implementation | Add `cmd/server/main.go` to start a gRPC listener. Implement `internal/grpcserver/server.go` wrapping `RepoManager`/`Repo`. Map all Go errors to gRPC status codes; pack `MergeConflictInfo` on conflict. Register `grpc.health.v1` health service. Graceful shutdown. `Dockerfile.server` for standalone deployment. | 📋 Not Started | P1 | Medium | Go, gRPC, Docker | MVP-GIT-009 | [grpc-service.md](mvp-details/grpc-service.md) |
 
 ---
 
@@ -122,11 +128,12 @@ _(None)_
 
 ### P1 (Important — Core Library Features)
 - **History & Diff**: ~~1 task (MVP-GIT-007)~~ ✅ complete
-- **Storage & Integration**: ~~MVP-GIT-008~~ ✅ complete, 1 task remaining (MVP-GIT-009)
+- **Storage & Integration**: ~~MVP-GIT-008~~ ✅ complete
+- **gRPC Microservice Integration**: 2 tasks remaining (MVP-GIT-009, MVP-GIT-010)
 
-**Total P1**: 3 tasks (2 complete, 1 remaining)
+**Total P1**: 4 tasks (2 complete, 2 remaining)
 
-**Grand Total Active Tasks**: 9 tasks (8 complete, 1 remaining)
+**Grand Total Active Tasks**: 10 tasks (8 complete, 2 remaining)
 
 ---
 
@@ -146,8 +153,9 @@ Follow this sequence:
 7. ~~MVP-GIT-007~~ ✅ — History & Diff
 8. ~~MVP-GIT-008~~ ✅ — ArangoDB Storage Backend
 
-**Phase 3 — Integration:**
-9. MVP-GIT-009 — CodeValdCortex Integration (after MVP-GIT-006, MVP-GIT-007, MVP-GIT-008)
+**Phase 3 — gRPC Microservice Integration:**
+9. MVP-GIT-009 — gRPC Service Proto & Codegen (after MVP-GIT-001–008 ✅)
+10. MVP-GIT-010 — gRPC Server Implementation (after MVP-GIT-009)
 
 ---
 
