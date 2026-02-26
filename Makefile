@@ -1,9 +1,19 @@
-.PHONY: build test test-arango test-all vet lint clean
+.PHONY: build proto test test-arango test-all vet lint clean
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 build:
 	go build ./...
+
+# ── Proto Codegen ─────────────────────────────────────────────────────────────
+
+## Regenerate Go stubs from proto/codevaldgit/v1/*.proto.
+## Requires: buf, protoc-gen-go, protoc-gen-go-grpc on PATH.
+## Install: go install github.com/bufbuild/buf/cmd/buf@latest
+##          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+##          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+proto:
+	buf generate
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
