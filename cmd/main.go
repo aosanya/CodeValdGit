@@ -16,6 +16,7 @@ import (
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	gitv1 "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
+	"github.com/aosanya/CodeValdGit/internal/grpcserver"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
 	"google.golang.org/grpc"
@@ -45,7 +46,7 @@ func run() error {
 		return fmt.Errorf("repo manager: %w", err)
 	}
 
-	srv := newRepoServer(manager)
+	srv := grpcserver.New(manager)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
