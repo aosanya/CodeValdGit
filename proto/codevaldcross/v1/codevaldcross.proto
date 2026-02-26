@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package codevaldcross.v1;
+
+option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1";
+
+// RegisterRequest carries the service identity and pub/sub contract
+// that a downstream service announces to the orchestrator.
+message RegisterRequest {
+  string service_name = 1;
+  string addr         = 2;
+  repeated string produces = 3;
+  repeated string consumes = 4;
+}
+
+// RegisterResponse is intentionally empty — the orchestrator only acknowledges.
+message RegisterResponse {}
+
+// OrchestratorService is the inbound gRPC service hosted by CodeValdCross.
+// Downstream services call Register once at startup.
+service OrchestratorService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}

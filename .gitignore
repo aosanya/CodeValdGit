@@ -1,0 +1,12 @@
+# Binary output
+bin/
+
+# Environment — never commit secrets
+.env
+
+# Go test cache and coverage
+*.out
+
+# OS artefacts
+.DS_Store
+Thumbs.db
