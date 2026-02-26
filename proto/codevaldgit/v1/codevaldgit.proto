@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package codevaldgit.v1;
 
-option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1";
+option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1";
 
 // ListDirectoryRequest asks CodeValdGit to list a directory at the given
 // ref (branch/tag/commit) inside an agency's repository.

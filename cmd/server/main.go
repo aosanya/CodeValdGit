@@ -33,8 +33,6 @@ import (
 	"syscall"
 	"time"
 
-	driver "github.com/arangodb/go-driver"
-	driverhttp "github.com/arangodb/go-driver/http"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -153,34 +151,12 @@ func initArangoBackend() (codevaldgit.Backend, error) {
 	if url == "" {
 		return nil, fmt.Errorf("ARANGODB_URL is required for the arangodb backend")
 	}
-	user := envOrDefault("ARANGODB_USER", "root")
-	pass := os.Getenv("ARANGODB_PASS")
-	dbName := envOrDefault("ARANGODB_DB", "cortex")
-
-	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
-		Endpoints: []string{url},
+	return arangodb.NewArangoBackend(arangodb.ArangoConfig{
+		Endpoint: url,
+		User:     envOrDefault("ARANGODB_USER", "root"),
+		Password: os.Getenv("ARANGODB_PASS"),
+		Database: envOrDefault("ARANGODB_DB", "cortex"),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("ArangoDB connection: %w", err)
-	}
-
-	cl, err := driver.NewClient(driver.ClientConfig{
-		Connection:     conn,
-		Authentication: driver.BasicAuthentication(user, pass),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("ArangoDB client: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	db, err := cl.Database(ctx, dbName)
-	if err != nil {
-		return nil, fmt.Errorf("ArangoDB open database %q: %w", dbName, err)
-	}
-
-	return arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
 }
 
 // parseDuration reads key from the environment and parses it as a number of

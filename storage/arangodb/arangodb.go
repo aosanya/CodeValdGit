@@ -32,6 +32,7 @@ import (
 	"time"
 
 	driver "github.com/arangodb/go-driver"
+	driverhttp "github.com/arangodb/go-driver/http"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	gogit "github.com/go-git/go-git/v5"
@@ -79,18 +80,36 @@ type arangoBackend struct {
 
 // NewArangoBackend constructs an ArangoDB-backed [codevaldgit.Backend].
 // It opens (or creates) the four Git collections in the provided database.
-// Returns an error if the database is nil or collection access fails.
+// Returns an error if the database name is empty or collection access fails.
 func NewArangoBackend(cfg ArangoConfig) (codevaldgit.Backend, error) {
-	if cfg.Database == nil {
-		return nil, errors.New("NewArangoBackend: Database must not be nil")
+	if cfg.Database == "" {
+		return nil, errors.New("NewArangoBackend: Database must not be empty")
 	}
-	ctx := context.Background()
+	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
+		Endpoints: []string{cfg.Endpoint},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("NewArangoBackend: connection: %w", err)
+	}
+	cl, err := driver.NewClient(driver.ClientConfig{
+		Connection:     conn,
+		Authentication: driver.BasicAuthentication(cfg.User, cfg.Password),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("NewArangoBackend: client: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	db, err := cl.Database(ctx, cfg.Database)
+	if err != nil {
+		return nil, fmt.Errorf("NewArangoBackend: open database %q: %w", cfg.Database, err)
+	}
 	for _, name := range []string{collObjects, collRefs, collIndex, collConfig} {
-		if _, err := ensureCollection(ctx, cfg.Database, name); err != nil {
+		if _, err := ensureCollection(ctx, db, name); err != nil {
 			return nil, fmt.Errorf("NewArangoBackend: ensure collection %q: %w", name, err)
 		}
 	}
-	return &arangoBackend{db: cfg.Database, cfg: cfg}, nil
+	return &arangoBackend{db: db, cfg: cfg}, nil
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

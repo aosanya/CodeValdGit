@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package codevaldcross.v1;
 
-option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1";
+option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1;codevaldcrossv1";
 
 // RegisterRequest carries the service identity and pub/sub contract
 // that a downstream service announces to the orchestrator.
