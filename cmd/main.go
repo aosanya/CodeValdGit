@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -61,7 +62,11 @@ func run() error {
 
 	crossAddr := getEnv("CROSS_GRPC_ADDR", "")
 	advertiseAddr := getEnv("GIT_GRPC_ADVERTISE_ADDR", listenAddr)
-	go registerWithCross(context.Background(), crossAddr, advertiseAddr)
+	pingInterval := parseDuration(getEnv("CROSS_PING_INTERVAL", "30s"))
+
+	crossCtx, crossCancel := context.WithCancel(context.Background())
+	defer crossCancel()
+	go registerWithCross(crossCtx, crossAddr, advertiseAddr, pingInterval)
 
 	<-quit
 	log.Println("codevaldgit: shutdown signal received — draining in-flight requests (up to 30 s)")
@@ -109,6 +114,24 @@ func buildBackend() (codevaldgit.Backend, error) {
 	}
 	log.Printf("codevaldgit: using filesystem backend (base=%s archive=%s)", cfg.BasePath, cfg.ArchivePath)
 	return filesystem.NewFilesystemBackend(cfg)
+}
+
+// parseDuration parses a duration string (e.g. "30s", "1m"). Falls back to
+// 30 s on any parse error. A value of 0 disables the ping loop.
+func parseDuration(s string) time.Duration {
+	if s == "0" {
+		return 0
+	}
+	// Allow plain integer seconds for convenience (e.g. "30").
+	if n, err := strconv.Atoi(s); err == nil {
+		return time.Duration(n) * time.Second
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		log.Printf("codevaldgit: invalid CROSS_PING_INTERVAL %q — using 30s", s)
+		return 30 * time.Second
+	}
+	return d
 }
 
 // getEnv returns the value of key, or fallback if unset or empty.

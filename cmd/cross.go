@@ -10,25 +10,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// registerWithCross dials CodeValdCross at crossAddr and calls Register to
-// announce this service's availability. crossAddr is read from CROSS_GRPC_ADDR;
-// if unset the call is skipped. selfAddr is the address CodeValdCross will use
-// to dial back — set GIT_GRPC_ADVERTISE_ADDR when the listen address is not
-// directly reachable (e.g. ":50053" in a multi-host deployment).
-func registerWithCross(ctx context.Context, crossAddr, selfAddr string) {
-	if crossAddr == "" {
-		log.Println("codevaldgit: CROSS_GRPC_ADDR not set — skipping registration with CodeValdCross")
-		return
-	}
-
-	conn, err := grpc.NewClient(crossAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Printf("codevaldgit: dial CodeValdCross %s: %v", crossAddr, err)
-		return
-	}
-	defer conn.Close()
-
-	client := crossv1.NewOrchestratorServiceClient(conn)
+// pingCross sends a single Register call to CodeValdCross and returns whether
+// it succeeded.
+func pingCross(ctx context.Context, client crossv1.OrchestratorServiceClient, crossAddr, selfAddr string) bool {
 	req := &crossv1.RegisterRequest{
 		ServiceName: "codevaldgit",
 		Addr:        selfAddr,
@@ -47,8 +31,52 @@ func registerWithCross(ctx context.Context, crossAddr, selfAddr string) {
 	defer cancel()
 
 	if _, err := client.Register(regCtx, req); err != nil {
-		log.Printf("codevaldgit: register with CodeValdCross at %s: %v", crossAddr, err)
-		return
+		log.Printf("codevaldgit: ping CodeValdCross at %s: %v", crossAddr, err)
+		return false
 	}
 	log.Printf("codevaldgit: registered with CodeValdCross at %s (self=%s)", crossAddr, selfAddr)
+	return true
+}
+
+// registerWithCross dials CodeValdCross, sends an initial Register call, then
+// re-registers on every pingInterval tick until ctx is cancelled.
+// crossAddr is read from CROSS_GRPC_ADDR; if unset the call is skipped.
+// selfAddr is the address CodeValdCross will use to dial back — set
+// GIT_GRPC_ADVERTISE_ADDR when the listen address is not directly reachable
+// (e.g. ":50053" in a multi-host deployment).
+// pingInterval controls how often the heartbeat fires; set via
+// CROSS_PING_INTERVAL (e.g. "30s"). Zero or negative disables the loop.
+func registerWithCross(ctx context.Context, crossAddr, selfAddr string, pingInterval time.Duration) {
+	if crossAddr == "" {
+		log.Println("codevaldgit: CROSS_GRPC_ADDR not set — skipping registration with CodeValdCross")
+		return
+	}
+
+	conn, err := grpc.NewClient(crossAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("codevaldgit: dial CodeValdCross %s: %v", crossAddr, err)
+		return
+	}
+	defer conn.Close()
+
+	client := crossv1.NewOrchestratorServiceClient(conn)
+
+	// Initial registration.
+	pingCross(ctx, client, crossAddr, selfAddr)
+
+	if pingInterval <= 0 {
+		return
+	}
+
+	ticker := time.NewTicker(pingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			pingCross(ctx, client, crossAddr, selfAddr)
+		}
+	}
 }

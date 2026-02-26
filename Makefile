@@ -1,4 +1,4 @@
-.PHONY: build build-server run-server proto test cover vet lint clean
+.PHONY: build build-server run-server restart kill proto test cover vet lint clean
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,20 @@ run-server: build-server
 		set -a && . ./.env && set +a; \
 	fi; \
 	./bin/codevaldgit
+
+## Stop any running instance, rebuild, and run.
+restart: kill build-server
+	@echo "Running codevaldgit..."
+	@if [ -f .env ]; then \
+		set -a && . ./.env && set +a; \
+	fi; \
+	./bin/codevaldgit
+
+## Stop any running instances of codevaldgit.
+kill:
+	@echo "Stopping any running instances..."
+	-@pkill -9 -f "bin/codevaldgit" 2>/dev/null || true
+	@sleep 1
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────
 
