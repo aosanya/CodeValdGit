@@ -1,9 +1,22 @@
-.PHONY: build proto test test-arango test-all vet lint clean
+.PHONY: build build-server proto test test-arango test-all vet lint clean
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 build:
 	go build ./...
+
+## Build the standalone gRPC server binary to bin/codevaldgit-server.
+build-server:
+	go build -o bin/codevaldgit-server ./cmd/server
+
+## Run the gRPC server locally using the filesystem backend.
+## Override with: CODEVALDGIT_BACKEND=arangodb make run-server
+run-server: build-server
+	CODEVALDGIT_PORT=$(or $(CODEVALDGIT_PORT),50051) \
+	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),filesystem) \
+	CODEVALDGIT_FS_BASE=$(or $(CODEVALDGIT_FS_BASE),/tmp/codevaldgit/repos) \
+	CODEVALDGIT_FS_ARCHIVE=$(or $(CODEVALDGIT_FS_ARCHIVE),/tmp/codevaldgit/archive) \
+	./bin/codevaldgit-server
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────
 
