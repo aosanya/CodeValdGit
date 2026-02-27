@@ -93,6 +93,14 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ---
 
+## P2: CodeValdCross Integration Pattern
+
+| Task ID | Title | Description | Status | Priority | Dependencies | Details |
+|---------|-------|-------------|--------|----------|--------------|---------|
+| MVP-GIT-011 | Service-Driven Route Registration | Expose `Routes(orch) []server.Route` from `internal/clients/git` so CodeValdCross can mount git-backed HTTP handlers without hardcoding them in `http.go`. Git handler functions (`handleListTaskFiles`, `handleCreateRepository`) move into `clients/git/routes.go`. | 📋 Not Started | P2 | ~~MVP-GIT-010~~ ✅, CROSS-007 | [route-registrar.md](mvp-details/route-registrar.md) |
+
+---
+
 ## Bugs and Issues
 
 ### Active Bugs
