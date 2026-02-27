@@ -16,6 +16,7 @@ import (
 	gitindex "github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 
+	codevaldgit "github.com/aosanya/CodeValdGit"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 )
 
@@ -85,10 +86,14 @@ func uniqueAgency(prefix string) string {
 	return prefix + "-" + time.Now().Format("20060102T150405.000000")
 }
 
-// newTestBackend creates an ArangoBackend for the given database.
-func newTestBackend(t *testing.T, db driver.Database) arangodb.ArangoConfig {
+// newTestBackend creates an ArangoBackend wrapping an already-open database.
+func newTestBackend(t *testing.T, db driver.Database) codevaldgit.Backend {
 	t.Helper()
-	return arangodb.ArangoConfig{Database: db}
+	b, err := arangodb.NewArangoBackendFromDB(db)
+	if err != nil {
+		t.Fatalf("NewArangoBackendFromDB: %v", err)
+	}
+	return b
 }
 
 // ─── Backend-level tests ───────────────────────────────────────────────────────
@@ -96,9 +101,9 @@ func newTestBackend(t *testing.T, db driver.Database) arangodb.ArangoConfig {
 // TestArangoBackend_NilDatabase verifies that NewArangoBackend returns an error
 // when Database is nil (does not require a live server).
 func TestArangoBackend_NilDatabase(t *testing.T) {
-	_, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: nil})
+	_, err := arangodb.NewArangoBackendFromDB(nil)
 	if err == nil {
-		t.Fatal("expected error for nil Database, got nil")
+		t.Fatal("expected error for nil database, got nil")
 	}
 }
 
@@ -106,11 +111,7 @@ func TestArangoBackend_NilDatabase(t *testing.T) {
 func TestArangoStorage_SetGet(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("setget")
-	cfg := newTestBackend(t, db)
-	b, err := arangodb.NewArangoBackend(cfg)
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -153,10 +154,7 @@ func TestArangoStorage_SetGet(t *testing.T) {
 func TestArangoStorage_Idempotent(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("idempotent")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -192,10 +190,7 @@ func TestArangoStorage_Idempotent(t *testing.T) {
 func TestArangoStorage_RefLifecycle(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("reflife")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -251,10 +246,7 @@ func TestArangoStorage_RefLifecycle(t *testing.T) {
 func TestArangoStorage_Index(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("index")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -302,10 +294,7 @@ func TestArangoStorage_Index(t *testing.T) {
 func TestArangoStorage_Config(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("config")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -338,10 +327,7 @@ func TestArangoStorage_Config(t *testing.T) {
 func TestArangoStorage_Concurrent(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("concurrent")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -389,10 +375,7 @@ func TestArangoStorage_Concurrent(t *testing.T) {
 func TestArangoBackend_FullWorkflow(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("fullwf")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	// Init.
@@ -483,7 +466,7 @@ func TestArangoBackend_FullWorkflow(t *testing.T) {
 // TestArangoStorage_ConnectionError verifies that using a backend constructed
 // with a nil database returns errors, not panics.
 func TestArangoStorage_ConnectionError(t *testing.T) {
-	_, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: nil})
+	_, err := arangodb.NewArangoBackendFromDB(nil)
 	if err == nil {
 		t.Fatal("expected error for nil database, got nil")
 	}
@@ -497,10 +480,7 @@ func TestArangoStorage_ConnectionError(t *testing.T) {
 func TestArangoBackend_DeleteAndPurge(t *testing.T) {
 	db := openTestDB(t)
 	agency := uniqueAgency("delpurge")
-	b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{Database: db})
-	if err != nil {
-		t.Fatalf("NewArangoBackend: %v", err)
-	}
+	b := newTestBackend(t, db)
 	ctx := context.Background()
 
 	if err := b.InitRepo(ctx, agency); err != nil {
@@ -518,7 +498,7 @@ func TestArangoBackend_DeleteAndPurge(t *testing.T) {
 	}
 
 	// After purge, OpenStorer must return ErrRepoNotFound.
-	_, _, err = b.OpenStorer(ctx, agency)
+	_, _, err := b.OpenStorer(ctx, agency)
 	if err == nil {
 		t.Fatal("expected ErrRepoNotFound after purge, got nil")
 	}

@@ -112,6 +112,24 @@ func NewArangoBackend(cfg ArangoConfig) (codevaldgit.Backend, error) {
 	return &arangoBackend{db: db, cfg: cfg}, nil
 }
 
+// NewArangoBackendFromDB constructs an ArangoBackend from an already-open
+// driver.Database. All four Git collections are created if they do not yet
+// exist. This is intended for testing, where the caller manages the database
+// lifecycle.
+func NewArangoBackendFromDB(db driver.Database) (codevaldgit.Backend, error) {
+	if db == nil {
+		return nil, errors.New("NewArangoBackendFromDB: database must not be nil")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, name := range []string{collObjects, collRefs, collIndex, collConfig} {
+		if _, err := ensureCollection(ctx, db, name); err != nil {
+			return nil, fmt.Errorf("NewArangoBackendFromDB: ensure collection %q: %w", name, err)
+		}
+	}
+	return &arangoBackend{db: db, cfg: ArangoConfig{}}, nil
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Collection names
 // ──────────────────────────────────────────────────────────────────────────────
