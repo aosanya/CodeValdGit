@@ -17,6 +17,7 @@ import (
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	gitv1 "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
 	"github.com/aosanya/CodeValdGit/internal/grpcserver"
+	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
 	"google.golang.org/grpc"
@@ -69,10 +70,22 @@ func run() error {
 	crossAddr := getEnv("CROSS_GRPC_ADDR", "")
 	advertiseAddr := getEnv("GIT_GRPC_ADVERTISE_ADDR", listenAddr)
 	pingInterval := parseDuration(getEnv("CROSS_PING_INTERVAL", "30s"))
+	pingTimeout := parseDuration(getEnv("CROSS_PING_TIMEOUT", "5s"))
 
 	crossCtx, crossCancel := context.WithCancel(context.Background())
 	defer crossCancel()
-	go registerWithCross(crossCtx, crossAddr, advertiseAddr, agencyID, pingInterval)
+
+	if crossAddr != "" {
+		reg, err := registrar.New(crossAddr, advertiseAddr, agencyID, pingInterval, pingTimeout)
+		if err != nil {
+			log.Printf("codevaldgit: registrar: failed to create: %v — continuing without registration", err)
+		} else {
+			defer reg.Close()
+			go reg.Run(crossCtx)
+		}
+	} else {
+		log.Println("codevaldgit: CROSS_GRPC_ADDR not set — skipping registration with CodeValdCross")
+	}
 
 	<-quit
 	log.Println("codevaldgit: shutdown signal received — draining in-flight requests (up to 30 s)")

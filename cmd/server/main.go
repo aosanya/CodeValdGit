@@ -88,11 +88,12 @@ func main() {
 	defer cancel()
 
 	// Start CodeValdCross registration heartbeat if an address is configured.
-	crossAddr := envOrDefault("CODEVALDCROSS_ADDR", "")
+	crossAddr := envOrDefault("CROSS_GRPC_ADDR", envOrDefault("CODEVALDCROSS_ADDR", ""))
 	if crossAddr != "" {
 		pingInterval := parseDuration("CODEVALDGIT_PING_INTERVAL", registrar.DefaultPingInterval)
 		pingTimeout := parseDuration("CODEVALDGIT_PING_TIMEOUT", registrar.DefaultPingTimeout)
-		reg, err := registrar.New(crossAddr, ":"+port, agencyID, pingInterval, pingTimeout)
+		advertiseAddr := envOrDefault("GIT_GRPC_ADVERTISE_ADDR", envOrDefault("GIT_GRPC_LISTEN_ADDR", ":"+port))
+		reg, err := registrar.New(crossAddr, advertiseAddr, agencyID, pingInterval, pingTimeout)
 		if err != nil {
 			log.Printf("registrar: failed to create: %v — continuing without registration", err)
 		} else {

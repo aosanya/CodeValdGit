@@ -25,7 +25,7 @@ restart: kill build-server
 	@if [ -f .env ]; then \
 		set -a && . ./.env && set +a; \
 	fi; \
-	./bin/codevaldgit
+	./bin/codevaldgit-server
 
 ## Stop any running instances of codevaldgit.
 kill:
