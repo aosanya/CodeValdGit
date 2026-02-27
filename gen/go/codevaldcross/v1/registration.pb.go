@@ -21,6 +21,74 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RouteDeclaration describes a single HTTP endpoint that a downstream service
+// wants CodeValdCross to expose on its HTTP management server. Cross mounts
+// a generic proxy handler at the declared pattern when the service registers.
+type RouteDeclaration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// method is the HTTP method (e.g. "GET", "POST").
+	Method string `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`
+	// pattern is the net/http path pattern
+	// (e.g. "/{agencyId}/tasks/{taskId}/files").
+	Pattern string `protobuf:"bytes,2,opt,name=pattern,proto3" json:"pattern,omitempty"`
+	// capability is a stable operation identifier that Cross maps to a
+	// HandlerFactory (e.g. "list_task_files", "init_repo").
+	Capability    string `protobuf:"bytes,3,opt,name=capability,proto3" json:"capability,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouteDeclaration) Reset() {
+	*x = RouteDeclaration{}
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteDeclaration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteDeclaration) ProtoMessage() {}
+
+func (x *RouteDeclaration) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteDeclaration.ProtoReflect.Descriptor instead.
+func (*RouteDeclaration) Descriptor() ([]byte, []int) {
+	return file_codevaldcross_v1_registration_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RouteDeclaration) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *RouteDeclaration) GetPattern() string {
+	if x != nil {
+		return x.Pattern
+	}
+	return ""
+}
+
+func (x *RouteDeclaration) GetCapability() string {
+	if x != nil {
+		return x.Capability
+	}
+	return ""
+}
+
 // RegisterRequest carries the service identity and its pub/sub topic contracts.
 type RegisterRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -38,14 +106,18 @@ type RegisterRequest struct {
 	// agency_id is the agency this service instance is scoped to.
 	// Set from the CODEVALDGIT_AGENCY_ID environment variable.
 	// Empty string means the instance is not scoped to a specific agency.
-	AgencyId      string `protobuf:"bytes,5,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	AgencyId string `protobuf:"bytes,5,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	// routes are the HTTP endpoints this service wants Cross to expose.
+	// Cross mounts a capability-dispatched handler for each declared route
+	// at registration time. Zero Cross source files name these patterns.
+	Routes        []*RouteDeclaration `protobuf:"bytes,6,rep,name=routes,proto3" json:"routes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RegisterRequest) Reset() {
 	*x = RegisterRequest{}
-	mi := &file_codevaldcross_v1_registration_proto_msgTypes[0]
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -57,7 +129,7 @@ func (x *RegisterRequest) String() string {
 func (*RegisterRequest) ProtoMessage() {}
 
 func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldcross_v1_registration_proto_msgTypes[0]
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -70,7 +142,7 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldcross_v1_registration_proto_rawDescGZIP(), []int{0}
+	return file_codevaldcross_v1_registration_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RegisterRequest) GetServiceName() string {
@@ -108,6 +180,13 @@ func (x *RegisterRequest) GetAgencyId() string {
 	return ""
 }
 
+func (x *RegisterRequest) GetRoutes() []*RouteDeclaration {
+	if x != nil {
+		return x.Routes
+	}
+	return nil
+}
+
 // RegisterResponse is intentionally empty.
 // A successful RPC response is the confirmation of availability.
 type RegisterResponse struct {
@@ -118,7 +197,7 @@ type RegisterResponse struct {
 
 func (x *RegisterResponse) Reset() {
 	*x = RegisterResponse{}
-	mi := &file_codevaldcross_v1_registration_proto_msgTypes[1]
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -130,7 +209,7 @@ func (x *RegisterResponse) String() string {
 func (*RegisterResponse) ProtoMessage() {}
 
 func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldcross_v1_registration_proto_msgTypes[1]
+	mi := &file_codevaldcross_v1_registration_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -143,20 +222,27 @@ func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
 func (*RegisterResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldcross_v1_registration_proto_rawDescGZIP(), []int{1}
+	return file_codevaldcross_v1_registration_proto_rawDescGZIP(), []int{2}
 }
 
 var File_codevaldcross_v1_registration_proto protoreflect.FileDescriptor
 
 const file_codevaldcross_v1_registration_proto_rawDesc = "" +
 	"\n" +
-	"#codevaldcross/v1/registration.proto\x12\x10codevaldcross.v1\"\x9d\x01\n" +
+	"#codevaldcross/v1/registration.proto\x12\x10codevaldcross.v1\"d\n" +
+	"\x10RouteDeclaration\x12\x16\n" +
+	"\x06method\x18\x01 \x01(\tR\x06method\x12\x18\n" +
+	"\apattern\x18\x02 \x01(\tR\apattern\x12\x1e\n" +
+	"\n" +
+	"capability\x18\x03 \x01(\tR\n" +
+	"capability\"\xd9\x01\n" +
 	"\x0fRegisterRequest\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x1a\n" +
 	"\bproduces\x18\x02 \x03(\tR\bproduces\x12\x1a\n" +
 	"\bconsumes\x18\x03 \x03(\tR\bconsumes\x12\x12\n" +
 	"\x04addr\x18\x04 \x01(\tR\x04addr\x12\x1b\n" +
-	"\tagency_id\x18\x05 \x01(\tR\bagencyId\"\x12\n" +
+	"\tagency_id\x18\x05 \x01(\tR\bagencyId\x12:\n" +
+	"\x06routes\x18\x06 \x03(\v2\".codevaldcross.v1.RouteDeclarationR\x06routes\"\x12\n" +
 	"\x10RegisterResponse2h\n" +
 	"\x13OrchestratorService\x12Q\n" +
 	"\bRegister\x12!.codevaldcross.v1.RegisterRequest\x1a\".codevaldcross.v1.RegisterResponseBHZFgithub.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1;codevaldcrossv1b\x06proto3"
@@ -173,19 +259,21 @@ func file_codevaldcross_v1_registration_proto_rawDescGZIP() []byte {
 	return file_codevaldcross_v1_registration_proto_rawDescData
 }
 
-var file_codevaldcross_v1_registration_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_codevaldcross_v1_registration_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_codevaldcross_v1_registration_proto_goTypes = []any{
-	(*RegisterRequest)(nil),  // 0: codevaldcross.v1.RegisterRequest
-	(*RegisterResponse)(nil), // 1: codevaldcross.v1.RegisterResponse
+	(*RouteDeclaration)(nil), // 0: codevaldcross.v1.RouteDeclaration
+	(*RegisterRequest)(nil),  // 1: codevaldcross.v1.RegisterRequest
+	(*RegisterResponse)(nil), // 2: codevaldcross.v1.RegisterResponse
 }
 var file_codevaldcross_v1_registration_proto_depIdxs = []int32{
-	0, // 0: codevaldcross.v1.OrchestratorService.Register:input_type -> codevaldcross.v1.RegisterRequest
-	1, // 1: codevaldcross.v1.OrchestratorService.Register:output_type -> codevaldcross.v1.RegisterResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: codevaldcross.v1.RegisterRequest.routes:type_name -> codevaldcross.v1.RouteDeclaration
+	1, // 1: codevaldcross.v1.OrchestratorService.Register:input_type -> codevaldcross.v1.RegisterRequest
+	2, // 2: codevaldcross.v1.OrchestratorService.Register:output_type -> codevaldcross.v1.RegisterResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_codevaldcross_v1_registration_proto_init() }
@@ -199,7 +287,7 @@ func file_codevaldcross_v1_registration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_codevaldcross_v1_registration_proto_rawDesc), len(file_codevaldcross_v1_registration_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

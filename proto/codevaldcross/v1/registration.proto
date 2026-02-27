@@ -14,6 +14,22 @@ service OrchestratorService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
 }
 
+// RouteDeclaration describes a single HTTP endpoint that a downstream service
+// wants CodeValdCross to expose on its HTTP management server. Cross mounts
+// a generic proxy handler at the declared pattern when the service registers.
+message RouteDeclaration {
+  // method is the HTTP method (e.g. "GET", "POST").
+  string method = 1;
+
+  // pattern is the net/http path pattern
+  // (e.g. "/{agencyId}/tasks/{taskId}/files").
+  string pattern = 2;
+
+  // capability is a stable operation identifier that Cross maps to a
+  // HandlerFactory (e.g. "list_task_files", "init_repo").
+  string capability = 3;
+}
+
 // RegisterRequest carries the service identity and its pub/sub topic contracts.
 message RegisterRequest {
   // service_name is the unique identifier of the registering service
@@ -35,6 +51,11 @@ message RegisterRequest {
   // Set from the CODEVALDGIT_AGENCY_ID environment variable.
   // Empty string means the instance is not scoped to a specific agency.
   string agency_id = 5;
+
+  // routes are the HTTP endpoints this service wants Cross to expose.
+  // Cross mounts a capability-dispatched handler for each declared route
+  // at registration time. Zero Cross source files name these patterns.
+  repeated RouteDeclaration routes = 6;
 }
 
 // RegisterResponse is intentionally empty.

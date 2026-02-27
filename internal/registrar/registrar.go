@@ -35,6 +35,23 @@ var producedTopics = []string{
 	"git.conflict.detected",
 }
 
+// declaredRoutes are the HTTP endpoints that CodeValdGit asks CodeValdCross
+// to expose on its HTTP management server. Each route maps to a stable
+// capability identifier that Cross's dispatcher resolves to a handler.
+// Cross mounts these at registration time — zero Cross source files name these.
+var declaredRoutes = []*crossv1.RouteDeclaration{
+	{
+		Method:     "GET",
+		Pattern:    "/{agencyId}/tasks/{taskId}/files",
+		Capability: "list_task_files",
+	},
+	{
+		Method:     "POST",
+		Pattern:    "/{agencyId}/repositories",
+		Capability: "init_repo",
+	},
+}
+
 // Registrar holds a persistent gRPC connection to CodeValdCross and sends
 // periodic Register heartbeats. Create with New; start with Run in a goroutine.
 type Registrar struct {
@@ -114,6 +131,7 @@ func (r *Registrar) ping(ctx context.Context) {
 		Consumes:    []string{},
 		Addr:        r.listenAddr,
 		AgencyId:    r.agencyID,
+		Routes:      declaredRoutes,
 	})
 	if err != nil {
 		log.Printf("registrar: Register to CodeValdCross %s: %v", r.crossAddr, err)
