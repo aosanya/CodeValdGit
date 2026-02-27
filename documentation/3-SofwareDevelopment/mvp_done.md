@@ -14,3 +14,4 @@ Completed tasks are removed from `mvp.md` and recorded here with their completio
 | MVP-GIT-008 | ArangoDB Storage Backend | 2026-02-25 | `feature/GIT-008_arangodb_storage` | [GIT-008_arangodb_storage.md](coding_sessions/GIT-008_arangodb_storage.md) |
 | MVP-GIT-009 | gRPC Service Proto & Codegen | 2026-02-26 | `feature/GIT-009_grpc_proto_codegen` | — |
 | MVP-GIT-010 | gRPC Server Implementation | 2026-02-26 | `feature/GIT-010_grpc_server_implementation` | — |
+| MVP-GIT-011 | Service-Driven Route Registration | 2026-02-27 | — | Routes declared in `internal/registrar/registrar.go` with `GrpcMethod` + `PathBindings`; Cross dynamic proxy handles forwarding |

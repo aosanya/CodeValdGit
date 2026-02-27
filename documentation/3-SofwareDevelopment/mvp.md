@@ -84,20 +84,13 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P1: Storage & Integration (IMPORTANT)
 
-*ArangoDB backend for container-restart persistence and final wiring into CodeValdCortex.*
-
-| Task ID | Title | Description | Status | Priority | Effort | Skills | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------|--------|--------------|---------|
-| MVP-GIT-008 | ArangoDB Storage Backend | Implement custom `storage.Storer` backed by ArangoDB: collections `git_objects` (blobs/trees/commits keyed by SHA), `git_refs` (branch & tag refs), `git_index` (staging area), `git_config` (per-repo config). Partitioned by `agencyID`. Working tree remains on local/in-memory `billy.Filesystem`. Repos survive container restarts without a PVC | 📋 Not Started | P1 | High | Go, go-git, ArangoDB | ~~MVP-GIT-001~~ ✅, ~~MVP-GIT-002~~ ✅ | [storage-backends.md](mvp-details/storage-backends.md) |
-| MVP-GIT-009 | CodeValdCortex Integration | Add `github.com/aosanya/CodeValdGit` as Go module dependency in CodeValdCortex. Wire `RepoManager` into Agency and Task service constructors. Delete `internal/git/` packages (ops, storage, fileindex, models). Drop legacy ArangoDB Git collections (`git_objects`, `git_refs`, `repositories`). Full integration test suite passing | 📋 Not Started | P1 | Medium | Go, Backend Dev, Integration Testing | MVP-GIT-006, MVP-GIT-007, MVP-GIT-008 | [integration.md](mvp-details/integration.md) |
+*~~MVP-GIT-008~~ ✅ and ~~MVP-GIT-009~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
 ## P2: CodeValdCross Integration Pattern
 
-| Task ID | Title | Description | Status | Priority | Dependencies | Details |
-|---------|-------|-------------|--------|----------|--------------|---------|
-| MVP-GIT-011 | Service-Driven Route Registration | Expose `Routes(orch) []server.Route` from `internal/clients/git` so CodeValdCross can mount git-backed HTTP handlers without hardcoding them in `http.go`. Git handler functions (`handleListTaskFiles`, `handleCreateRepository`) move into `clients/git/routes.go`. | 📋 Not Started | P2 | ~~MVP-GIT-010~~ ✅, CROSS-007 | [route-registrar.md](mvp-details/route-registrar.md) |
+*~~MVP-GIT-011~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -130,12 +123,15 @@ _(None)_
 
 ### P1 (Important — Core Library Features)
 - **History & Diff**: ~~1 task (MVP-GIT-007)~~ ✅ complete
-- **Storage & Integration**: ~~MVP-GIT-008~~ ✅ complete
-- **gRPC Microservice Integration**: ~~2 tasks (MVP-GIT-009, MVP-GIT-010)~~ ✅ both complete
+- **Storage & Integration**: ~~2 tasks (MVP-GIT-008, MVP-GIT-009)~~ ✅ both complete
+- **gRPC Microservice Integration**: ~~2 tasks (MVP-GIT-010, MVP-GIT-011)~~ ✅ both complete
 
-**Total P1**: 4 tasks ✅ ALL COMPLETE
+**Total P1**: 5 tasks ✅ ALL COMPLETE
 
-**Grand Total Active Tasks**: 10 tasks ✅ ALL COMPLETE
+### P2 (CodeValdCross Integration)
+- **Route Registration**: ~~MVP-GIT-011~~ ✅ complete
+
+**Grand Total**: 11 tasks ✅ ALL COMPLETE
 
 ---
 
@@ -158,6 +154,7 @@ Follow this sequence:
 **Phase 3 — gRPC Microservice Integration:**
 9. ~~MVP-GIT-009~~ ✅ — gRPC Service Proto & Codegen
 10. ~~MVP-GIT-010~~ ✅ — gRPC Server Implementation
+11. ~~MVP-GIT-011~~ ✅ — Service-Driven Route Registration (declared via registrar)
 
 ---
 
