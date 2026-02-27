@@ -21,11 +21,12 @@ import (
 
 // ─── test helpers ─────────────────────────────────────────────────────────────
 
-// openTestDB connects to the ArangoDB instance identified by ARANGODB_URL
-// (default http://localhost:8529). Skips the test if the server is unreachable.
+// openTestDB connects to the ArangoDB instance at GIT_ARANGO_ENDPOINT
+// (default http://localhost:8529) and opens GIT_ARANGO_DATABASE_TEST
+// (default codevald_tests). Skips the test if the server is unreachable.
 func openTestDB(t *testing.T) driver.Database {
 	t.Helper()
-	url := os.Getenv("ARANGODB_URL")
+	url := os.Getenv("GIT_ARANGO_ENDPOINT")
 	if url == "" {
 		url = "http://localhost:8529"
 	}
@@ -34,14 +35,14 @@ func openTestDB(t *testing.T) driver.Database {
 		Endpoints: []string{url},
 	})
 	if err != nil {
-		t.Skipf("ArangoDB connection config error (ARANGODB_URL=%s): %v", url, err)
+		t.Skipf("ArangoDB connection config error (GIT_ARANGO_ENDPOINT=%s): %v", url, err)
 	}
 
-	user := os.Getenv("ARANGODB_USER")
+	user := os.Getenv("GIT_ARANGO_USER")
 	if user == "" {
 		user = "root"
 	}
-	pass := os.Getenv("ARANGODB_PASS")
+	pass := os.Getenv("GIT_ARANGO_PASSWORD")
 
 	cl, err := driver.NewClient(driver.ClientConfig{
 		Connection:     conn,
@@ -58,7 +59,10 @@ func openTestDB(t *testing.T) driver.Database {
 		t.Skipf("ArangoDB unreachable at %s: %v", url, err)
 	}
 
-	dbName := "codevaldgit_test"
+	dbName := os.Getenv("GIT_ARANGO_DATABASE_TEST")
+	if dbName == "" {
+		dbName = "codevald_tests"
+	}
 	ctx2 := context.Background()
 	exists, err := cl.DatabaseExists(ctx2, dbName)
 	if err != nil {
@@ -71,7 +75,7 @@ func openTestDB(t *testing.T) driver.Database {
 		db, err = cl.CreateDatabase(ctx2, dbName, nil)
 	}
 	if err != nil {
-		t.Fatalf("open/create test database: %v", err)
+		t.Fatalf("open/create test database %q: %v", dbName, err)
 	}
 	return db
 }

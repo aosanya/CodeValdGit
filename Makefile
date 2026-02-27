@@ -109,7 +109,7 @@ test:
 ## Run ArangoDB integration tests.
 ## Loads .env if it exists, otherwise falls back to environment variables.
 ## Usage: make test-arango
-##        ARANGODB_URL=http://host:8529 ARANGODB_USER=root ARANGODB_PASS=pw make test-arango
+##        GIT_ARANGO_ENDPOINT=http://host:8529 GIT_ARANGO_USER=root GIT_ARANGO_PASSWORD=pw make test-arango
 test-arango:
 	@if [ -f .env ]; then \
 		set -a && . ./.env && set +a; \
