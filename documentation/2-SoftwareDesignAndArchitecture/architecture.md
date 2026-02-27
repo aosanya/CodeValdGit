@@ -203,7 +203,26 @@ CodeValdCortex will call CodeValdGit at these lifecycle points:
 
 ---
 
-## 7. What Gets Removed from CodeValdCortex
+## 7. CodeValdSharedLib Dependency
+
+CodeValdGit imports `github.com/aosanya/CodeValdSharedLib` for:
+
+| SharedLib package | Replaces |
+|---|---|
+| `registrar` | `internal/registrar/registrar.go` (identical struct; service-specific metadata passed as constructor args) |
+| `serverutil` | `envOrDefault`, `parseDuration` helpers and gRPC server setup block in `cmd/server/main.go` |
+| `arangoutil` | ArangoDB `driverhttp.NewConnection` / auth / database bootstrap in `storage/arangodb/arangodb.go` |
+| `gen/go/codevaldcross/v1` | Local copy of generated Cross stubs in `gen/go/codevaldcross/v1/` and `cmd/cross.go` |
+
+> **Principle**: Any infrastructure code used by more than one service lives in
+> SharedLib. CodeValdGit retains only domain logic, domain errors, gRPC
+> handlers, and storage collection schemas.
+
+See task MVP-GIT-012 in [mvp.md](../3-SofwareDevelopment/mvp.md) for migration scope.
+
+---
+
+## 8. What Gets Removed from CodeValdCortex
 
 Once CodeValdGit is integrated, the following will be deleted:
 
