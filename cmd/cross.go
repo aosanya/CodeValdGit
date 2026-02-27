@@ -26,6 +26,27 @@ func pingCross(ctx context.Context, client crossv1.OrchestratorServiceClient, cr
 			"cross.agency.created",
 			"cross.task.requested",
 		},
+		Routes: []*crossv1.RouteDeclaration{
+			{
+				Method:     "GET",
+				Pattern:    "/{agencyId}/tasks/{taskId}/files",
+				Capability: "list_task_files",
+				GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
+				PathBindings: []*crossv1.PathBinding{
+					{UrlParam: "agencyId", Field: "agency_id"},
+					{UrlParam: "taskId", Field: "ref"},
+				},
+			},
+			{
+				Method:     "POST",
+				Pattern:    "/{agencyId}/repositories",
+				Capability: "init_repo",
+				GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
+				PathBindings: []*crossv1.PathBinding{
+					{UrlParam: "agencyId", Field: "agency_id"},
+				},
+			},
+		},
 	}
 
 	regCtx, cancel := context.WithTimeout(ctx, 10*time.Second)

@@ -14,9 +14,18 @@ service OrchestratorService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
 }
 
+// PathBinding maps one URL path-parameter placeholder (as it appears in the
+// pattern, e.g. "agencyId") to the corresponding top-level field name in the
+// gRPC request message (e.g. "agency_id"). Cross injects the runtime value
+// into the JSON request body before forwarding to the downstream service.
+message PathBinding {
+  string url_param = 1;
+  string field     = 2;
+}
+
 // RouteDeclaration describes a single HTTP endpoint that a downstream service
 // wants CodeValdCross to expose on its HTTP management server. Cross mounts
-// a generic proxy handler at the declared pattern when the service registers.
+// a generic reverse-proxy handler for each declared route at registration time.
 message RouteDeclaration {
   // method is the HTTP method (e.g. "GET", "POST").
   string method = 1;
@@ -25,9 +34,17 @@ message RouteDeclaration {
   // (e.g. "/{agencyId}/tasks/{taskId}/files").
   string pattern = 2;
 
-  // capability is a stable operation identifier that Cross maps to a
-  // HandlerFactory (e.g. "list_task_files", "init_repo").
+  // capability is a human-readable operation identifier (e.g. "list_task_files").
   string capability = 3;
+
+  // grpc_method is the fully-qualified gRPC method path that Cross invokes
+  // when this HTTP route is matched
+  // (e.g. "/codevaldgit.v1.RepoService/InitRepo").
+  string grpc_method = 4;
+
+  // path_bindings declares how URL path parameters map into the top-level
+  // fields of the gRPC request message.
+  repeated PathBinding path_bindings = 5;
 }
 
 // RegisterRequest carries the service identity and its pub/sub topic contracts.

@@ -36,19 +36,28 @@ var producedTopics = []string{
 }
 
 // declaredRoutes are the HTTP endpoints that CodeValdGit asks CodeValdCross
-// to expose on its HTTP management server. Each route maps to a stable
-// capability identifier that Cross's dispatcher resolves to a handler.
-// Cross mounts these at registration time — zero Cross source files name these.
+// to expose on its HTTP management server. GrpcMethod tells Cross which
+// downstream gRPC method to invoke; PathBindings tell it how to map URL
+// path parameters into the gRPC request message fields.
 var declaredRoutes = []*crossv1.RouteDeclaration{
 	{
 		Method:     "GET",
 		Pattern:    "/{agencyId}/tasks/{taskId}/files",
 		Capability: "list_task_files",
+		GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
+		PathBindings: []*crossv1.PathBinding{
+			{UrlParam: "agencyId", Field: "agency_id"},
+			{UrlParam: "taskId", Field: "ref"},
+		},
 	},
 	{
 		Method:     "POST",
 		Pattern:    "/{agencyId}/repositories",
 		Capability: "init_repo",
+		GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
+		PathBindings: []*crossv1.PathBinding{
+			{UrlParam: "agencyId", Field: "agency_id"},
+		},
 	},
 }
 
