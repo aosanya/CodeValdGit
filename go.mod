@@ -1,8 +1,6 @@
 module github.com/aosanya/CodeValdGit
 
-go 1.25
-
-toolchain go1.25.0
+go 1.25.3
 
 require (
 	github.com/arangodb/go-driver v1.6.0
@@ -11,6 +9,8 @@ require (
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 )
+
+replace github.com/aosanya/CodeValdSharedLib => ../CodeValdSharedLib
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
