@@ -4,13 +4,13 @@
 
 | Stakeholder | Role | How They Use CodeValdGit |
 |---|---|---|
-| **CodeValdCortex** | Primary and only consumer | Imports `github.com/aosanya/CodeValdGit` as a Go module; calls `RepoManager` and `Repo` at Agency and Task lifecycle points |
+| **CodeValdCross** | Primary and only consumer | Imports `github.com/aosanya/CodeValdGit` as a Go module; calls `RepoManager` and `Repo` at Agency and Task lifecycle points |
 
 ---
 
-## CodeValdCortex Integration Points
+## CodeValdCross Integration Points
 
-CodeValdCortex calls CodeValdGit at these lifecycle events:
+CodeValdCross calls CodeValdGit at these lifecycle events:
 
 | Event | CodeValdGit Call |
 |---|---|
@@ -30,14 +30,14 @@ CodeValdCortex calls CodeValdGit at these lifecycle events:
 | Stakeholder | Interest |
 |---|---|
 | **Platform operators** | Need `PurgeRepo` for permanent data removal; need archive path configuration |
-| **AI agents (indirect)** | Produce artifacts via CodeValdCortex — their output is what gets committed; affected by merge conflict routing |
-| **End users (indirect)** | View artifact history and diffs through the CodeValdCortex UI — powered by `Log` and `Diff` operations |
+| **AI agents (indirect)** | Produce artifacts via CodeValdCross — their output is what gets committed; affected by merge conflict routing |
+| **End users (indirect)** | View artifact history and diffs through the CodeValdCross UI — powered by `Log` and `Diff` operations |
 
 ---
 
 ## Library Maintainers
 
-The library is maintained as part of the **CodeVald** platform. Development follows:
+The library is maintained as part of the **CodeVald** platform (CodeValdCross, CodeValdGit, CodeValdWork). Development follows:
 - Trunk-based development with short-lived feature branches (`feature/GIT-XXX_description`)
 - Pure Go — no `git` binary dependency
 - go-git v5 as the sole Git engine dependency
