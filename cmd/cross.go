@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	crossv1 "github.com/aosanya/CodeValdGit/gen/go/codevaldcross/v1"
+	crossv1 "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldcross/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

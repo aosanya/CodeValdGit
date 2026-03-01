@@ -3,6 +3,7 @@ module github.com/aosanya/CodeValdGit
 go 1.25.3
 
 require (
+	github.com/aosanya/CodeValdSharedLib v0.0.0
 	github.com/arangodb/go-driver v1.6.0
 	github.com/go-git/go-billy/v5 v5.8.0
 	github.com/go-git/go-git/v5 v5.16.5
