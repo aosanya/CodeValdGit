@@ -15,3 +15,4 @@ Completed tasks are removed from `mvp.md` and recorded here with their completio
 | MVP-GIT-009 | gRPC Service Proto & Codegen | 2026-02-26 | `feature/GIT-009_grpc_proto_codegen` | — |
 | MVP-GIT-010 | gRPC Server Implementation | 2026-02-26 | `feature/GIT-010_grpc_server_implementation` | — |
 | MVP-GIT-011 | Service-Driven Route Registration | 2026-02-27 | — | Routes declared in `internal/registrar/registrar.go` with `GrpcMethod` + `PathBindings`; Cross dynamic proxy handles forwarding |
+| MVP-GIT-012 | Migrate shared infrastructure to CodeValdSharedLib | 2026-03-02 | `feature/MVP-GIT-012_sharedlib_migration` | Replaced local registrar/serverutil/arangoutil with SharedLib packages; removed local `gen/go/codevaldcross/`; all imports updated to `github.com/aosanya/CodeValdSharedLib` |

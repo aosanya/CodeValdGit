@@ -96,11 +96,9 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P3: CodeValdSharedLib Migration
 
-| Task ID | Title | Status | Depends On |
-|---|---|---|---|
-| MVP-GIT-012 | Migrate shared infrastructure to CodeValdSharedLib | 📋 Not Started | SHAREDLIB-003, SHAREDLIB-004, SHAREDLIB-005, SHAREDLIB-006 |
+*~~MVP-GIT-012~~ ✅ complete — see `mvp_done.md`.*
 
-**MVP-GIT-012 scope**:
+**MVP-GIT-012 scope** (completed 2026-03-02):
 - Replace `internal/registrar/` with `github.com/aosanya/CodeValdSharedLib/registrar` (caller passes `"codevaldgit"`, its topics, and its `declaredRoutes`).
 - Replace `envOrDefault` / `parseDuration` helpers in `cmd/server/main.go` with `serverutil.EnvOrDefault` / `serverutil.ParseDurationSeconds`.
 - Replace the gRPC server setup block in `cmd/server/main.go` with `serverutil.NewGRPCServer()` + `serverutil.RunWithGracefulShutdown()`.
