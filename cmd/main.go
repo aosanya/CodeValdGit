@@ -16,10 +16,9 @@ import (
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	gitv1 "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
 	"github.com/aosanya/CodeValdGit/internal/grpcserver"
+	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
-	crossv1 "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldcross/v1"
-	sharedregistrar "github.com/aosanya/CodeValdSharedLib/registrar"
 	"github.com/aosanya/CodeValdSharedLib/serverutil"
 )
 
@@ -69,19 +68,11 @@ func run() error {
 	}()
 
 	crossAddr := serverutil.EnvOrDefault("CROSS_GRPC_ADDR", "")
-	advertiseAddr := serverutil.EnvOrDefault("GIT_GRPC_ADVERTISE_ADDR", listenAddr)
-	pingInterval := serverutil.ParseDurationString("CROSS_PING_INTERVAL", 30*time.Second)
-	pingTimeout := serverutil.ParseDurationString("CROSS_PING_TIMEOUT", 5*time.Second)
-
 	if crossAddr != "" {
-		reg, err := sharedregistrar.New(
-			crossAddr, advertiseAddr, agencyID,
-			"codevaldgit",
-			[]string{"git.repo.created", "git.branch.merged", "git.conflict.detected"},
-			[]string{},
-			gitRoutes(),
-			pingInterval, pingTimeout,
-		)
+		advertiseAddr := serverutil.EnvOrDefault("GIT_GRPC_ADVERTISE_ADDR", listenAddr)
+		pingInterval := serverutil.ParseDurationString("CROSS_PING_INTERVAL", 30*time.Second)
+		pingTimeout := serverutil.ParseDurationString("CROSS_PING_TIMEOUT", 5*time.Second)
+		reg, err := registrar.New(crossAddr, advertiseAddr, agencyID, pingInterval, pingTimeout)
 		if err != nil {
 			log.Printf("codevaldgit: registrar: failed to create: %v — continuing without registration", err)
 		} else {
@@ -122,27 +113,4 @@ func buildBackend() (codevaldgit.Backend, error) {
 	return filesystem.NewFilesystemBackend(cfg)
 }
 
-// gitRoutes returns the HTTP routes that CodeValdGit declares to CodeValdCross.
-func gitRoutes() []*crossv1.RouteDeclaration {
-	return []*crossv1.RouteDeclaration{
-		{
-			Method:     "GET",
-			Pattern:    "/{agencyId}/tasks/{taskId}/files",
-			Capability: "list_task_files",
-			GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
-				{UrlParam: "taskId", Field: "ref"},
-			},
-		},
-		{
-			Method:     "POST",
-			Pattern:    "/{agencyId}/repositories",
-			Capability: "init_repo",
-			GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
-			},
-		},
-	}
-}
+

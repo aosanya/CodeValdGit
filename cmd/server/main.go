@@ -35,10 +35,9 @@ import (
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
 	"github.com/aosanya/CodeValdGit/internal/grpcserver"
+	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
-	crossv1 "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldcross/v1"
-	sharedregistrar "github.com/aosanya/CodeValdSharedLib/registrar"
 	"github.com/aosanya/CodeValdSharedLib/serverutil"
 )
 
@@ -81,14 +80,7 @@ func main() {
 		pingInterval := serverutil.ParseDurationSeconds("CODEVALDGIT_PING_INTERVAL", 10*time.Second)
 		pingTimeout := serverutil.ParseDurationSeconds("CODEVALDGIT_PING_TIMEOUT", 5*time.Second)
 		advertiseAddr := serverutil.EnvOrDefault("GIT_GRPC_ADVERTISE_ADDR", serverutil.EnvOrDefault("GIT_GRPC_LISTEN_ADDR", ":"+port))
-		reg, err := sharedregistrar.New(
-			crossAddr, advertiseAddr, agencyID,
-			"codevaldgit",
-			[]string{"git.repo.created", "git.branch.merged", "git.conflict.detected"},
-			[]string{},
-			serverDeclaredRoutes(),
-			pingInterval, pingTimeout,
-		)
+		reg, err := registrar.New(crossAddr, advertiseAddr, agencyID, pingInterval, pingTimeout)
 		if err != nil {
 			log.Printf("registrar: failed to create: %v — continuing without registration", err)
 		} else {
@@ -97,7 +89,6 @@ func main() {
 		}
 	}
 
-	// Graceful shutdown on SIGTERM / SIGINT.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
@@ -143,27 +134,3 @@ func initArangoBackend() (codevaldgit.Backend, error) {
 	})
 }
 
-// serverDeclaredRoutes returns the HTTP routes CodeValdGit declares to CodeValdCross.
-func serverDeclaredRoutes() []*crossv1.RouteDeclaration {
-	return []*crossv1.RouteDeclaration{
-		{
-			Method:     "GET",
-			Pattern:    "/{agencyId}/tasks/{taskId}/files",
-			Capability: "list_task_files",
-			GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
-				{UrlParam: "taskId", Field: "ref"},
-			},
-		},
-		{
-			Method:     "POST",
-			Pattern:    "/{agencyId}/repositories",
-			Capability: "init_repo",
-			GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
-			},
-		},
-	}
-}
