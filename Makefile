@@ -86,8 +86,8 @@ run-server: build-server
 	@if [ -f .env ]; then \
 		set -a && . ./.env && set +a; \
 	fi; \
-	CODEVALDGIT_PORT=$(or $(CODEVALDGIT_PORT),50051) \
-	CODEVALDGIT_BACKEND=$(or $(CODEVALDGIT_BACKEND),filesystem) \
+	CODEVALDGIT_PORT=$${CODEVALDGIT_PORT:-50052} \
+	CODEVALDGIT_BACKEND=$${CODEVALDGIT_BACKEND:-filesystem} \
 	./bin/codevaldgit-server
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────

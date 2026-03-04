@@ -2,7 +2,7 @@
 //
 // Configuration is via environment variables:
 //
-//	CODEVALDGIT_PORT           gRPC listener port (default 50051)
+//	CODEVALDGIT_PORT           gRPC listener port (required, set in .env)
 //	CODEVALDGIT_BACKEND        storage backend: "filesystem" (default) or "arangodb"
 //	CODEVALDCROSS_ADDR         CodeValdCross gRPC address for service registration
 //	                            heartbeats (optional; omit to disable registration)
@@ -47,7 +47,10 @@ func main() {
 		log.Fatal("CODEVALDGIT_AGENCY_ID must be set")
 	}
 
-	port := serverutil.EnvOrDefault("CODEVALDGIT_PORT", "50051")
+	port := os.Getenv("CODEVALDGIT_PORT")
+	if port == "" {
+		log.Fatal("CODEVALDGIT_PORT must be set")
+	}
 	backendName := serverutil.EnvOrDefault("CODEVALDGIT_BACKEND", "filesystem")
 
 	backend, err := initBackend(backendName)

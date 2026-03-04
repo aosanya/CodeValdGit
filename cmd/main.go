@@ -34,7 +34,12 @@ func run() error {
 		return fmt.Errorf("CODEVALDGIT_AGENCY_ID must be set")
 	}
 
-	listenAddr := serverutil.EnvOrDefault("GIT_GRPC_LISTEN_ADDR", ":"+serverutil.EnvOrDefault("CODEVALDGIT_PORT", "50053"))
+	port := os.Getenv("CODEVALDGIT_PORT")
+	if port == "" {
+		return fmt.Errorf("CODEVALDGIT_PORT must be set")
+	}
+
+	listenAddr := serverutil.EnvOrDefault("GIT_GRPC_LISTEN_ADDR", ":"+port)
 
 	backend, err := buildBackend()
 	if err != nil {
