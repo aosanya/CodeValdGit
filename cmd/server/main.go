@@ -136,4 +136,3 @@ func initArangoBackend() (codevaldgit.Backend, error) {
 		Database: serverutil.EnvOrDefault("ARANGODB_DB", "cortex"),
 	})
 }
-

@@ -117,5 +117,3 @@ func buildBackend() (codevaldgit.Backend, error) {
 	log.Printf("codevaldgit: using filesystem backend (base=%s archive=%s)", cfg.BasePath, cfg.ArchivePath)
 	return filesystem.NewFilesystemBackend(cfg)
 }
-
-
