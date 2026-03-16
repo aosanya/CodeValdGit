@@ -63,11 +63,13 @@ func (r *Registrar) Close() {
 }
 
 // gitRoutes returns the HTTP routes that CodeValdGit exposes via Cross.
+// All routes are prefixed with /git/{agencyId} to disambiguate git endpoints
+// from other services.
 func gitRoutes() []*crossv1.RouteDeclaration {
 	return []*crossv1.RouteDeclaration{
 		{
 			Method:     "GET",
-			Pattern:    "/{agencyId}/tasks/{taskId}/files",
+			Pattern:    "/git/{agencyId}/tasks/{taskId}/files",
 			Capability: "list_task_files",
 			GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
 			PathBindings: []*crossv1.PathBinding{
@@ -77,7 +79,7 @@ func gitRoutes() []*crossv1.RouteDeclaration {
 		},
 		{
 			Method:     "POST",
-			Pattern:    "/{agencyId}/repositories",
+			Pattern:    "/git/{agencyId}/repositories",
 			Capability: "init_repo",
 			GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
 			PathBindings: []*crossv1.PathBinding{
