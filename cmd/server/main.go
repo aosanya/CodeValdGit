@@ -38,6 +38,8 @@ import (
 	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdGit/storage/filesystem"
+	"github.com/aosanya/CodeValdSharedLib/health"
+	healthpb "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldhealth/v1"
 	"github.com/aosanya/CodeValdSharedLib/serverutil"
 )
 
@@ -72,6 +74,7 @@ func main() {
 
 	// Register RepoService.
 	pb.RegisterRepoServiceServer(grpcServer, grpcserver.New(mgr))
+	healthpb.RegisterHealthServiceServer(grpcServer, health.New("codevaldgit"))
 
 	// Cancellable context — cancelled on shutdown to stop background goroutines.
 	ctx, cancel := context.WithCancel(context.Background())
