@@ -10,8 +10,8 @@ import (
 	"context"
 	"time"
 
-	crossv1 "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldcross/v1"
 	sharedregistrar "github.com/aosanya/CodeValdSharedLib/registrar"
+	"github.com/aosanya/CodeValdSharedLib/types"
 )
 
 // Registrar sends periodic heartbeat registrations to CodeValdCross via the
@@ -65,16 +65,16 @@ func (r *Registrar) Close() {
 // gitRoutes returns the HTTP routes that CodeValdGit exposes via Cross.
 // All routes are prefixed with /git/{agencyId} to disambiguate git endpoints
 // from other services.
-func gitRoutes() []*crossv1.RouteDeclaration {
-	return []*crossv1.RouteDeclaration{
+func gitRoutes() []types.RouteInfo {
+	return []types.RouteInfo{
 		{
 			Method:     "GET",
 			Pattern:    "/git/{agencyId}/tasks/{taskId}/files",
 			Capability: "list_task_files",
 			GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
-				{UrlParam: "taskId", Field: "ref"},
+			PathBindings: []types.PathBinding{
+				{URLParam: "agencyId", Field: "agency_id"},
+				{URLParam: "taskId", Field: "ref"},
 			},
 		},
 		{
@@ -82,8 +82,8 @@ func gitRoutes() []*crossv1.RouteDeclaration {
 			Pattern:    "/git/{agencyId}/repositories",
 			Capability: "init_repo",
 			GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
-			PathBindings: []*crossv1.PathBinding{
-				{UrlParam: "agencyId", Field: "agency_id"},
+			PathBindings: []types.PathBinding{
+				{URLParam: "agencyId", Field: "agency_id"},
 			},
 		},
 	}
