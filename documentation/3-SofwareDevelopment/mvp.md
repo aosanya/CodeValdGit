@@ -138,12 +138,12 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-004 — ArangoDB entitygraph Backend
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-004: ArangoDB entitygraph backend (`storage/arangodb/`) | 📋 Not Started | GIT-001 |
+| GIT-004: ArangoDB entitygraph backend (`storage/arangodb/`) | ✅ Done | ~~GIT-001~~ ✅ |
 
 ### GIT-005 — Concrete GitManager Implementation
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-005: Concrete `GitManager` implementation (`internal/manager/`) | 📋 Not Started | GIT-002, GIT-004 |
+| GIT-005: Concrete `GitManager` implementation (`internal/manager/`) | 📋 Not Started | ~~GIT-002~~ ✅, ~~GIT-004~~ ✅ |
 
 ### GIT-006 — gRPC GitService Server
 | Task | Status | Depends On |
