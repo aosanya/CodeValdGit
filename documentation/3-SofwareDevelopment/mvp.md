@@ -111,6 +111,67 @@ See [CodeValdSharedLib mvp.md](../../../CodeValdSharedLib/documentation/3-Sofwar
 
 ---
 
+---
+
+## P0: v2 Redesign — entitygraph Schema + Git Smart HTTP (CRITICAL)
+
+### GIT-001 — Pre-delivered Schema & Domain Value Types
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-001: Pre-delivered schema (`schema.go`) + domain value types (`models.go`) — `Repository`, `Branch`, `Commit`, `Tag`, `Tree`, `Blob` TypeDefinitions | 🚀 In Progress | — |
+
+**Scope**: Create `schema.go` (exposes `DefaultGitSchema()` seeded on startup) and
+`models.go` (Go value types mirroring the TypeDefinitions). Foundation for the entire v2
+entitygraph redesign; all other GIT v2 tasks depend on the schema and models being defined first.
+
+### GIT-002 — Flat `GitManager` Interface
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-002: Flat `GitManager` interface (`git.go`) — replaces nested `RepoManager`+`Repo`+`Backend` | 📋 Not Started | GIT-001 |
+
+### GIT-003 — Proto & Codegen
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-003: Update proto (`service.proto`) — `GitService` RPCs aligned to flat `GitManager`; regenerate Go stubs | 📋 Not Started | GIT-002 |
+
+### GIT-004 — ArangoDB entitygraph Backend
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-004: ArangoDB entitygraph backend (`storage/arangodb/`) | 📋 Not Started | GIT-001 |
+
+### GIT-005 — Concrete GitManager Implementation
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-005: Concrete `GitManager` implementation (`internal/manager/`) | 📋 Not Started | GIT-002, GIT-004 |
+
+### GIT-006 — gRPC GitService Server
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-006: gRPC `GitService` server (`internal/server/server.go`) | 📋 Not Started | GIT-002, GIT-003, GIT-005 |
+
+### GIT-007 — Git Smart HTTP Handler
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-007: Git Smart HTTP handler (`internal/server/githttp.go`) | 📋 Not Started | GIT-005 |
+
+### GIT-008 — Config + Cross Registrar
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-008: Config + Cross registrar | 📋 Not Started | GIT-006, GIT-007 |
+
+### GIT-009 — cmd/main.go
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-009: `cmd/main.go` — cmux wiring, ArangoDB backend, schema seed | 📋 Not Started | GIT-004, GIT-006, GIT-007, GIT-008 |
+
+### GIT-010 — Unit & Integration Tests
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-010: Unit & integration tests | 📋 Not Started | GIT-005, GIT-006, GIT-007 |
+
+---
+
 ## Bugs and Issues
 
 ### Active Bugs

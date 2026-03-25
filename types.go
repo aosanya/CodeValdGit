@@ -20,8 +20,10 @@ type FileEntry struct {
 	Size int64
 }
 
-// Commit is a summary of a single Git commit returned by [Repo.Log].
-type Commit struct {
+// CommitEntry is a summary of a single Git commit returned by [Repo.Log].
+// This is the v1 log-view type used by the Repo interface; the entitygraph
+// entity for a stored Commit object is defined in models.go.
+type CommitEntry struct {
 	// SHA is the full 40-character hex commit hash.
 	SHA string
 

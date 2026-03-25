@@ -39,7 +39,7 @@ func (r *mockRepo) DeleteFile(_ context.Context, _, _, _, _ string) error   { re
 func (r *mockRepo) ListDirectory(_ context.Context, _, _ string) ([]codevaldgit.FileEntry, error) {
 	return nil, nil
 }
-func (r *mockRepo) Log(_ context.Context, _, _ string) ([]codevaldgit.Commit, error) {
+func (r *mockRepo) Log(_ context.Context, _, _ string) ([]codevaldgit.CommitEntry, error) {
 	return nil, nil
 }
 func (r *mockRepo) Diff(_ context.Context, _, _ string) ([]codevaldgit.FileDiff, error) {
@@ -89,7 +89,7 @@ func TestFileEntry_JSONRoundTrip(t *testing.T) {
 func TestCommit_JSONRoundTrip(t *testing.T) {
 	t.Parallel()
 	ts := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
-	c := codevaldgit.Commit{
+	c := codevaldgit.CommitEntry{
 		SHA:       "abc123def456abc123def456abc123def456abc1",
 		Author:    "agent-001",
 		Message:   "GIT-001: initial commit",
@@ -99,7 +99,7 @@ func TestCommit_JSONRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("json.Marshal Commit: %v", err)
 	}
-	var got codevaldgit.Commit
+	var got codevaldgit.CommitEntry
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("json.Unmarshal Commit: %v", err)
 	}

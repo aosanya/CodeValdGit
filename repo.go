@@ -681,7 +681,7 @@ func (r *repo) ListDirectory(_ context.Context, ref, path string) ([]FileEntry, 
 // Returns [ErrRefNotFound] if ref cannot be resolved.
 // A valid ref with a path that has no history returns an empty slice (not an error).
 // Safe for concurrent calls; does not touch the working tree.
-func (r *repo) Log(_ context.Context, ref, path string) ([]Commit, error) {
+func (r *repo) Log(_ context.Context, ref, path string) ([]CommitEntry, error) {
 	hash, err := r.resolveRef(ref)
 	if err != nil {
 		return nil, ErrRefNotFound
@@ -698,9 +698,9 @@ func (r *repo) Log(_ context.Context, ref, path string) ([]Commit, error) {
 	}
 	defer iter.Close()
 
-	var commits []Commit
+	var commits []CommitEntry
 	if err := iter.ForEach(func(c *object.Commit) error {
-		commits = append(commits, Commit{
+		commits = append(commits, CommitEntry{
 			SHA:       c.Hash.String(),
 			Author:    c.Author.Name,
 			Message:   c.Message,
