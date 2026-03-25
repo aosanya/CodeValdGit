@@ -10,13 +10,17 @@ import "google/protobuf/timestamp.proto";
 
 // Repository is the root entity for a per-agency Git repository.
 // One Repository entity exists per agency.
+// agency_id is the entitygraph ID of the owning Agency (resolved from the
+// belongs_to_agency edge). The GitService is scoped per-agency at construction
+// time — agency_id is populated in responses for callers that need it.
 message Repository {
   string                    id             = 1;
-  string                    name           = 2;
-  string                    description    = 3;
-  string                    default_branch = 4;
-  google.protobuf.Timestamp created_at     = 5;
-  google.protobuf.Timestamp updated_at     = 6;
+  string                    agency_id      = 2;
+  string                    name           = 3;
+  string                    description    = 4;
+  string                    default_branch = 5;
+  google.protobuf.Timestamp created_at     = 6;
+  google.protobuf.Timestamp updated_at     = 7;
 }
 
 // Branch is a named ref pointing to a Commit entity.

@@ -23,10 +23,10 @@ const (
 
 // MergeConflictInfo is packed into a google.rpc.Status detail field
 // when MergeBranch returns codes.Aborted due to a content conflict.
-// Clients unpack this from status.Details() to get the file list.
+// Clients unpack this from status.Details() to get the conflicting file list.
 type MergeConflictInfo struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	TaskId           string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	BranchId         string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
 	ConflictingFiles []string               `protobuf:"bytes,2,rep,name=conflicting_files,json=conflictingFiles,proto3" json:"conflicting_files,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -62,9 +62,9 @@ func (*MergeConflictInfo) Descriptor() ([]byte, []int) {
 	return file_codevaldgit_v1_errors_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MergeConflictInfo) GetTaskId() string {
+func (x *MergeConflictInfo) GetBranchId() string {
 	if x != nil {
-		return x.TaskId
+		return x.BranchId
 	}
 	return ""
 }
@@ -80,9 +80,9 @@ var File_codevaldgit_v1_errors_proto protoreflect.FileDescriptor
 
 const file_codevaldgit_v1_errors_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcodevaldgit/v1/errors.proto\x12\x0ecodevaldgit.v1\"Y\n" +
-	"\x11MergeConflictInfo\x12\x17\n" +
-	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12+\n" +
+	"\x1bcodevaldgit/v1/errors.proto\x12\x0ecodevaldgit.v1\"]\n" +
+	"\x11MergeConflictInfo\x12\x1b\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12+\n" +
 	"\x11conflicting_files\x18\x02 \x03(\tR\x10conflictingFilesBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
 
 var (

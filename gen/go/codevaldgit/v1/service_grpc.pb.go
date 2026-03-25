@@ -19,585 +19,883 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RepoService_InitRepo_FullMethodName      = "/codevaldgit.v1.RepoService/InitRepo"
-	RepoService_DeleteRepo_FullMethodName    = "/codevaldgit.v1.RepoService/DeleteRepo"
-	RepoService_PurgeRepo_FullMethodName     = "/codevaldgit.v1.RepoService/PurgeRepo"
-	RepoService_CreateBranch_FullMethodName  = "/codevaldgit.v1.RepoService/CreateBranch"
-	RepoService_MergeBranch_FullMethodName   = "/codevaldgit.v1.RepoService/MergeBranch"
-	RepoService_DeleteBranch_FullMethodName  = "/codevaldgit.v1.RepoService/DeleteBranch"
-	RepoService_WriteFile_FullMethodName     = "/codevaldgit.v1.RepoService/WriteFile"
-	RepoService_ReadFile_FullMethodName      = "/codevaldgit.v1.RepoService/ReadFile"
-	RepoService_DeleteFile_FullMethodName    = "/codevaldgit.v1.RepoService/DeleteFile"
-	RepoService_ListDirectory_FullMethodName = "/codevaldgit.v1.RepoService/ListDirectory"
-	RepoService_Log_FullMethodName           = "/codevaldgit.v1.RepoService/Log"
-	RepoService_Diff_FullMethodName          = "/codevaldgit.v1.RepoService/Diff"
+	GitService_InitRepo_FullMethodName      = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_GetRepository_FullMethodName = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_DeleteRepo_FullMethodName    = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName     = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName  = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName     = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_ListBranches_FullMethodName  = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName  = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName   = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateTag_FullMethodName     = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName        = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName      = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName     = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName     = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName      = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName    = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName           = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName          = "/codevaldgit.v1.GitService/Diff"
 )
 
-// RepoServiceClient is the client API for RepoService service.
+// GitServiceClient is the client API for GitService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// RepoService is the single gRPC service exposed by CodeValdGit.
-// All operations are stateless: agency_id is passed in every request.
-// Task branches are always "task/{task_id}" — the proto takes task_id only.
-type RepoServiceClient interface {
-	// InitRepo creates a new empty Git repository for an agency.
-	// Error: ALREADY_EXISTS if a live repo exists for agency_id.
-	InitRepo(ctx context.Context, in *InitRepoRequest, opts ...grpc.CallOption) (*InitRepoResponse, error)
-	// DeleteRepo archives/flags the agency repo as deleted (non-destructive).
-	// Error: NOT_FOUND if no live repo exists.
+// GitService is the single gRPC service exposed by CodeValdGit.
+// All operations are scoped to the agency that owns this database instance.
+// The agency_id is determined at server construction time and is not passed
+// per-call (see CodeValdAI for the same pattern).
+type GitServiceClient interface {
+	// InitRepo creates the single Repository entity for this agency.
+	// Error: ALREADY_EXISTS if a repository already exists.
+	InitRepo(ctx context.Context, in *InitRepoRequest, opts ...grpc.CallOption) (*Repository, error)
+	// GetRepository retrieves the single Repository entity for this agency.
+	// Error: NOT_FOUND if no repository has been initialised.
+	GetRepository(ctx context.Context, in *GetRepositoryRequest, opts ...grpc.CallOption) (*Repository, error)
+	// DeleteRepo marks the repository entity as archived (soft delete).
+	// Error: NOT_FOUND if no repository entity exists.
 	DeleteRepo(ctx context.Context, in *DeleteRepoRequest, opts ...grpc.CallOption) (*DeleteRepoResponse, error)
-	// PurgeRepo permanently removes all Git storage for the agency.
-	// Irreversible. Error: NOT_FOUND if target does not exist.
+	// PurgeRepo permanently removes all repository data for this agency.
+	// Irreversible. Error: NOT_FOUND if no repository entity exists.
 	PurgeRepo(ctx context.Context, in *PurgeRepoRequest, opts ...grpc.CallOption) (*PurgeRepoResponse, error)
-	// CreateBranch creates refs/heads/task/{task_id} from current main HEAD.
-	// Error: ALREADY_EXISTS if the branch exists; NOT_FOUND if repo missing.
-	CreateBranch(ctx context.Context, in *CreateBranchRequest, opts ...grpc.CallOption) (*CreateBranchResponse, error)
-	// MergeBranch merges task/{task_id} into main (fast-forward or auto-rebase).
-	// Error: ABORTED with MergeConflictInfo detail on content conflict.
-	// Error: NOT_FOUND if task branch or repo does not exist.
-	MergeBranch(ctx context.Context, in *MergeBranchRequest, opts ...grpc.CallOption) (*MergeBranchResponse, error)
-	// DeleteBranch removes refs/heads/task/{task_id}.
-	// Error: NOT_FOUND if the branch or repo does not exist.
+	// CreateBranch creates a new Branch entity from the specified source.
+	// Error: ALREADY_EXISTS if a branch with the given name exists.
+	// Error: NOT_FOUND if from_branch_id is non-empty and not found.
+	CreateBranch(ctx context.Context, in *CreateBranchRequest, opts ...grpc.CallOption) (*Branch, error)
+	// GetBranch retrieves a Branch entity by its ID.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	GetBranch(ctx context.Context, in *GetBranchRequest, opts ...grpc.CallOption) (*Branch, error)
+	// ListBranches returns all Branch entities for this agency's repository.
+	ListBranches(ctx context.Context, in *ListBranchesRequest, opts ...grpc.CallOption) (*ListBranchesResponse, error)
+	// DeleteBranch removes a Branch entity.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	// Error: FAILED_PRECONDITION if branch is the repository default branch.
 	DeleteBranch(ctx context.Context, in *DeleteBranchRequest, opts ...grpc.CallOption) (*DeleteBranchResponse, error)
-	// WriteFile commits content to path on task/{task_id}.
-	// Branch must already exist (call CreateBranch first).
-	// Error: NOT_FOUND if branch or repo does not exist.
-	WriteFile(ctx context.Context, in *WriteFileRequest, opts ...grpc.CallOption) (*WriteFileResponse, error)
-	// ReadFile returns the content of path at the given ref.
-	// ref may be a branch name, tag name, or full commit SHA.
-	// Error: NOT_FOUND if ref or path does not exist; NOT_FOUND if repo missing.
-	ReadFile(ctx context.Context, in *ReadFileRequest, opts ...grpc.CallOption) (*ReadFileResponse, error)
-	// DeleteFile removes path from task/{task_id} as a new commit.
-	// Error: NOT_FOUND if branch, path, or repo does not exist.
-	DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error)
-	// ListDirectory returns immediate children of path at the given ref.
-	// An empty path lists the repository root.
-	// Error: NOT_FOUND if ref or repo does not exist.
+	// MergeBranch merges the given branch into the repository default branch.
+	// Returns the updated default Branch on success.
+	// Error: ABORTED with MergeConflictInfo detail on content conflict.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	MergeBranch(ctx context.Context, in *MergeBranchRequest, opts ...grpc.CallOption) (*Branch, error)
+	// CreateTag creates an immutable Tag entity pointing to the specified commit.
+	// Error: ALREADY_EXISTS if a tag with the given name exists.
+	CreateTag(ctx context.Context, in *CreateTagRequest, opts ...grpc.CallOption) (*Tag, error)
+	// GetTag retrieves a Tag entity by its ID.
+	// Error: NOT_FOUND if no tag with that ID exists.
+	GetTag(ctx context.Context, in *GetTagRequest, opts ...grpc.CallOption) (*Tag, error)
+	// ListTags returns all Tag entities for this agency's repository.
+	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
+	// DeleteTag removes a Tag entity.
+	// Error: NOT_FOUND if no tag with that ID exists.
+	DeleteTag(ctx context.Context, in *DeleteTagRequest, opts ...grpc.CallOption) (*DeleteTagResponse, error)
+	// WriteFile commits a file to the specified branch and returns the Commit
+	// entity created by this write.
+	// Error: NOT_FOUND if the branch does not exist.
+	WriteFile(ctx context.Context, in *WriteFileRequest, opts ...grpc.CallOption) (*Commit, error)
+	// ReadFile retrieves the Blob entity for a file at the branch's current HEAD.
+	// Error: NOT_FOUND if the branch or file path does not exist.
+	ReadFile(ctx context.Context, in *ReadFileRequest, opts ...grpc.CallOption) (*Blob, error)
+	// DeleteFile removes a file from the specified branch as a new commit and
+	// returns the deletion Commit entity.
+	// Error: NOT_FOUND if the branch or file path does not exist.
+	DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*Commit, error)
+	// ListDirectory returns immediate children at the given path on the branch.
+	// Error: NOT_FOUND if the branch or path does not exist.
 	ListDirectory(ctx context.Context, in *ListDirectoryRequest, opts ...grpc.CallOption) (*ListDirectoryResponse, error)
-	// Log returns commits that touched path, newest first.
-	// An empty path returns the full commit history from ref.
-	// Error: NOT_FOUND if ref or repo does not exist.
+	// Log returns the commit history for the branch, newest first.
+	// Optionally filtered to a specific file path and capped by limit.
+	// Error: NOT_FOUND if the branch does not exist.
 	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
-	// Diff returns per-file changes between two refs.
-	// Error: NOT_FOUND if either ref or repo does not exist.
+	// Diff returns per-file change summaries between two refs.
+	// Refs may be branch IDs or commit SHAs.
+	// Error: NOT_FOUND if either ref cannot be resolved.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 }
 
-type repoServiceClient struct {
+type gitServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewRepoServiceClient(cc grpc.ClientConnInterface) RepoServiceClient {
-	return &repoServiceClient{cc}
+func NewGitServiceClient(cc grpc.ClientConnInterface) GitServiceClient {
+	return &gitServiceClient{cc}
 }
 
-func (c *repoServiceClient) InitRepo(ctx context.Context, in *InitRepoRequest, opts ...grpc.CallOption) (*InitRepoResponse, error) {
+func (c *gitServiceClient) InitRepo(ctx context.Context, in *InitRepoRequest, opts ...grpc.CallOption) (*Repository, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InitRepoResponse)
-	err := c.cc.Invoke(ctx, RepoService_InitRepo_FullMethodName, in, out, cOpts...)
+	out := new(Repository)
+	err := c.cc.Invoke(ctx, GitService_InitRepo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) DeleteRepo(ctx context.Context, in *DeleteRepoRequest, opts ...grpc.CallOption) (*DeleteRepoResponse, error) {
+func (c *gitServiceClient) GetRepository(ctx context.Context, in *GetRepositoryRequest, opts ...grpc.CallOption) (*Repository, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Repository)
+	err := c.cc.Invoke(ctx, GitService_GetRepository_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteRepo(ctx context.Context, in *DeleteRepoRequest, opts ...grpc.CallOption) (*DeleteRepoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteRepoResponse)
-	err := c.cc.Invoke(ctx, RepoService_DeleteRepo_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_DeleteRepo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) PurgeRepo(ctx context.Context, in *PurgeRepoRequest, opts ...grpc.CallOption) (*PurgeRepoResponse, error) {
+func (c *gitServiceClient) PurgeRepo(ctx context.Context, in *PurgeRepoRequest, opts ...grpc.CallOption) (*PurgeRepoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PurgeRepoResponse)
-	err := c.cc.Invoke(ctx, RepoService_PurgeRepo_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_PurgeRepo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) CreateBranch(ctx context.Context, in *CreateBranchRequest, opts ...grpc.CallOption) (*CreateBranchResponse, error) {
+func (c *gitServiceClient) CreateBranch(ctx context.Context, in *CreateBranchRequest, opts ...grpc.CallOption) (*Branch, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateBranchResponse)
-	err := c.cc.Invoke(ctx, RepoService_CreateBranch_FullMethodName, in, out, cOpts...)
+	out := new(Branch)
+	err := c.cc.Invoke(ctx, GitService_CreateBranch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) MergeBranch(ctx context.Context, in *MergeBranchRequest, opts ...grpc.CallOption) (*MergeBranchResponse, error) {
+func (c *gitServiceClient) GetBranch(ctx context.Context, in *GetBranchRequest, opts ...grpc.CallOption) (*Branch, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(MergeBranchResponse)
-	err := c.cc.Invoke(ctx, RepoService_MergeBranch_FullMethodName, in, out, cOpts...)
+	out := new(Branch)
+	err := c.cc.Invoke(ctx, GitService_GetBranch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) DeleteBranch(ctx context.Context, in *DeleteBranchRequest, opts ...grpc.CallOption) (*DeleteBranchResponse, error) {
+func (c *gitServiceClient) ListBranches(ctx context.Context, in *ListBranchesRequest, opts ...grpc.CallOption) (*ListBranchesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBranchesResponse)
+	err := c.cc.Invoke(ctx, GitService_ListBranches_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteBranch(ctx context.Context, in *DeleteBranchRequest, opts ...grpc.CallOption) (*DeleteBranchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteBranchResponse)
-	err := c.cc.Invoke(ctx, RepoService_DeleteBranch_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_DeleteBranch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) WriteFile(ctx context.Context, in *WriteFileRequest, opts ...grpc.CallOption) (*WriteFileResponse, error) {
+func (c *gitServiceClient) MergeBranch(ctx context.Context, in *MergeBranchRequest, opts ...grpc.CallOption) (*Branch, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(WriteFileResponse)
-	err := c.cc.Invoke(ctx, RepoService_WriteFile_FullMethodName, in, out, cOpts...)
+	out := new(Branch)
+	err := c.cc.Invoke(ctx, GitService_MergeBranch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) ReadFile(ctx context.Context, in *ReadFileRequest, opts ...grpc.CallOption) (*ReadFileResponse, error) {
+func (c *gitServiceClient) CreateTag(ctx context.Context, in *CreateTagRequest, opts ...grpc.CallOption) (*Tag, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadFileResponse)
-	err := c.cc.Invoke(ctx, RepoService_ReadFile_FullMethodName, in, out, cOpts...)
+	out := new(Tag)
+	err := c.cc.Invoke(ctx, GitService_CreateTag_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error) {
+func (c *gitServiceClient) GetTag(ctx context.Context, in *GetTagRequest, opts ...grpc.CallOption) (*Tag, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteFileResponse)
-	err := c.cc.Invoke(ctx, RepoService_DeleteFile_FullMethodName, in, out, cOpts...)
+	out := new(Tag)
+	err := c.cc.Invoke(ctx, GitService_GetTag_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) ListDirectory(ctx context.Context, in *ListDirectoryRequest, opts ...grpc.CallOption) (*ListDirectoryResponse, error) {
+func (c *gitServiceClient) ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTagsResponse)
+	err := c.cc.Invoke(ctx, GitService_ListTags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteTag(ctx context.Context, in *DeleteTagRequest, opts ...grpc.CallOption) (*DeleteTagResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteTagResponse)
+	err := c.cc.Invoke(ctx, GitService_DeleteTag_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) WriteFile(ctx context.Context, in *WriteFileRequest, opts ...grpc.CallOption) (*Commit, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Commit)
+	err := c.cc.Invoke(ctx, GitService_WriteFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) ReadFile(ctx context.Context, in *ReadFileRequest, opts ...grpc.CallOption) (*Blob, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Blob)
+	err := c.cc.Invoke(ctx, GitService_ReadFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*Commit, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Commit)
+	err := c.cc.Invoke(ctx, GitService_DeleteFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) ListDirectory(ctx context.Context, in *ListDirectoryRequest, opts ...grpc.CallOption) (*ListDirectoryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListDirectoryResponse)
-	err := c.cc.Invoke(ctx, RepoService_ListDirectory_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_ListDirectory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
+func (c *gitServiceClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LogResponse)
-	err := c.cc.Invoke(ctx, RepoService_Log_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_Log_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *repoServiceClient) Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error) {
+func (c *gitServiceClient) Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DiffResponse)
-	err := c.cc.Invoke(ctx, RepoService_Diff_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GitService_Diff_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// RepoServiceServer is the server API for RepoService service.
-// All implementations must embed UnimplementedRepoServiceServer
+// GitServiceServer is the server API for GitService service.
+// All implementations must embed UnimplementedGitServiceServer
 // for forward compatibility.
 //
-// RepoService is the single gRPC service exposed by CodeValdGit.
-// All operations are stateless: agency_id is passed in every request.
-// Task branches are always "task/{task_id}" — the proto takes task_id only.
-type RepoServiceServer interface {
-	// InitRepo creates a new empty Git repository for an agency.
-	// Error: ALREADY_EXISTS if a live repo exists for agency_id.
-	InitRepo(context.Context, *InitRepoRequest) (*InitRepoResponse, error)
-	// DeleteRepo archives/flags the agency repo as deleted (non-destructive).
-	// Error: NOT_FOUND if no live repo exists.
+// GitService is the single gRPC service exposed by CodeValdGit.
+// All operations are scoped to the agency that owns this database instance.
+// The agency_id is determined at server construction time and is not passed
+// per-call (see CodeValdAI for the same pattern).
+type GitServiceServer interface {
+	// InitRepo creates the single Repository entity for this agency.
+	// Error: ALREADY_EXISTS if a repository already exists.
+	InitRepo(context.Context, *InitRepoRequest) (*Repository, error)
+	// GetRepository retrieves the single Repository entity for this agency.
+	// Error: NOT_FOUND if no repository has been initialised.
+	GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error)
+	// DeleteRepo marks the repository entity as archived (soft delete).
+	// Error: NOT_FOUND if no repository entity exists.
 	DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error)
-	// PurgeRepo permanently removes all Git storage for the agency.
-	// Irreversible. Error: NOT_FOUND if target does not exist.
+	// PurgeRepo permanently removes all repository data for this agency.
+	// Irreversible. Error: NOT_FOUND if no repository entity exists.
 	PurgeRepo(context.Context, *PurgeRepoRequest) (*PurgeRepoResponse, error)
-	// CreateBranch creates refs/heads/task/{task_id} from current main HEAD.
-	// Error: ALREADY_EXISTS if the branch exists; NOT_FOUND if repo missing.
-	CreateBranch(context.Context, *CreateBranchRequest) (*CreateBranchResponse, error)
-	// MergeBranch merges task/{task_id} into main (fast-forward or auto-rebase).
-	// Error: ABORTED with MergeConflictInfo detail on content conflict.
-	// Error: NOT_FOUND if task branch or repo does not exist.
-	MergeBranch(context.Context, *MergeBranchRequest) (*MergeBranchResponse, error)
-	// DeleteBranch removes refs/heads/task/{task_id}.
-	// Error: NOT_FOUND if the branch or repo does not exist.
+	// CreateBranch creates a new Branch entity from the specified source.
+	// Error: ALREADY_EXISTS if a branch with the given name exists.
+	// Error: NOT_FOUND if from_branch_id is non-empty and not found.
+	CreateBranch(context.Context, *CreateBranchRequest) (*Branch, error)
+	// GetBranch retrieves a Branch entity by its ID.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	GetBranch(context.Context, *GetBranchRequest) (*Branch, error)
+	// ListBranches returns all Branch entities for this agency's repository.
+	ListBranches(context.Context, *ListBranchesRequest) (*ListBranchesResponse, error)
+	// DeleteBranch removes a Branch entity.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	// Error: FAILED_PRECONDITION if branch is the repository default branch.
 	DeleteBranch(context.Context, *DeleteBranchRequest) (*DeleteBranchResponse, error)
-	// WriteFile commits content to path on task/{task_id}.
-	// Branch must already exist (call CreateBranch first).
-	// Error: NOT_FOUND if branch or repo does not exist.
-	WriteFile(context.Context, *WriteFileRequest) (*WriteFileResponse, error)
-	// ReadFile returns the content of path at the given ref.
-	// ref may be a branch name, tag name, or full commit SHA.
-	// Error: NOT_FOUND if ref or path does not exist; NOT_FOUND if repo missing.
-	ReadFile(context.Context, *ReadFileRequest) (*ReadFileResponse, error)
-	// DeleteFile removes path from task/{task_id} as a new commit.
-	// Error: NOT_FOUND if branch, path, or repo does not exist.
-	DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error)
-	// ListDirectory returns immediate children of path at the given ref.
-	// An empty path lists the repository root.
-	// Error: NOT_FOUND if ref or repo does not exist.
+	// MergeBranch merges the given branch into the repository default branch.
+	// Returns the updated default Branch on success.
+	// Error: ABORTED with MergeConflictInfo detail on content conflict.
+	// Error: NOT_FOUND if no branch with that ID exists.
+	MergeBranch(context.Context, *MergeBranchRequest) (*Branch, error)
+	// CreateTag creates an immutable Tag entity pointing to the specified commit.
+	// Error: ALREADY_EXISTS if a tag with the given name exists.
+	CreateTag(context.Context, *CreateTagRequest) (*Tag, error)
+	// GetTag retrieves a Tag entity by its ID.
+	// Error: NOT_FOUND if no tag with that ID exists.
+	GetTag(context.Context, *GetTagRequest) (*Tag, error)
+	// ListTags returns all Tag entities for this agency's repository.
+	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
+	// DeleteTag removes a Tag entity.
+	// Error: NOT_FOUND if no tag with that ID exists.
+	DeleteTag(context.Context, *DeleteTagRequest) (*DeleteTagResponse, error)
+	// WriteFile commits a file to the specified branch and returns the Commit
+	// entity created by this write.
+	// Error: NOT_FOUND if the branch does not exist.
+	WriteFile(context.Context, *WriteFileRequest) (*Commit, error)
+	// ReadFile retrieves the Blob entity for a file at the branch's current HEAD.
+	// Error: NOT_FOUND if the branch or file path does not exist.
+	ReadFile(context.Context, *ReadFileRequest) (*Blob, error)
+	// DeleteFile removes a file from the specified branch as a new commit and
+	// returns the deletion Commit entity.
+	// Error: NOT_FOUND if the branch or file path does not exist.
+	DeleteFile(context.Context, *DeleteFileRequest) (*Commit, error)
+	// ListDirectory returns immediate children at the given path on the branch.
+	// Error: NOT_FOUND if the branch or path does not exist.
 	ListDirectory(context.Context, *ListDirectoryRequest) (*ListDirectoryResponse, error)
-	// Log returns commits that touched path, newest first.
-	// An empty path returns the full commit history from ref.
-	// Error: NOT_FOUND if ref or repo does not exist.
+	// Log returns the commit history for the branch, newest first.
+	// Optionally filtered to a specific file path and capped by limit.
+	// Error: NOT_FOUND if the branch does not exist.
 	Log(context.Context, *LogRequest) (*LogResponse, error)
-	// Diff returns per-file changes between two refs.
-	// Error: NOT_FOUND if either ref or repo does not exist.
+	// Diff returns per-file change summaries between two refs.
+	// Refs may be branch IDs or commit SHAs.
+	// Error: NOT_FOUND if either ref cannot be resolved.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
-	mustEmbedUnimplementedRepoServiceServer()
+	mustEmbedUnimplementedGitServiceServer()
 }
 
-// UnimplementedRepoServiceServer must be embedded to have
+// UnimplementedGitServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedRepoServiceServer struct{}
+type UnimplementedGitServiceServer struct{}
 
-func (UnimplementedRepoServiceServer) InitRepo(context.Context, *InitRepoRequest) (*InitRepoResponse, error) {
+func (UnimplementedGitServiceServer) InitRepo(context.Context, *InitRepoRequest) (*Repository, error) {
 	return nil, status.Error(codes.Unimplemented, "method InitRepo not implemented")
 }
-func (UnimplementedRepoServiceServer) DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error) {
+func (UnimplementedGitServiceServer) GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRepository not implemented")
+}
+func (UnimplementedGitServiceServer) DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteRepo not implemented")
 }
-func (UnimplementedRepoServiceServer) PurgeRepo(context.Context, *PurgeRepoRequest) (*PurgeRepoResponse, error) {
+func (UnimplementedGitServiceServer) PurgeRepo(context.Context, *PurgeRepoRequest) (*PurgeRepoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeRepo not implemented")
 }
-func (UnimplementedRepoServiceServer) CreateBranch(context.Context, *CreateBranchRequest) (*CreateBranchResponse, error) {
+func (UnimplementedGitServiceServer) CreateBranch(context.Context, *CreateBranchRequest) (*Branch, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateBranch not implemented")
 }
-func (UnimplementedRepoServiceServer) MergeBranch(context.Context, *MergeBranchRequest) (*MergeBranchResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method MergeBranch not implemented")
+func (UnimplementedGitServiceServer) GetBranch(context.Context, *GetBranchRequest) (*Branch, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBranch not implemented")
 }
-func (UnimplementedRepoServiceServer) DeleteBranch(context.Context, *DeleteBranchRequest) (*DeleteBranchResponse, error) {
+func (UnimplementedGitServiceServer) ListBranches(context.Context, *ListBranchesRequest) (*ListBranchesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBranches not implemented")
+}
+func (UnimplementedGitServiceServer) DeleteBranch(context.Context, *DeleteBranchRequest) (*DeleteBranchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteBranch not implemented")
 }
-func (UnimplementedRepoServiceServer) WriteFile(context.Context, *WriteFileRequest) (*WriteFileResponse, error) {
+func (UnimplementedGitServiceServer) MergeBranch(context.Context, *MergeBranchRequest) (*Branch, error) {
+	return nil, status.Error(codes.Unimplemented, "method MergeBranch not implemented")
+}
+func (UnimplementedGitServiceServer) CreateTag(context.Context, *CreateTagRequest) (*Tag, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateTag not implemented")
+}
+func (UnimplementedGitServiceServer) GetTag(context.Context, *GetTagRequest) (*Tag, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTag not implemented")
+}
+func (UnimplementedGitServiceServer) ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTags not implemented")
+}
+func (UnimplementedGitServiceServer) DeleteTag(context.Context, *DeleteTagRequest) (*DeleteTagResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTag not implemented")
+}
+func (UnimplementedGitServiceServer) WriteFile(context.Context, *WriteFileRequest) (*Commit, error) {
 	return nil, status.Error(codes.Unimplemented, "method WriteFile not implemented")
 }
-func (UnimplementedRepoServiceServer) ReadFile(context.Context, *ReadFileRequest) (*ReadFileResponse, error) {
+func (UnimplementedGitServiceServer) ReadFile(context.Context, *ReadFileRequest) (*Blob, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReadFile not implemented")
 }
-func (UnimplementedRepoServiceServer) DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error) {
+func (UnimplementedGitServiceServer) DeleteFile(context.Context, *DeleteFileRequest) (*Commit, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteFile not implemented")
 }
-func (UnimplementedRepoServiceServer) ListDirectory(context.Context, *ListDirectoryRequest) (*ListDirectoryResponse, error) {
+func (UnimplementedGitServiceServer) ListDirectory(context.Context, *ListDirectoryRequest) (*ListDirectoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListDirectory not implemented")
 }
-func (UnimplementedRepoServiceServer) Log(context.Context, *LogRequest) (*LogResponse, error) {
+func (UnimplementedGitServiceServer) Log(context.Context, *LogRequest) (*LogResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Log not implemented")
 }
-func (UnimplementedRepoServiceServer) Diff(context.Context, *DiffRequest) (*DiffResponse, error) {
+func (UnimplementedGitServiceServer) Diff(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Diff not implemented")
 }
-func (UnimplementedRepoServiceServer) mustEmbedUnimplementedRepoServiceServer() {}
-func (UnimplementedRepoServiceServer) testEmbeddedByValue()                     {}
+func (UnimplementedGitServiceServer) mustEmbedUnimplementedGitServiceServer() {}
+func (UnimplementedGitServiceServer) testEmbeddedByValue()                    {}
 
-// UnsafeRepoServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RepoServiceServer will
+// UnsafeGitServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GitServiceServer will
 // result in compilation errors.
-type UnsafeRepoServiceServer interface {
-	mustEmbedUnimplementedRepoServiceServer()
+type UnsafeGitServiceServer interface {
+	mustEmbedUnimplementedGitServiceServer()
 }
 
-func RegisterRepoServiceServer(s grpc.ServiceRegistrar, srv RepoServiceServer) {
-	// If the following call panics, it indicates UnimplementedRepoServiceServer was
+func RegisterGitServiceServer(s grpc.ServiceRegistrar, srv GitServiceServer) {
+	// If the following call panics, it indicates UnimplementedGitServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&RepoService_ServiceDesc, srv)
+	s.RegisterService(&GitService_ServiceDesc, srv)
 }
 
-func _RepoService_InitRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_InitRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InitRepoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).InitRepo(ctx, in)
+		return srv.(GitServiceServer).InitRepo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_InitRepo_FullMethodName,
+		FullMethod: GitService_InitRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).InitRepo(ctx, req.(*InitRepoRequest))
+		return srv.(GitServiceServer).InitRepo(ctx, req.(*InitRepoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_DeleteRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_GetRepository_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRepositoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetRepository(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetRepository_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetRepository(ctx, req.(*GetRepositoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_DeleteRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteRepoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).DeleteRepo(ctx, in)
+		return srv.(GitServiceServer).DeleteRepo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_DeleteRepo_FullMethodName,
+		FullMethod: GitService_DeleteRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).DeleteRepo(ctx, req.(*DeleteRepoRequest))
+		return srv.(GitServiceServer).DeleteRepo(ctx, req.(*DeleteRepoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_PurgeRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_PurgeRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeRepoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).PurgeRepo(ctx, in)
+		return srv.(GitServiceServer).PurgeRepo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_PurgeRepo_FullMethodName,
+		FullMethod: GitService_PurgeRepo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).PurgeRepo(ctx, req.(*PurgeRepoRequest))
+		return srv.(GitServiceServer).PurgeRepo(ctx, req.(*PurgeRepoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_CreateBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_CreateBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateBranchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).CreateBranch(ctx, in)
+		return srv.(GitServiceServer).CreateBranch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_CreateBranch_FullMethodName,
+		FullMethod: GitService_CreateBranch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).CreateBranch(ctx, req.(*CreateBranchRequest))
+		return srv.(GitServiceServer).CreateBranch(ctx, req.(*CreateBranchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_MergeBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MergeBranchRequest)
+func _GitService_GetBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBranchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).MergeBranch(ctx, in)
+		return srv.(GitServiceServer).GetBranch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_MergeBranch_FullMethodName,
+		FullMethod: GitService_GetBranch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).MergeBranch(ctx, req.(*MergeBranchRequest))
+		return srv.(GitServiceServer).GetBranch(ctx, req.(*GetBranchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_DeleteBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_ListBranches_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBranchesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ListBranches(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ListBranches_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ListBranches(ctx, req.(*ListBranchesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_DeleteBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteBranchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).DeleteBranch(ctx, in)
+		return srv.(GitServiceServer).DeleteBranch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_DeleteBranch_FullMethodName,
+		FullMethod: GitService_DeleteBranch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).DeleteBranch(ctx, req.(*DeleteBranchRequest))
+		return srv.(GitServiceServer).DeleteBranch(ctx, req.(*DeleteBranchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_MergeBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MergeBranchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).MergeBranch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_MergeBranch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).MergeBranch(ctx, req.(*MergeBranchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CreateTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTagRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CreateTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CreateTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CreateTag(ctx, req.(*CreateTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTagRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetTag(ctx, req.(*GetTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_ListTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ListTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ListTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ListTags(ctx, req.(*ListTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_DeleteTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTagRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).DeleteTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_DeleteTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).DeleteTag(ctx, req.(*DeleteTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WriteFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).WriteFile(ctx, in)
+		return srv.(GitServiceServer).WriteFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_WriteFile_FullMethodName,
+		FullMethod: GitService_WriteFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).WriteFile(ctx, req.(*WriteFileRequest))
+		return srv.(GitServiceServer).WriteFile(ctx, req.(*WriteFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_ReadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_ReadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReadFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).ReadFile(ctx, in)
+		return srv.(GitServiceServer).ReadFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_ReadFile_FullMethodName,
+		FullMethod: GitService_ReadFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).ReadFile(ctx, req.(*ReadFileRequest))
+		return srv.(GitServiceServer).ReadFile(ctx, req.(*ReadFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_DeleteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_DeleteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).DeleteFile(ctx, in)
+		return srv.(GitServiceServer).DeleteFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_DeleteFile_FullMethodName,
+		FullMethod: GitService_DeleteFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).DeleteFile(ctx, req.(*DeleteFileRequest))
+		return srv.(GitServiceServer).DeleteFile(ctx, req.(*DeleteFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_ListDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_ListDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDirectoryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).ListDirectory(ctx, in)
+		return srv.(GitServiceServer).ListDirectory(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_ListDirectory_FullMethodName,
+		FullMethod: GitService_ListDirectory_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).ListDirectory(ctx, req.(*ListDirectoryRequest))
+		return srv.(GitServiceServer).ListDirectory(ctx, req.(*ListDirectoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_Log_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_Log_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LogRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).Log(ctx, in)
+		return srv.(GitServiceServer).Log(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_Log_FullMethodName,
+		FullMethod: GitService_Log_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).Log(ctx, req.(*LogRequest))
+		return srv.(GitServiceServer).Log(ctx, req.(*LogRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RepoService_Diff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GitService_Diff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DiffRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RepoServiceServer).Diff(ctx, in)
+		return srv.(GitServiceServer).Diff(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RepoService_Diff_FullMethodName,
+		FullMethod: GitService_Diff_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RepoServiceServer).Diff(ctx, req.(*DiffRequest))
+		return srv.(GitServiceServer).Diff(ctx, req.(*DiffRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// RepoService_ServiceDesc is the grpc.ServiceDesc for RepoService service.
+// GitService_ServiceDesc is the grpc.ServiceDesc for GitService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var RepoService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codevaldgit.v1.RepoService",
-	HandlerType: (*RepoServiceServer)(nil),
+var GitService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "codevaldgit.v1.GitService",
+	HandlerType: (*GitServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "InitRepo",
-			Handler:    _RepoService_InitRepo_Handler,
+			Handler:    _GitService_InitRepo_Handler,
+		},
+		{
+			MethodName: "GetRepository",
+			Handler:    _GitService_GetRepository_Handler,
 		},
 		{
 			MethodName: "DeleteRepo",
-			Handler:    _RepoService_DeleteRepo_Handler,
+			Handler:    _GitService_DeleteRepo_Handler,
 		},
 		{
 			MethodName: "PurgeRepo",
-			Handler:    _RepoService_PurgeRepo_Handler,
+			Handler:    _GitService_PurgeRepo_Handler,
 		},
 		{
 			MethodName: "CreateBranch",
-			Handler:    _RepoService_CreateBranch_Handler,
+			Handler:    _GitService_CreateBranch_Handler,
 		},
 		{
-			MethodName: "MergeBranch",
-			Handler:    _RepoService_MergeBranch_Handler,
+			MethodName: "GetBranch",
+			Handler:    _GitService_GetBranch_Handler,
+		},
+		{
+			MethodName: "ListBranches",
+			Handler:    _GitService_ListBranches_Handler,
 		},
 		{
 			MethodName: "DeleteBranch",
-			Handler:    _RepoService_DeleteBranch_Handler,
+			Handler:    _GitService_DeleteBranch_Handler,
+		},
+		{
+			MethodName: "MergeBranch",
+			Handler:    _GitService_MergeBranch_Handler,
+		},
+		{
+			MethodName: "CreateTag",
+			Handler:    _GitService_CreateTag_Handler,
+		},
+		{
+			MethodName: "GetTag",
+			Handler:    _GitService_GetTag_Handler,
+		},
+		{
+			MethodName: "ListTags",
+			Handler:    _GitService_ListTags_Handler,
+		},
+		{
+			MethodName: "DeleteTag",
+			Handler:    _GitService_DeleteTag_Handler,
 		},
 		{
 			MethodName: "WriteFile",
-			Handler:    _RepoService_WriteFile_Handler,
+			Handler:    _GitService_WriteFile_Handler,
 		},
 		{
 			MethodName: "ReadFile",
-			Handler:    _RepoService_ReadFile_Handler,
+			Handler:    _GitService_ReadFile_Handler,
 		},
 		{
 			MethodName: "DeleteFile",
-			Handler:    _RepoService_DeleteFile_Handler,
+			Handler:    _GitService_DeleteFile_Handler,
 		},
 		{
 			MethodName: "ListDirectory",
-			Handler:    _RepoService_ListDirectory_Handler,
+			Handler:    _GitService_ListDirectory_Handler,
 		},
 		{
 			MethodName: "Log",
-			Handler:    _RepoService_Log_Handler,
+			Handler:    _GitService_Log_Handler,
 		},
 		{
 			MethodName: "Diff",
-			Handler:    _RepoService_Diff_Handler,
+			Handler:    _GitService_Diff_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
