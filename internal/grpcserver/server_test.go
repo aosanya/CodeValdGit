@@ -26,7 +26,7 @@ type mockRepo struct {
 	deleteFileErr   error
 	listDirEntries  []codevaldgit.FileEntry
 	listDirErr      error
-	logCommits      []codevaldgit.Commit
+	logCommits      []codevaldgit.CommitEntry
 	logErr          error
 	diffDiffs       []codevaldgit.FileDiff
 	diffErr         error
@@ -45,7 +45,7 @@ func (m *mockRepo) DeleteFile(_ context.Context, _, _, _, _ string) error { retu
 func (m *mockRepo) ListDirectory(_ context.Context, _, _ string) ([]codevaldgit.FileEntry, error) {
 	return m.listDirEntries, m.listDirErr
 }
-func (m *mockRepo) Log(_ context.Context, _, _ string) ([]codevaldgit.Commit, error) {
+func (m *mockRepo) Log(_ context.Context, _, _ string) ([]codevaldgit.CommitEntry, error) {
 	return m.logCommits, m.logErr
 }
 func (m *mockRepo) Diff(_ context.Context, _, _ string) ([]codevaldgit.FileDiff, error) {
@@ -227,7 +227,7 @@ func TestServer_ListDirectory_OK(t *testing.T) {
 
 func TestServer_Log_OK(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	commits := []codevaldgit.Commit{
+	commits := []codevaldgit.CommitEntry{
 		{SHA: "abc123", Author: "agent-1", Message: "init", Timestamp: now},
 	}
 	mgr := &mockManager{openRepoRepo: &mockRepo{logCommits: commits}}

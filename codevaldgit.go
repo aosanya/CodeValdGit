@@ -144,7 +144,7 @@ type Repo interface {
 	// Log returns the ordered list of commits that touched path, newest first.
 	// ref constrains the walk to the history reachable from that ref.
 	// An empty path ("") returns the full commit history for the ref.
-	Log(ctx context.Context, ref, path string) ([]Commit, error)
+	Log(ctx context.Context, ref, path string) ([]CommitEntry, error)
 
 	// Diff returns per-file changes between fromRef and toRef.
 	// Both refs may be branch names, tag names, or full commit SHAs.
