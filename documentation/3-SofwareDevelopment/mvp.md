@@ -128,7 +128,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-002 — Flat `GitManager` Interface
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-002: Flat `GitManager` interface (`git.go`) — replaces nested `RepoManager`+`Repo`+`Backend` | 📋 Not Started | GIT-001 |
+| GIT-002: Flat `GitManager` interface (`git.go`) — replaces nested `RepoManager`+`Repo`+`Backend` | � In Progress | GIT-001 |
 
 ### GIT-003 — Proto & Codegen
 | Task | Status | Depends On |
