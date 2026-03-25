@@ -8,13 +8,15 @@
 // and history — are methods on [GitManager]. Callers (typically a gRPC server
 // handler) hold the interface, never the concrete type.
 //
-// Concrete implementations are provided in internal/manager/. Storage is
-// injected via [entitygraph.DataManager] so the manager is backend-agnostic.
+// The concrete [gitManager] implementation lives in git_impl_repo.go
+// (repository lifecycle, branch management, tag management) and
+// git_impl_fileops.go (file operations, commit history, diff).
+// Storage is injected via [entitygraph.DataManager] so the manager is
+// backend-agnostic.
 package codevaldgit
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
@@ -172,109 +174,4 @@ func NewGitManager(
 		publisher: pub,
 		agencyID:  agencyID,
 	}
-}
-
-// ── Repository Lifecycle stubs ────────────────────────────────────────────────
-
-// InitRepo is a stub; full implementation added in GIT-005.
-func (m *gitManager) InitRepo(_ context.Context, _ CreateRepoRequest) (Repository, error) {
-	return Repository{}, fmt.Errorf("not implemented")
-}
-
-// GetRepository is a stub; full implementation added in GIT-005.
-func (m *gitManager) GetRepository(_ context.Context) (Repository, error) {
-	return Repository{}, fmt.Errorf("not implemented")
-}
-
-// DeleteRepo is a stub; full implementation added in GIT-005.
-func (m *gitManager) DeleteRepo(_ context.Context) error {
-	return fmt.Errorf("not implemented")
-}
-
-// PurgeRepo is a stub; full implementation added in GIT-005.
-func (m *gitManager) PurgeRepo(_ context.Context) error {
-	return fmt.Errorf("not implemented")
-}
-
-// ── Branch Management stubs ───────────────────────────────────────────────────
-
-// CreateBranch is a stub; full implementation added in GIT-005.
-func (m *gitManager) CreateBranch(_ context.Context, _ CreateBranchRequest) (Branch, error) {
-	return Branch{}, fmt.Errorf("not implemented")
-}
-
-// GetBranch is a stub; full implementation added in GIT-005.
-func (m *gitManager) GetBranch(_ context.Context, _ string) (Branch, error) {
-	return Branch{}, fmt.Errorf("not implemented")
-}
-
-// ListBranches is a stub; full implementation added in GIT-005.
-func (m *gitManager) ListBranches(_ context.Context) ([]Branch, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-// DeleteBranch is a stub; full implementation added in GIT-005.
-func (m *gitManager) DeleteBranch(_ context.Context, _ string) error {
-	return fmt.Errorf("not implemented")
-}
-
-// MergeBranch is a stub; full implementation added in GIT-005.
-func (m *gitManager) MergeBranch(_ context.Context, _ string) (Branch, error) {
-	return Branch{}, fmt.Errorf("not implemented")
-}
-
-// ── Tag Management stubs ──────────────────────────────────────────────────────
-
-// CreateTag is a stub; full implementation added in GIT-005.
-func (m *gitManager) CreateTag(_ context.Context, _ CreateTagRequest) (Tag, error) {
-	return Tag{}, fmt.Errorf("not implemented")
-}
-
-// GetTag is a stub; full implementation added in GIT-005.
-func (m *gitManager) GetTag(_ context.Context, _ string) (Tag, error) {
-	return Tag{}, fmt.Errorf("not implemented")
-}
-
-// ListTags is a stub; full implementation added in GIT-005.
-func (m *gitManager) ListTags(_ context.Context) ([]Tag, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-// DeleteTag is a stub; full implementation added in GIT-005.
-func (m *gitManager) DeleteTag(_ context.Context, _ string) error {
-	return fmt.Errorf("not implemented")
-}
-
-// ── File Operation stubs ──────────────────────────────────────────────────────
-
-// WriteFile is a stub; full implementation added in GIT-005.
-func (m *gitManager) WriteFile(_ context.Context, _ WriteFileRequest) (Commit, error) {
-	return Commit{}, fmt.Errorf("not implemented")
-}
-
-// ReadFile is a stub; full implementation added in GIT-005.
-func (m *gitManager) ReadFile(_ context.Context, _, _ string) (Blob, error) {
-	return Blob{}, fmt.Errorf("not implemented")
-}
-
-// DeleteFile is a stub; full implementation added in GIT-005.
-func (m *gitManager) DeleteFile(_ context.Context, _ DeleteFileRequest) (Commit, error) {
-	return Commit{}, fmt.Errorf("not implemented")
-}
-
-// ListDirectory is a stub; full implementation added in GIT-005.
-func (m *gitManager) ListDirectory(_ context.Context, _, _ string) ([]FileEntry, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-// ── History stubs ─────────────────────────────────────────────────────────────
-
-// Log is a stub; full implementation added in GIT-005.
-func (m *gitManager) Log(_ context.Context, _ string, _ LogFilter) ([]CommitEntry, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-// Diff is a stub; full implementation added in GIT-005.
-func (m *gitManager) Diff(_ context.Context, _, _ string) ([]FileDiff, error) {
-	return nil, fmt.Errorf("not implemented")
 }
