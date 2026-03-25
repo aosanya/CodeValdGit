@@ -6,139 +6,87 @@ option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codeva
 
 import "google/protobuf/timestamp.proto";
 
-// RepoService is the single gRPC service exposed by CodeValdGit.
-// All operations are stateless: agency_id is passed in every request.
-// Task branches are always "task/{task_id}" — the proto takes task_id only.
-service RepoService {
+// ── Entity Messages ───────────────────────────────────────────────────────────
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  // InitRepo creates a new empty Git repository for an agency.
-  // Error: ALREADY_EXISTS if a live repo exists for agency_id.
-  rpc InitRepo(InitRepoRequest) returns (InitRepoResponse);
-
-  // DeleteRepo archives/flags the agency repo as deleted (non-destructive).
-  // Error: NOT_FOUND if no live repo exists.
-  rpc DeleteRepo(DeleteRepoRequest) returns (DeleteRepoResponse);
-
-  // PurgeRepo permanently removes all Git storage for the agency.
-  // Irreversible. Error: NOT_FOUND if target does not exist.
-  rpc PurgeRepo(PurgeRepoRequest) returns (PurgeRepoResponse);
-
-  // ── Branch Operations ──────────────────────────────────────────────────────
-
-  // CreateBranch creates refs/heads/task/{task_id} from current main HEAD.
-  // Error: ALREADY_EXISTS if the branch exists; NOT_FOUND if repo missing.
-  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
-
-  // MergeBranch merges task/{task_id} into main (fast-forward or auto-rebase).
-  // Error: ABORTED with MergeConflictInfo detail on content conflict.
-  // Error: NOT_FOUND if task branch or repo does not exist.
-  rpc MergeBranch(MergeBranchRequest) returns (MergeBranchResponse);
-
-  // DeleteBranch removes refs/heads/task/{task_id}.
-  // Error: NOT_FOUND if the branch or repo does not exist.
-  rpc DeleteBranch(DeleteBranchRequest) returns (DeleteBranchResponse);
-
-  // ── File Operations ────────────────────────────────────────────────────────
-
-  // WriteFile commits content to path on task/{task_id}.
-  // Branch must already exist (call CreateBranch first).
-  // Error: NOT_FOUND if branch or repo does not exist.
-  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
-
-  // ReadFile returns the content of path at the given ref.
-  // ref may be a branch name, tag name, or full commit SHA.
-  // Error: NOT_FOUND if ref or path does not exist; NOT_FOUND if repo missing.
-  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
-
-  // DeleteFile removes path from task/{task_id} as a new commit.
-  // Error: NOT_FOUND if branch, path, or repo does not exist.
-  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
-
-  // ListDirectory returns immediate children of path at the given ref.
-  // An empty path lists the repository root.
-  // Error: NOT_FOUND if ref or repo does not exist.
-  rpc ListDirectory(ListDirectoryRequest) returns (ListDirectoryResponse);
-
-  // ── History ────────────────────────────────────────────────────────────────
-
-  // Log returns commits that touched path, newest first.
-  // An empty path returns the full commit history from ref.
-  // Error: NOT_FOUND if ref or repo does not exist.
-  rpc Log(LogRequest) returns (LogResponse);
-
-  // Diff returns per-file changes between two refs.
-  // Error: NOT_FOUND if either ref or repo does not exist.
-  rpc Diff(DiffRequest) returns (DiffResponse);
+// Repository is the root entity for a per-agency Git repository.
+// One Repository entity exists per agency.
+message Repository {
+  string                    id             = 1;
+  string                    name           = 2;
+  string                    description    = 3;
+  string                    default_branch = 4;
+  google.protobuf.Timestamp created_at     = 5;
+  google.protobuf.Timestamp updated_at     = 6;
 }
 
-// ── Request / Response Messages ──────────────────────────────────────────────
-
-message InitRepoRequest   { string agency_id = 1; }
-message InitRepoResponse  {}
-
-message DeleteRepoRequest { string agency_id = 1; }
-message DeleteRepoResponse {}
-
-message PurgeRepoRequest  { string agency_id = 1; }
-message PurgeRepoResponse {}
-
-message CreateBranchRequest {
-  string agency_id = 1;
-  string task_id   = 2;
-}
-message CreateBranchResponse {}
-
-message MergeBranchRequest {
-  string agency_id = 1;
-  string task_id   = 2;
-}
-message MergeBranchResponse {}
-
-message DeleteBranchRequest {
-  string agency_id = 1;
-  string task_id   = 2;
-}
-message DeleteBranchResponse {}
-
-message WriteFileRequest {
-  string agency_id = 1;
-  string task_id   = 2;
-  string path      = 3;
-  string content   = 4;
-  string author    = 5;
-  string message   = 6;
-}
-message WriteFileResponse {}
-
-message ReadFileRequest {
-  string agency_id = 1;
-  string ref       = 2;
-  string path      = 3;
-}
-message ReadFileResponse {
-  string content = 1;
+// Branch is a named ref pointing to a Commit entity.
+// Task branches follow the naming convention "task/{task_id}".
+message Branch {
+  string                    id             = 1;
+  string                    repository_id  = 2;
+  string                    name           = 3;
+  bool                      is_default     = 4;
+  string                    head_commit_id = 5;
+  google.protobuf.Timestamp created_at     = 6;
+  google.protobuf.Timestamp updated_at     = 7;
 }
 
-message DeleteFileRequest {
-  string agency_id = 1;
-  string task_id   = 2;
-  string path      = 3;
-  string author    = 4;
-  string message   = 5;
-}
-message DeleteFileResponse {}
-
-message ListDirectoryRequest {
-  string agency_id = 1;
-  string ref       = 2;
-  string path      = 3;
-}
-message ListDirectoryResponse {
-  repeated FileEntry entries = 1;
+// Tag is an immutable named ref pointing to a Commit entity.
+// Once created the target commit never changes.
+message Tag {
+  string                    id            = 1;
+  string                    repository_id = 2;
+  string                    name          = 3;
+  string                    sha           = 4;
+  string                    message       = 5;
+  string                    tagger_name   = 6;
+  google.protobuf.Timestamp tagger_at     = 7;
+  google.protobuf.Timestamp created_at    = 8;
 }
 
+// Commit is an immutable git commit entity stored in the entity graph.
+// Content-addressed by sha; never mutated after creation.
+message Commit {
+  string                    id              = 1;
+  string                    repository_id   = 2;
+  string                    sha             = 3;
+  string                    message         = 4;
+  string                    author_name     = 5;
+  string                    author_email    = 6;
+  google.protobuf.Timestamp author_at       = 7;
+  string                    committer_name  = 8;
+  string                    committer_email = 9;
+  google.protobuf.Timestamp committed_at    = 10;
+  string                    tree_id         = 11;
+  repeated string           parent_ids      = 12;
+  google.protobuf.Timestamp created_at      = 13;
+}
+
+// Blob is an immutable file-content entity stored in the entity graph.
+// Content-addressed by sha; never mutated after creation.
+// Text content is stored as-is; binary content is base64-encoded with
+// encoding set to "base64".
+message Blob {
+  string                    id         = 1;
+  string                    sha        = 2;
+  string                    path       = 3;
+  int64                     size       = 4;
+  string                    encoding   = 5;
+  string                    content    = 6;
+  string                    tree_id    = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// CommitEntry is a lightweight commit summary used in Log responses.
+// It omits tree/blob references for efficiency.
+message CommitEntry {
+  string                    sha       = 1;
+  string                    author    = 2;
+  string                    message   = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// FileEntry is a single item returned by ListDirectory.
 message FileEntry {
   string name   = 1;
   string path   = 2;
@@ -146,33 +94,228 @@ message FileEntry {
   int64  size   = 4;
 }
 
-message LogRequest {
-  string agency_id = 1;
-  string ref       = 2;
-  string path      = 3;
-}
-message LogResponse {
-  repeated CommitInfo commits = 1;
+// FileDiff describes the changes to one file between two refs.
+message FileDiff {
+  string path      = 1;
+  string operation = 2;
+  string patch     = 3;
 }
 
-message CommitInfo {
-  string                    sha       = 1;
-  string                    author    = 2;
-  string                    message   = 3;
-  google.protobuf.Timestamp timestamp = 4;
+// ── Service ───────────────────────────────────────────────────────────────────
+
+// GitService is the single gRPC service exposed by CodeValdGit.
+// All operations are scoped to the agency that owns this database instance.
+// The agency_id is determined at server construction time and is not passed
+// per-call (see CodeValdAI for the same pattern).
+service GitService {
+
+  // ── Repository Lifecycle ──────────────────────────────────────────────────
+
+  // InitRepo creates the single Repository entity for this agency.
+  // Error: ALREADY_EXISTS if a repository already exists.
+  rpc InitRepo (InitRepoRequest) returns (Repository);
+
+  // GetRepository retrieves the single Repository entity for this agency.
+  // Error: NOT_FOUND if no repository has been initialised.
+  rpc GetRepository (GetRepositoryRequest) returns (Repository);
+
+  // DeleteRepo marks the repository entity as archived (soft delete).
+  // Error: NOT_FOUND if no repository entity exists.
+  rpc DeleteRepo (DeleteRepoRequest) returns (DeleteRepoResponse);
+
+  // PurgeRepo permanently removes all repository data for this agency.
+  // Irreversible. Error: NOT_FOUND if no repository entity exists.
+  rpc PurgeRepo (PurgeRepoRequest) returns (PurgeRepoResponse);
+
+  // ── Branch Management ─────────────────────────────────────────────────────
+
+  // CreateBranch creates a new Branch entity from the specified source.
+  // Error: ALREADY_EXISTS if a branch with the given name exists.
+  // Error: NOT_FOUND if from_branch_id is non-empty and not found.
+  rpc CreateBranch (CreateBranchRequest) returns (Branch);
+
+  // GetBranch retrieves a Branch entity by its ID.
+  // Error: NOT_FOUND if no branch with that ID exists.
+  rpc GetBranch (GetBranchRequest) returns (Branch);
+
+  // ListBranches returns all Branch entities for this agency's repository.
+  rpc ListBranches (ListBranchesRequest) returns (ListBranchesResponse);
+
+  // DeleteBranch removes a Branch entity.
+  // Error: NOT_FOUND if no branch with that ID exists.
+  // Error: FAILED_PRECONDITION if branch is the repository default branch.
+  rpc DeleteBranch (DeleteBranchRequest) returns (DeleteBranchResponse);
+
+  // MergeBranch merges the given branch into the repository default branch.
+  // Returns the updated default Branch on success.
+  // Error: ABORTED with MergeConflictInfo detail on content conflict.
+  // Error: NOT_FOUND if no branch with that ID exists.
+  rpc MergeBranch (MergeBranchRequest) returns (Branch);
+
+  // ── Tag Management ────────────────────────────────────────────────────────
+
+  // CreateTag creates an immutable Tag entity pointing to the specified commit.
+  // Error: ALREADY_EXISTS if a tag with the given name exists.
+  rpc CreateTag (CreateTagRequest) returns (Tag);
+
+  // GetTag retrieves a Tag entity by its ID.
+  // Error: NOT_FOUND if no tag with that ID exists.
+  rpc GetTag (GetTagRequest) returns (Tag);
+
+  // ListTags returns all Tag entities for this agency's repository.
+  rpc ListTags (ListTagsRequest) returns (ListTagsResponse);
+
+  // DeleteTag removes a Tag entity.
+  // Error: NOT_FOUND if no tag with that ID exists.
+  rpc DeleteTag (DeleteTagRequest) returns (DeleteTagResponse);
+
+  // ── File Operations ───────────────────────────────────────────────────────
+
+  // WriteFile commits a file to the specified branch and returns the Commit
+  // entity created by this write.
+  // Error: NOT_FOUND if the branch does not exist.
+  rpc WriteFile (WriteFileRequest) returns (Commit);
+
+  // ReadFile retrieves the Blob entity for a file at the branch's current HEAD.
+  // Error: NOT_FOUND if the branch or file path does not exist.
+  rpc ReadFile (ReadFileRequest) returns (Blob);
+
+  // DeleteFile removes a file from the specified branch as a new commit and
+  // returns the deletion Commit entity.
+  // Error: NOT_FOUND if the branch or file path does not exist.
+  rpc DeleteFile (DeleteFileRequest) returns (Commit);
+
+  // ListDirectory returns immediate children at the given path on the branch.
+  // Error: NOT_FOUND if the branch or path does not exist.
+  rpc ListDirectory (ListDirectoryRequest) returns (ListDirectoryResponse);
+
+  // ── History ───────────────────────────────────────────────────────────────
+
+  // Log returns the commit history for the branch, newest first.
+  // Optionally filtered to a specific file path and capped by limit.
+  // Error: NOT_FOUND if the branch does not exist.
+  rpc Log (LogRequest) returns (LogResponse);
+
+  // Diff returns per-file change summaries between two refs.
+  // Refs may be branch IDs or commit SHAs.
+  // Error: NOT_FOUND if either ref cannot be resolved.
+  rpc Diff (DiffRequest) returns (DiffResponse);
+}
+
+// ── Request / Response Messages ───────────────────────────────────────────────
+
+// Repository lifecycle
+
+message InitRepoRequest {
+  string name           = 1;
+  string description    = 2;
+  string default_branch = 3;
+}
+
+message GetRepositoryRequest {}
+
+message DeleteRepoRequest {}
+message DeleteRepoResponse {}
+
+message PurgeRepoRequest {}
+message PurgeRepoResponse {}
+
+// Branch management
+
+message CreateBranchRequest {
+  string name           = 1;
+  string from_branch_id = 2;
+}
+
+message GetBranchRequest {
+  string branch_id = 1;
+}
+
+message ListBranchesRequest {}
+message ListBranchesResponse {
+  repeated Branch branches = 1;
+}
+
+message DeleteBranchRequest {
+  string branch_id = 1;
+}
+message DeleteBranchResponse {}
+
+message MergeBranchRequest {
+  string branch_id = 1;
+}
+
+// Tag management
+
+message CreateTagRequest {
+  string name        = 1;
+  string commit_id   = 2;
+  string message     = 3;
+  string tagger_name = 4;
+}
+
+message GetTagRequest {
+  string tag_id = 1;
+}
+
+message ListTagsRequest {}
+message ListTagsResponse {
+  repeated Tag tags = 1;
+}
+
+message DeleteTagRequest {
+  string tag_id = 1;
+}
+message DeleteTagResponse {}
+
+// File operations
+
+message WriteFileRequest {
+  string branch_id    = 1;
+  string path         = 2;
+  string content      = 3;
+  string encoding     = 4;
+  string author_name  = 5;
+  string author_email = 6;
+  string message      = 7;
+}
+
+message ReadFileRequest {
+  string branch_id = 1;
+  string path      = 2;
+}
+
+message DeleteFileRequest {
+  string branch_id    = 1;
+  string path         = 2;
+  string author_name  = 3;
+  string author_email = 4;
+  string message      = 5;
+}
+
+message ListDirectoryRequest {
+  string branch_id = 1;
+  string path      = 2;
+}
+message ListDirectoryResponse {
+  repeated FileEntry entries = 1;
+}
+
+// History
+
+message LogRequest {
+  string branch_id = 1;
+  string path      = 2;
+  int32  limit     = 3;
+}
+message LogResponse {
+  repeated CommitEntry commits = 1;
 }
 
 message DiffRequest {
-  string agency_id = 1;
-  string from_ref  = 2;
-  string to_ref    = 3;
+  string from_ref = 1;
+  string to_ref   = 2;
 }
 message DiffResponse {
   repeated FileDiff diffs = 1;
-}
-
-message FileDiff {
-  string path      = 1;
-  string operation = 2; // "add" | "modify" | "delete"
-  string patch     = 3;
 }

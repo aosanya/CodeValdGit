@@ -12,12 +12,37 @@
 //   - All edges                → "git_relationships" edge collection
 package codevaldgit
 
-// Repository is the root entity for a per-agency Git repository.
-// One Repository entity exists per agency. Sub-resources (Branches, Tags,
+// Agency is the root entity for an agency in CodeValdGit.
+// Each agency may own one or more [Repository] entities linked via
+// has_repository edges in the entity graph.
+type Agency struct {
+	// ID is the unique entitygraph identifier for this agency.
+	ID string `json:"id"`
+
+	// Name is the human-readable agency label.
+	Name string `json:"name"`
+
+	// Description is an optional free-text description of the agency.
+	Description string `json:"description,omitempty"`
+
+	// CreatedAt is the ISO 8601 timestamp when the agency was created.
+	CreatedAt string `json:"created_at"`
+
+	// UpdatedAt is the ISO 8601 timestamp when the agency was last modified.
+	UpdatedAt string `json:"updated_at"`
+}
+
+// Repository is a versioned codebase owned by an [Agency].
+// An agency can have multiple repositories; each is linked to its owning
+// agency via a belongs_to_agency edge. Sub-resources (Branches, Tags,
 // Commits) are separate entities linked via edges in the entity graph.
 type Repository struct {
 	// ID is the unique entitygraph identifier for this repository.
 	ID string `json:"id"`
+
+	// AgencyID is the entitygraph ID of the owning Agency, resolved from
+	// the belongs_to_agency edge.
+	AgencyID string `json:"agency_id"`
 
 	// Name is the human-readable label, typically the agency ID used as the repo key.
 	Name string `json:"name"`

@@ -6,8 +6,8 @@ option go_package = "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codeva
 
 // MergeConflictInfo is packed into a google.rpc.Status detail field
 // when MergeBranch returns codes.Aborted due to a content conflict.
-// Clients unpack this from status.Details() to get the file list.
+// Clients unpack this from status.Details() to get the conflicting file list.
 message MergeConflictInfo {
-  string          task_id           = 1;
+  string          branch_id         = 1;
   repeated string conflicting_files = 2;
 }

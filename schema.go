@@ -4,8 +4,10 @@
 // for CodeValdGit. cmd/main.go seeds this schema idempotently on startup via
 // GitSchemaManager.SetSchema.
 //
-// The schema declares six TypeDefinitions:
-//   - Repository — root entity; one per agency (mutable)
+// The schema declares seven TypeDefinitions:
+//   - Agency     — root entity; one per agency ID (mutable)
+//   - Repository — a versioned codebase owned by an Agency; an Agency can
+//     have multiple Repositories (mutable)
 //   - Branch     — named ref pointing to a Commit; owns the branch lifecycle (mutable)
 //   - Tag        — immutable named ref pointing to a Commit (immutable)
 //   - Commit     — immutable snapshot with author, message, and pointer to a Tree (immutable)
@@ -14,23 +16,24 @@
 //
 // Graph topology:
 //
-//	Repository ──has_branch──► Branch ──points_to──► Commit ──has_tree──► Tree ──has_blob──► Blob
-//	           ──has_tag─────► Tag    ──points_to──► Commit              ──has_subtree──► Tree
-//	           ──has_commit──► Commit ──has_parent──► Commit
+//	Agency ──has_repository──► Repository ──has_branch──► Branch ──points_to──► Commit ──has_tree──► Tree ──has_blob──► Blob
+//	                                       ──has_tag─────► Tag    ──points_to──► Commit              ──has_subtree──► Tree
+//	                                       ──has_commit──► Commit ──has_parent──► Commit
 //
 // Storage:
-//   - Repository, Branch, Tag → "git_entities" document collection (mutable refs / live state)
-//   - Commit, Tree, Blob      → "git_objects" document collection (immutable, content-addressed by SHA)
-//   - All edges               → "git_relationships" edge collection
+//   - Agency, Repository, Branch, Tag → "git_entities" document collection (mutable refs / live state)
+//   - Commit, Tree, Blob              → "git_objects" document collection (immutable, content-addressed by SHA)
+//   - All edges                       → "git_relationships" edge collection
 //
 // Inverse relationships auto-created by [entitygraph.DataManager.CreateRelationship]:
 //
-//	Branch  ──belongs_to_repository──► Repository
-//	Tag     ──belongs_to_repository──► Repository
-//	Commit  ──belongs_to_repository──► Repository
-//	Tree    ──belongs_to_commit──────► Commit
-//	Blob    ──belongs_to_tree────────► Tree
-//	Tree    ──belongs_to_tree────────► Tree   (subtree inverse)
+//	Repository ──belongs_to_agency──────► Agency
+//	Branch     ──belongs_to_repository──► Repository
+//	Tag        ──belongs_to_repository──► Repository
+//	Commit     ──belongs_to_repository──► Repository
+//	Tree       ──belongs_to_commit──────► Commit
+//	Blob       ──belongs_to_tree────────► Tree
+//	Tree       ──belongs_to_tree────────► Tree   (subtree inverse)
 package codevaldgit
 
 import "github.com/aosanya/CodeValdSharedLib/types"
@@ -49,6 +52,32 @@ func DefaultGitSchema() types.Schema {
 		Tag:     "v1",
 		Types: []types.TypeDefinition{
 			{
+				Name:              "Agency",
+				DisplayName:       "Agency",
+				PathSegment:       "agencies",
+				EntityIDParam:     "agencyId",
+				StorageCollection: "git_entities",
+				Properties: []types.PropertyDefinition{
+					// name is the human-readable label for the agency.
+					{Name: "name", Type: types.PropertyTypeString, Required: true},
+					{Name: "description", Type: types.PropertyTypeString},
+					{Name: "created_at", Type: types.PropertyTypeString},
+					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
+				Relationships: []types.RelationshipDefinition{
+					// has_repository links the agency to all of its repositories.
+					// An agency may own zero or more repositories.
+					{
+						Name:        "has_repository",
+						Label:       "Repositories",
+						PathSegment: "repositories",
+						ToType:      "Repository",
+						ToMany:      true,
+						Inverse:     "belongs_to_agency",
+					},
+				},
+			},
+			{
 				Name:              "Repository",
 				DisplayName:       "Repository",
 				PathSegment:       "repositories",
@@ -64,6 +93,16 @@ func DefaultGitSchema() types.Schema {
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 				Relationships: []types.RelationshipDefinition{
+					// belongs_to_agency is the agency that owns this repository.
+					{
+						Name:        "belongs_to_agency",
+						Label:       "Agency",
+						PathSegment: "agency",
+						ToType:      "Agency",
+						ToMany:      false,
+						Required:    true,
+						Inverse:     "has_repository",
+					},
 					{
 						Name:        "has_branch",
 						Label:       "Branches",

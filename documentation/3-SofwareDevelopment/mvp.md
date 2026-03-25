@@ -133,7 +133,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-003 — Proto & Codegen
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-003: Update proto (`service.proto`) — `GitService` RPCs aligned to flat `GitManager`; regenerate Go stubs | 📋 Not Started | GIT-002 |
+| GIT-003: Update proto (`service.proto`) — `GitService` RPCs aligned to flat `GitManager`; regenerate Go stubs | � In Progress | GIT-002 |
 
 ### GIT-004 — ArangoDB entitygraph Backend
 | Task | Status | Depends On |
