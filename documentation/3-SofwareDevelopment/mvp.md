@@ -60,7 +60,7 @@ git branch -d feature/MVP-GIT-XXX_description
 
 ## P0: Foundation (CRITICAL)
 
-*~~MVP-GIT-001~~ ✅ and ~~MVP-GIT-002~~ ✅ complete — see `mvp_done.md`.*
+*~~GIT-001~~ ✅ and ~~GIT-002~~ ✅ complete — see `mvp_done.md`.*
 
 ---
 
@@ -128,7 +128,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-002 — Flat `GitManager` Interface
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-002: Flat `GitManager` interface (`git.go`) — replaces nested `RepoManager`+`Repo`+`Backend` | � In Progress | GIT-001 |
+| GIT-002: Flat `GitManager` interface (`git.go`) — replaces nested `RepoManager`+`Repo`+`Backend` | ✅ Done | GIT-001 |
 
 ### GIT-003 — Proto & Codegen
 | Task | Status | Depends On |
