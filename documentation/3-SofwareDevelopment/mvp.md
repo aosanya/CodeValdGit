@@ -163,7 +163,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-009 — cmd/main.go
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-009: `cmd/main.go` — cmux wiring, ArangoDB backend, schema seed | 📋 Not Started | GIT-004, GIT-006, GIT-007, GIT-008 |
+| GIT-009: `cmd/main.go` — cmux wiring, ArangoDB backend, schema seed | 📋 Not Started | ~~GIT-004~~ ✅, GIT-006, GIT-007, GIT-008 |
 
 ### GIT-010 — Unit & Integration Tests
 | Task | Status | Depends On |
