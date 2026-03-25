@@ -119,7 +119,7 @@ See [CodeValdSharedLib mvp.md](../../../CodeValdSharedLib/documentation/3-Sofwar
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-001: Pre-delivered schema (`schema.go`) + domain value types (`models.go`) — `Repository`, `Branch`, `Commit`, `Tag`, `Tree`, `Blob` TypeDefinitions | 🚀 In Progress | — |
+| GIT-001: Pre-delivered schema (`schema.go`) + domain value types (`models.go`) — `Repository`, `Branch`, `Commit`, `Tag`, `Tree`, `Blob` TypeDefinitions | ✅ Done | — |
 
 **Scope**: Create `schema.go` (exposes `DefaultGitSchema()` seeded on startup) and
 `models.go` (Go value types mirroring the TypeDefinitions). Foundation for the entire v2
