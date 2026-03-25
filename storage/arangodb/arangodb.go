@@ -21,13 +21,13 @@
 package arangodb
 
 import (
-"fmt"
+	"fmt"
 
-driver "github.com/arangodb/go-driver"
+	driver "github.com/arangodb/go-driver"
 
-"github.com/aosanya/CodeValdSharedLib/entitygraph"
-sharedadb "github.com/aosanya/CodeValdSharedLib/entitygraph/arangodb"
-"github.com/aosanya/CodeValdSharedLib/types"
+	"github.com/aosanya/CodeValdSharedLib/entitygraph"
+	sharedadb "github.com/aosanya/CodeValdSharedLib/entitygraph/arangodb"
+	"github.com/aosanya/CodeValdSharedLib/types"
 )
 
 // Backend is a type alias for the shared ArangoDB Backend.
@@ -45,48 +45,48 @@ type Config = sharedadb.ConnConfig
 // which dials the server. New and NewBackendFromDB receive an already-open
 // database and do not use the Database field.
 func toSharedConfig(cfg Config) sharedadb.Config {
-return sharedadb.Config{
-Endpoint:            cfg.Endpoint,
-Username:            cfg.Username,
-Password:            cfg.Password,
-Database:            cfg.Database,
-Schema:              cfg.Schema,
-EntityCollection:    "git_entities",
-RelCollection:       "git_relationships",
-SchemasDraftCol:     "git_schemas_draft",
-SchemasPublishedCol: "git_schemas_published",
-GraphName:           "git_graph",
-}
+	return sharedadb.Config{
+		Endpoint:            cfg.Endpoint,
+		Username:            cfg.Username,
+		Password:            cfg.Password,
+		Database:            cfg.Database,
+		Schema:              cfg.Schema,
+		EntityCollection:    "git_entities",
+		RelCollection:       "git_relationships",
+		SchemasDraftCol:     "git_schemas_draft",
+		SchemasPublishedCol: "git_schemas_published",
+		GraphName:           "git_graph",
+	}
 }
 
 // New constructs a Backend from an already-open driver.Database using the
 // provided schema, ensures all collections and the named graph exist, and
 // returns the Backend as both a DataManager and a SchemaManager.
 func New(db driver.Database, schema types.Schema) (entitygraph.DataManager, entitygraph.SchemaManager, error) {
-if db == nil {
-return nil, nil, fmt.Errorf("arangodb: New: database must not be nil")
-}
-scfg := toSharedConfig(Config{Schema: schema})
-return sharedadb.New(db, scfg)
+	if db == nil {
+		return nil, nil, fmt.Errorf("arangodb: New: database must not be nil")
+	}
+	scfg := toSharedConfig(Config{Schema: schema})
+	return sharedadb.New(db, scfg)
 }
 
 // NewBackend connects to ArangoDB using cfg, ensures all collections exist,
 // and returns a ready-to-use Backend. cfg.Database is required.
 func NewBackend(cfg Config) (*Backend, error) {
-if cfg.Database == "" {
-return nil, fmt.Errorf("arangodb: NewBackend: Database must be set (e.g. \"codevaldgit\")")
-}
-scfg := toSharedConfig(cfg)
-return sharedadb.NewBackend(scfg)
+	if cfg.Database == "" {
+		return nil, fmt.Errorf("arangodb: NewBackend: Database must be set (e.g. \"codevaldgit\")")
+	}
+	scfg := toSharedConfig(cfg)
+	return sharedadb.NewBackend(scfg)
 }
 
 // NewBackendFromDB constructs a Backend from an already-open driver.Database
 // using the provided schema. Intended for tests that manage their own database
 // lifecycle.
 func NewBackendFromDB(db driver.Database, schema types.Schema) (*Backend, error) {
-if db == nil {
-return nil, fmt.Errorf("arangodb: NewBackendFromDB: database must not be nil")
-}
-scfg := toSharedConfig(Config{Schema: schema})
-return sharedadb.NewBackendFromDB(db, scfg)
+	if db == nil {
+		return nil, fmt.Errorf("arangodb: NewBackendFromDB: database must not be nil")
+	}
+	scfg := toSharedConfig(Config{Schema: schema})
+	return sharedadb.NewBackendFromDB(db, scfg)
 }

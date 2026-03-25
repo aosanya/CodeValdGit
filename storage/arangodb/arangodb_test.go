@@ -1,51 +1,57 @@
+// Package arangodb_test provides integration tests for the CodeValdGit
+// ArangoDB backend.
+//
+// Tests in this file require a running ArangoDB instance. They connect to a
+// single persistent database (GIT_ARANGO_DATABASE_TEST, default
+// "codevald_tests") and use unique agency IDs per test for isolation.
+//
+// Tests are skipped automatically when GIT_ARANGO_ENDPOINT is not set or
+// the server is unreachable.
+//
+// To run:
+//
+//	GIT_ARANGO_ENDPOINT=http://localhost:8529 go test -v -race ./storage/arangodb/
 package arangodb_test
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	driver "github.com/arangodb/go-driver"
 	driverhttp "github.com/arangodb/go-driver/http"
-	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	gitindex "github.com/go-git/go-git/v5/plumbing/format/index"
-	"github.com/go-git/go-git/v5/plumbing/object"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	"github.com/aosanya/CodeValdGit/storage/arangodb"
+	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
 
-// ─── test helpers ─────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-// openTestDB connects to the ArangoDB instance at GIT_ARANGO_ENDPOINT
-// (default http://localhost:8529) and opens GIT_ARANGO_DATABASE_TEST
-// (default codevald_tests). Skips the test if the server is unreachable.
+// openTestDB connects to the ArangoDB instance at GIT_ARANGO_ENDPOINT and
+// returns the test database. Skips the calling test if the server is
+// unreachable or GIT_ARANGO_ENDPOINT is unset.
 func openTestDB(t *testing.T) driver.Database {
 	t.Helper()
-	url := os.Getenv("GIT_ARANGO_ENDPOINT")
-	if url == "" {
-		url = "http://localhost:8529"
+
+	endpoint := os.Getenv("GIT_ARANGO_ENDPOINT")
+	if endpoint == "" {
+		t.Skip("GIT_ARANGO_ENDPOINT not set — skipping ArangoDB integration tests")
 	}
 
 	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
-		Endpoints: []string{url},
+		Endpoints: []string{endpoint},
 	})
 	if err != nil {
-		t.Skipf("ArangoDB connection config error (GIT_ARANGO_ENDPOINT=%s): %v", url, err)
+		t.Skipf("ArangoDB connection config error: %v", err)
 	}
 
-	user := os.Getenv("GIT_ARANGO_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := envOrDefault("GIT_ARANGO_USER", "root")
 	pass := os.Getenv("GIT_ARANGO_PASSWORD")
 
-	cl, err := driver.NewClient(driver.ClientConfig{
+	client, err := driver.NewClient(driver.ClientConfig{
 		Connection:     conn,
 		Authentication: driver.BasicAuthentication(user, pass),
 	})
@@ -56,24 +62,21 @@ func openTestDB(t *testing.T) driver.Database {
 	// Quick ping — skip if unreachable (CI without ArangoDB).
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if _, err := cl.Version(ctx); err != nil {
-		t.Skipf("ArangoDB unreachable at %s: %v", url, err)
+	if _, err := client.Version(ctx); err != nil {
+		t.Skipf("ArangoDB unreachable at %s: %v", endpoint, err)
 	}
 
-	dbName := os.Getenv("GIT_ARANGO_DATABASE_TEST")
-	if dbName == "" {
-		dbName = "codevald_tests"
-	}
+	dbName := envOrDefault("GIT_ARANGO_DATABASE_TEST", "codevald_tests")
 	ctx2 := context.Background()
-	exists, err := cl.DatabaseExists(ctx2, dbName)
+	exists, err := client.DatabaseExists(ctx2, dbName)
 	if err != nil {
 		t.Fatalf("DatabaseExists: %v", err)
 	}
 	var db driver.Database
 	if exists {
-		db, err = cl.Database(ctx2, dbName)
+		db, err = client.Database(ctx2, dbName)
 	} else {
-		db, err = cl.CreateDatabase(ctx2, dbName, nil)
+		db, err = client.CreateDatabase(ctx2, dbName, nil)
 	}
 	if err != nil {
 		t.Fatalf("open/create test database %q: %v", dbName, err)
@@ -81,428 +84,320 @@ func openTestDB(t *testing.T) driver.Database {
 	return db
 }
 
-// uniqueAgency returns a unique agency ID for test isolation.
-func uniqueAgency(prefix string) string {
-	return prefix + "-" + time.Now().Format("20060102T150405.000000")
-}
-
-// newTestBackend creates an ArangoBackend wrapping an already-open database.
-func newTestBackend(t *testing.T, db driver.Database) codevaldgit.Backend {
+// openTestBackend constructs a Backend from the test database using
+// DefaultGitSchema.
+func openTestBackend(t *testing.T) *arangodb.Backend {
 	t.Helper()
-	b, err := arangodb.NewArangoBackendFromDB(db)
+	db := openTestDB(t)
+	b, err := arangodb.NewBackendFromDB(db, codevaldgit.DefaultGitSchema())
 	if err != nil {
-		t.Fatalf("NewArangoBackendFromDB: %v", err)
+		t.Fatalf("NewBackendFromDB: %v", err)
 	}
 	return b
 }
 
-// ─── Backend-level tests ───────────────────────────────────────────────────────
+// uniqueID returns a string that is unique within the current test run.
+func uniqueID(prefix string) string {
+	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+}
 
-// TestArangoBackend_NilDatabase verifies that NewArangoBackend returns an error
-// when Database is nil (does not require a live server).
-func TestArangoBackend_NilDatabase(t *testing.T) {
-	_, err := arangodb.NewArangoBackendFromDB(nil)
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// ── No-connection constructor tests ───────────────────────────────────────────
+
+// TestNewBackend_EmptyDatabase verifies that NewBackend returns an error when
+// Database is empty — this requires no live ArangoDB connection.
+func TestNewBackend_EmptyDatabase(t *testing.T) {
+	_, err := arangodb.NewBackend(arangodb.Config{})
+	if err == nil {
+		t.Fatal("expected error for empty Database, got nil")
+	}
+}
+
+// TestNewBackendFromDB_Nil verifies that NewBackendFromDB returns an error
+// when db is nil — this requires no live ArangoDB connection.
+func TestNewBackendFromDB_Nil(t *testing.T) {
+	_, err := arangodb.NewBackendFromDB(nil, codevaldgit.DefaultGitSchema())
 	if err == nil {
 		t.Fatal("expected error for nil database, got nil")
 	}
 }
 
-// TestArangoStorage_SetGet stores a blob and retrieves it by hash.
-func TestArangoStorage_SetGet(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("setget")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
-
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, _, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	// Create a blob manually and store it.
-	obj := s.NewEncodedObject()
-	obj.SetType(plumbing.BlobObject)
-	w, _ := obj.Writer()
-	w.Write([]byte("hello arango"))
-	w.Close()
-
-	hash, err := s.SetEncodedObject(obj)
-	if err != nil {
-		t.Fatalf("SetEncodedObject: %v", err)
-	}
-
-	got, err := s.EncodedObject(plumbing.BlobObject, hash)
-	if err != nil {
-		t.Fatalf("EncodedObject: %v", err)
-	}
-	r, _ := got.Reader()
-	defer r.Close()
-	buf := make([]byte, 64)
-	n, _ := r.Read(buf)
-	if string(buf[:n]) != "hello arango" {
-		t.Errorf("content = %q, want %q", string(buf[:n]), "hello arango")
+// TestNew_NilDB verifies that New returns an error when db is nil.
+func TestNew_NilDB(t *testing.T) {
+	_, _, err := arangodb.New(nil, codevaldgit.DefaultGitSchema())
+	if err == nil {
+		t.Fatal("expected error for nil database, got nil")
 	}
 }
 
-// TestArangoStorage_Idempotent verifies that storing the same object twice
-// returns the same hash without error.
-func TestArangoStorage_Idempotent(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("idempotent")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
+// ── Integration tests (require GIT_ARANGO_ENDPOINT) ──────────────────────────
 
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, _, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	obj := s.NewEncodedObject()
-	obj.SetType(plumbing.BlobObject)
-	w, _ := obj.Writer()
-	w.Write([]byte("idempotent content"))
-	w.Close()
-
-	h1, err := s.SetEncodedObject(obj)
-	if err != nil {
-		t.Fatalf("first SetEncodedObject: %v", err)
-	}
-	h2, err := s.SetEncodedObject(obj)
-	if err != nil {
-		t.Fatalf("second SetEncodedObject: %v", err)
-	}
-	if h1 != h2 {
-		t.Errorf("hashes differ: %s != %s", h1, h2)
+// TestNewBackendFromDB_ConstructsBackend verifies that NewBackendFromDB succeeds
+// with a live ArangoDB connection and the default schema.
+func TestNewBackendFromDB_ConstructsBackend(t *testing.T) {
+	b := openTestBackend(t) // skips if no ArangoDB
+	if b == nil {
+		t.Fatal("expected non-nil backend")
 	}
 }
 
-// TestArangoStorage_RefLifecycle exercises set / read / update / remove on a ref.
-func TestArangoStorage_RefLifecycle(t *testing.T) {
+// TestNew_ConstructsDataManagerAndSchemaManager verifies that New returns a
+// usable DataManager and SchemaManager pair.
+func TestNew_ConstructsDataManagerAndSchemaManager(t *testing.T) {
 	db := openTestDB(t)
-	agency := uniqueAgency("reflife")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
-
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, _, err := b.OpenStorer(ctx, agency)
+	dm, sm, err := arangodb.New(db, codevaldgit.DefaultGitSchema())
 	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
+		t.Fatalf("New: %v", err)
 	}
-
-	hash1 := plumbing.NewHash("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-	hash2 := plumbing.NewHash("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-	name := plumbing.NewBranchReferenceName("test-lifecycle")
-
-	// Set.
-	ref1 := plumbing.NewHashReference(name, hash1)
-	if err := s.SetReference(ref1); err != nil {
-		t.Fatalf("SetReference: %v", err)
+	if dm == nil {
+		t.Fatal("DataManager must not be nil")
 	}
-	got, err := s.Reference(name)
-	if err != nil {
-		t.Fatalf("Reference: %v", err)
-	}
-	if got.Hash() != hash1 {
-		t.Errorf("hash = %s, want %s", got.Hash(), hash1)
-	}
-
-	// Update.
-	ref2 := plumbing.NewHashReference(name, hash2)
-	if err := s.SetReference(ref2); err != nil {
-		t.Fatalf("SetReference (update): %v", err)
-	}
-	got2, err := s.Reference(name)
-	if err != nil {
-		t.Fatalf("Reference after update: %v", err)
-	}
-	if got2.Hash() != hash2 {
-		t.Errorf("updated hash = %s, want %s", got2.Hash(), hash2)
-	}
-
-	// Remove.
-	if err := s.RemoveReference(name); err != nil {
-		t.Fatalf("RemoveReference: %v", err)
-	}
-	if _, err := s.Reference(name); err != plumbing.ErrReferenceNotFound {
-		t.Errorf("after remove: got %v, want ErrReferenceNotFound", err)
+	if sm == nil {
+		t.Fatal("SchemaManager must not be nil")
 	}
 }
 
-// TestArangoStorage_Index writes and reads the staging index.
-func TestArangoStorage_Index(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("index")
-	b := newTestBackend(t, db)
+// TestDataManager_RepositoryEntityLifecycle exercises create / get / update /
+// delete round-trip for a "Repository" entity in git_entities.
+func TestDataManager_RepositoryEntityLifecycle(t *testing.T) {
+	b := openTestBackend(t)
 	ctx := context.Background()
 
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
+	agencyID := uniqueID("agency")
 
-	s, _, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	// Empty index on fresh repo.
-	idx0, err := s.Index()
-	if err != nil {
-		t.Fatalf("Index (empty): %v", err)
-	}
-	if len(idx0.Entries) != 0 {
-		t.Errorf("expected empty index, got %d entries", len(idx0.Entries))
-	}
-
-	// Write an index with one entry.
-	idx1 := &gitindex.Index{Version: 2}
-	idx1.Entries = append(idx1.Entries, &gitindex.Entry{
-		Name: "README.md",
-		Hash: plumbing.NewHash("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	})
-	if err := s.SetIndex(idx1); err != nil {
-		t.Fatalf("SetIndex: %v", err)
-	}
-
-	got, err := s.Index()
-	if err != nil {
-		t.Fatalf("Index (after set): %v", err)
-	}
-	if len(got.Entries) != 1 {
-		t.Fatalf("expected 1 entry, got %d", len(got.Entries))
-	}
-	if got.Entries[0].Name != "README.md" {
-		t.Errorf("entry name = %q, want %q", got.Entries[0].Name, "README.md")
-	}
-}
-
-// TestArangoStorage_Config writes and reads the repo config.
-func TestArangoStorage_Config(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("config")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
-
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, _, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	cfg := config.NewConfig()
-	cfg.Core.IsBare = false
-	if err := s.SetConfig(cfg); err != nil {
-		t.Fatalf("SetConfig: %v", err)
-	}
-
-	got, err := s.Config()
-	if err != nil {
-		t.Fatalf("Config: %v", err)
-	}
-	if got.Core.IsBare != false {
-		t.Error("Config.Core.IsBare should be false")
-	}
-}
-
-// TestArangoStorage_Concurrent writes 10 different objects concurrently and
-// verifies all are retrievable.
-func TestArangoStorage_Concurrent(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("concurrent")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
-
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, _, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	const n = 10
-	hashes := make([]plumbing.Hash, n)
-	errs := make([]error, n)
-	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			obj := s.NewEncodedObject()
-			obj.SetType(plumbing.BlobObject)
-			w, _ := obj.Writer()
-			w.Write([]byte("content-" + string(rune('a'+i))))
-			w.Close()
-			hashes[i], errs[i] = s.SetEncodedObject(obj)
-		}(i)
-	}
-	wg.Wait()
-
-	for i, err := range errs {
-		if err != nil {
-			t.Errorf("goroutine %d: %v", i, err)
-		}
-	}
-	for i, h := range hashes {
-		if _, err := s.EncodedObject(plumbing.BlobObject, h); err != nil {
-			t.Errorf("object %d (%s) not found: %v", i, h, err)
-		}
-	}
-}
-
-// TestArangoBackend_FullWorkflow runs a complete git workflow (init, branch,
-// commit, merge) through the ArangoDB backend to validate it end-to-end.
-func TestArangoBackend_FullWorkflow(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("fullwf")
-	b := newTestBackend(t, db)
-	ctx := context.Background()
-
-	// Init.
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
-	}
-	t.Cleanup(func() { b.PurgeRepo(context.Background(), agency) })
-
-	s, wt, err := b.OpenStorer(ctx, agency)
-	if err != nil {
-		t.Fatalf("OpenStorer: %v", err)
-	}
-
-	r, err := gogit.Open(s, wt)
-	if err != nil {
-		t.Fatalf("git.Open: %v", err)
-	}
-
-	// Create a task branch.
-	headRef, err := r.Head()
-	if err != nil {
-		t.Fatalf("Head: %v", err)
-	}
-	taskBranch := plumbing.NewBranchReferenceName("task/wf-001")
-	taskRef := plumbing.NewHashReference(taskBranch, headRef.Hash())
-	if err := r.Storer.SetReference(taskRef); err != nil {
-		t.Fatalf("SetReference task branch: %v", err)
-	}
-
-	// Commit a file on the task branch via worktree checkout.
-	worktree, err := r.Worktree()
-	if err != nil {
-		t.Fatalf("Worktree: %v", err)
-	}
-	if err := worktree.Checkout(&gogit.CheckoutOptions{
-		Branch: taskBranch,
-		Create: false,
-	}); err != nil {
-		t.Fatalf("Checkout task branch: %v", err)
-	}
-
-	f, err := wt.Create("output.md")
-	if err != nil {
-		t.Fatalf("Create file: %v", err)
-	}
-	f.Write([]byte("# Output"))
-	f.Close()
-
-	if _, err := worktree.Add("output.md"); err != nil {
-		t.Fatalf("Add: %v", err)
-	}
-	commitHash, err := worktree.Commit("add output.md", &gogit.CommitOptions{
-		Author: &object.Signature{
-			Name:  "agent-1",
-			Email: "agent@codevaldgit",
-			When:  time.Now(),
+	// CreateEntity
+	created, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+		Properties: map[string]any{
+			"name":           "my-repo",
+			"default_branch": "main",
+			"description":    "Test repository",
+			"created_at":     time.Now().UTC().Format(time.RFC3339),
+			"updated_at":     time.Now().UTC().Format(time.RFC3339),
 		},
 	})
 	if err != nil {
-		t.Fatalf("Commit: %v", err)
+		t.Fatalf("CreateEntity (Repository): %v", err)
+	}
+	if created.ID == "" {
+		t.Fatal("expected non-empty entity ID")
+	}
+	if created.TypeID != "Repository" {
+		t.Errorf("TypeID: want %q, got %q", "Repository", created.TypeID)
 	}
 
-	// Verify the commit exists.
-	commit, err := r.CommitObject(commitHash)
+	// GetEntity
+	got, err := b.GetEntity(ctx, agencyID, created.ID)
 	if err != nil {
-		t.Fatalf("CommitObject: %v", err)
+		t.Fatalf("GetEntity: %v", err)
 	}
-	if commit.Message != "add output.md" {
-		t.Errorf("commit message = %q, want %q", commit.Message, "add output.md")
-	}
-
-	// Fast-forward main to the task branch commit.
-	mainRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), commitHash)
-	if err := r.Storer.SetReference(mainRef); err != nil {
-		t.Fatalf("fast-forward main: %v", err)
+	if got.Properties["name"] != "my-repo" {
+		t.Errorf("name: want %q, got %v", "my-repo", got.Properties["name"])
 	}
 
-	// Verify main now points to the commit.
-	main, err := r.Storer.Reference(plumbing.NewBranchReferenceName("main"))
+	// UpdateEntity — patch default_branch
+	updated, err := b.UpdateEntity(ctx, agencyID, created.ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{"default_branch": "develop"},
+	})
 	if err != nil {
-		t.Fatalf("Reference(main): %v", err)
+		t.Fatalf("UpdateEntity: %v", err)
 	}
-	if main.Hash() != commitHash {
-		t.Errorf("main hash = %s, want %s", main.Hash(), commitHash)
+	if updated.Properties["default_branch"] != "develop" {
+		t.Errorf("default_branch: want %q, got %v", "develop", updated.Properties["default_branch"])
+	}
+
+	// ListEntities
+	list, err := b.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		t.Fatalf("ListEntities: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 entity, got %d", len(list))
+	}
+
+	// DeleteEntity (soft delete)
+	if err := b.DeleteEntity(ctx, agencyID, created.ID); err != nil {
+		t.Fatalf("DeleteEntity: %v", err)
+	}
+	// After soft-delete, ListEntities excludes it.
+	list2, err := b.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		t.Fatalf("ListEntities after delete: %v", err)
+	}
+	if len(list2) != 0 {
+		t.Errorf("expected 0 entities after delete, got %d", len(list2))
 	}
 }
 
-// TestArangoStorage_ConnectionError verifies that using a backend constructed
-// with a nil database returns errors, not panics.
-func TestArangoStorage_ConnectionError(t *testing.T) {
-	_, err := arangodb.NewArangoBackendFromDB(nil)
-	if err == nil {
-		t.Fatal("expected error for nil database, got nil")
-	}
-	// Should describe the problem clearly.
-	if err.Error() == "" {
-		t.Error("error message is empty")
-	}
-}
-
-// TestArangoBackend_DeleteAndPurge exercises the DeleteRepo/PurgeRepo lifecycle.
-func TestArangoBackend_DeleteAndPurge(t *testing.T) {
-	db := openTestDB(t)
-	agency := uniqueAgency("delpurge")
-	b := newTestBackend(t, db)
+// TestDataManager_CommitEntityImmutable verifies that UpdateEntity returns
+// ErrImmutableType for the "Commit" TypeDefinition (Immutable: true).
+func TestDataManager_CommitEntityImmutable(t *testing.T) {
+	b := openTestBackend(t)
 	ctx := context.Background()
 
-	if err := b.InitRepo(ctx, agency); err != nil {
-		t.Fatalf("InitRepo: %v", err)
+	agencyID := uniqueID("agency")
+
+	created, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: agencyID,
+		TypeID:   "Commit",
+		Properties: map[string]any{
+			"sha":        "abc123def456abc123def456abc123def456abc1",
+			"message":    "Initial commit",
+			"created_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntity (Commit): %v", err)
 	}
 
-	// DeleteRepo — must succeed.
-	if err := b.DeleteRepo(ctx, agency); err != nil {
-		t.Fatalf("DeleteRepo: %v", err)
-	}
-
-	// PurgeRepo — must succeed (purges even soft-deleted docs).
-	if err := b.PurgeRepo(ctx, agency); err != nil {
-		t.Fatalf("PurgeRepo: %v", err)
-	}
-
-	// After purge, OpenStorer must return ErrRepoNotFound.
-	_, _, err := b.OpenStorer(ctx, agency)
+	_, err = b.UpdateEntity(ctx, agencyID, created.ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{"message": "tampered"},
+	})
 	if err == nil {
-		t.Fatal("expected ErrRepoNotFound after purge, got nil")
+		t.Fatal("expected ErrImmutableType for Commit, got nil")
 	}
 }
 
-// Ensure driverhttp import doesn't get stripped.
-var _ = http.DefaultClient
+// TestDataManager_BlobEntityImmutable verifies that UpdateEntity returns
+// ErrImmutableType for the "Blob" TypeDefinition (Immutable: true).
+func TestDataManager_BlobEntityImmutable(t *testing.T) {
+	b := openTestBackend(t)
+	ctx := context.Background()
+
+	agencyID := uniqueID("agency")
+
+	created, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: agencyID,
+		TypeID:   "Blob",
+		Properties: map[string]any{
+			"sha":        "aabbccddeeff00112233445566778899aabbccdd",
+			"path":       "README.md",
+			"content":    "# Hello",
+			"encoding":   "utf-8",
+			"created_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntity (Blob): %v", err)
+	}
+
+	_, err = b.UpdateEntity(ctx, agencyID, created.ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{"content": "tampered"},
+	})
+	if err == nil {
+		t.Fatal("expected ErrImmutableType for Blob, got nil")
+	}
+}
+
+// TestDataManager_AgencyToRepositoryRelationship verifies that a
+// has_repository edge can be created from an Agency entity to a Repository
+// entity, and retrieved via ListRelationships.
+func TestDataManager_AgencyToRepositoryRelationship(t *testing.T) {
+	b := openTestBackend(t)
+	ctx := context.Background()
+
+	agencyID := uniqueID("agency")
+
+	agency, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID:   agencyID,
+		TypeID:     "Agency",
+		Properties: map[string]any{"name": "acme", "created_at": time.Now().UTC().Format(time.RFC3339)},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntity (Agency): %v", err)
+	}
+
+	repo, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+		Properties: map[string]any{
+			"name":           "acme-repo",
+			"default_branch": "main",
+			"created_at":     time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntity (Repository): %v", err)
+	}
+
+	rel, err := b.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: agencyID,
+		Name:     "has_repository",
+		FromID:   agency.ID,
+		ToID:     repo.ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateRelationship (has_repository): %v", err)
+	}
+	if rel.ID == "" {
+		t.Fatal("expected non-empty relationship ID")
+	}
+
+	// Verify via GetRelationship.
+	got, err := b.GetRelationship(ctx, agencyID, rel.ID)
+	if err != nil {
+		t.Fatalf("GetRelationship: %v", err)
+	}
+	if got.Name != "has_repository" {
+		t.Errorf("Name: want %q, got %q", "has_repository", got.Name)
+	}
+	if got.FromID != agency.ID {
+		t.Errorf("FromID: want %q, got %q", agency.ID, got.FromID)
+	}
+	if got.ToID != repo.ID {
+		t.Errorf("ToID: want %q, got %q", repo.ID, got.ToID)
+	}
+
+	// DeleteRelationship.
+	if err := b.DeleteRelationship(ctx, agencyID, rel.ID); err != nil {
+		t.Fatalf("DeleteRelationship: %v", err)
+	}
+}
+
+// TestDataManager_BranchEntityInGitEntities verifies that a Branch entity is
+// stored in the git_entities collection (same StorageCollection as Agency and
+// Repository).
+func TestDataManager_BranchEntityInGitEntities(t *testing.T) {
+	b := openTestBackend(t)
+	ctx := context.Background()
+
+	agencyID := uniqueID("agency")
+
+	created, err := b.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: agencyID,
+		TypeID:   "Branch",
+		Properties: map[string]any{
+			"name":       "main",
+			"is_default": true,
+			"created_at": time.Now().UTC().Format(time.RFC3339),
+			"updated_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEntity (Branch): %v", err)
+	}
+	if created.TypeID != "Branch" {
+		t.Errorf("TypeID: want %q, got %q", "Branch", created.TypeID)
+	}
+
+	got, err := b.GetEntity(ctx, agencyID, created.ID)
+	if err != nil {
+		t.Fatalf("GetEntity: %v", err)
+	}
+	if got.Properties["name"] != "main" {
+		t.Errorf("name: want %q, got %v", "main", got.Properties["name"])
+	}
+}
