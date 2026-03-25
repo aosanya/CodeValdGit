@@ -25,3 +25,18 @@ var ErrFileNotFound = errors.New("file not found")
 // ErrRefNotFound is returned when a ref (branch name, tag name, or commit
 // SHA) cannot be resolved in the repository.
 var ErrRefNotFound = errors.New("ref not found (branch, tag, or SHA)")
+
+// ── v2 GitManager errors ──────────────────────────────────────────────────────
+
+// ErrRepoNotInitialised is returned by [GitManager] methods when no
+// Repository entity has been created yet for this agency. Call
+// [GitManager.InitRepo] first.
+var ErrRepoNotInitialised = errors.New("repository not initialised")
+
+// ErrTagAlreadyExists is returned by [GitManager.CreateTag] when a Tag
+// entity with the given name already exists in the repository.
+var ErrTagAlreadyExists = errors.New("tag already exists")
+
+// ErrTagNotFound is returned by [GitManager.GetTag] and [GitManager.DeleteTag]
+// when no Tag entity with the given ID exists.
+var ErrTagNotFound = errors.New("tag not found")

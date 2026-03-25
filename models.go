@@ -197,3 +197,104 @@ type Blob struct {
 	// CreatedAt is the ISO 8601 timestamp when the blob entity was persisted.
 	CreatedAt string `json:"created_at"`
 }
+
+// ── Request / filter types ────────────────────────────────────────────────────
+//
+// These value types are used as arguments to [GitManager] methods.
+// All fields are plain scalars; no pointers — use zero values to indicate
+// omission where noted in the field comments.
+
+// CreateRepoRequest carries the parameters for [GitManager.InitRepo].
+type CreateRepoRequest struct {
+	// Name is the human-readable label for the repository, typically the
+	// agency ID used as the repo key. Required.
+	Name string `json:"name"`
+
+	// Description is an optional free-text description of the repository.
+	Description string `json:"description,omitempty"`
+
+	// DefaultBranch is the name of the primary branch to create (e.g. "main").
+	// Defaults to "main" when empty.
+	DefaultBranch string `json:"default_branch,omitempty"`
+}
+
+// CreateBranchRequest carries the parameters for [GitManager.CreateBranch].
+type CreateBranchRequest struct {
+	// Name is the full branch name (e.g. "task/abc-001"). Required.
+	Name string `json:"name"`
+
+	// FromBranchID is the entitygraph ID of the source branch from which the
+	// new branch is created. When empty, the repository's default branch is used.
+	FromBranchID string `json:"from_branch_id,omitempty"`
+}
+
+// CreateTagRequest carries the parameters for [GitManager.CreateTag].
+type CreateTagRequest struct {
+	// Name is the human-readable tag label (e.g. "v1.0.0"). Required.
+	Name string `json:"name"`
+
+	// CommitID is the entitygraph ID of the [Commit] this tag points to. Required.
+	CommitID string `json:"commit_id"`
+
+	// Message is the annotation message for annotated tags. Empty for
+	// lightweight tags.
+	Message string `json:"message,omitempty"`
+
+	// TaggerName is the name of the person or agent creating the tag.
+	TaggerName string `json:"tagger_name,omitempty"`
+}
+
+// WriteFileRequest carries the parameters for [GitManager.WriteFile].
+type WriteFileRequest struct {
+	// BranchID is the entitygraph ID of the target [Branch]. Required.
+	BranchID string `json:"branch_id"`
+
+	// Path is the file path relative to the repository root (e.g.
+	// "output/report.md"). Required.
+	Path string `json:"path"`
+
+	// Content is the full file content to commit.
+	// Binary content must be base64-encoded and Encoding set to "base64".
+	Content string `json:"content"`
+
+	// Encoding is "utf-8" (default) or "base64" for binary content.
+	Encoding string `json:"encoding,omitempty"`
+
+	// AuthorName is the name or agent ID of the commit author.
+	AuthorName string `json:"author_name,omitempty"`
+
+	// AuthorEmail is the email address recorded in the Git commit.
+	AuthorEmail string `json:"author_email,omitempty"`
+
+	// Message is the commit message. Defaults to "Update {path}" when empty.
+	Message string `json:"message,omitempty"`
+}
+
+// DeleteFileRequest carries the parameters for [GitManager.DeleteFile].
+type DeleteFileRequest struct {
+	// BranchID is the entitygraph ID of the target [Branch]. Required.
+	BranchID string `json:"branch_id"`
+
+	// Path is the file path relative to the repository root. Required.
+	Path string `json:"path"`
+
+	// AuthorName is the name or agent ID recorded in the deletion commit.
+	AuthorName string `json:"author_name,omitempty"`
+
+	// AuthorEmail is the email address recorded in the deletion commit.
+	AuthorEmail string `json:"author_email,omitempty"`
+
+	// Message is the commit message. Defaults to "Delete {path}" when empty.
+	Message string `json:"message,omitempty"`
+}
+
+// LogFilter constrains the result set returned by [GitManager.Log].
+// All fields are optional; zero values mean "no constraint".
+type LogFilter struct {
+	// Path restricts the log to commits that modified the file at this path.
+	// Empty means return the full branch history.
+	Path string `json:"path,omitempty"`
+
+	// Limit caps the number of commits returned. 0 means no limit.
+	Limit int `json:"limit,omitempty"`
+}
