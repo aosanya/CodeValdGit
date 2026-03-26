@@ -1,24 +1,34 @@
 // Package registrar provides the CodeValdGit service registrar.
-// It wraps the shared-library heartbeat registrar so that cmd entry-points
-// stay focused on startup wiring and contain no route declarations.
-//
-// Construct via [New]; start heartbeats by calling Run in a goroutine; stop
-// by cancelling the context then calling Close.
+// It wraps the shared-library heartbeat registrar and additionally implements
+// [codevaldgit.CrossPublisher] so the [GitManager] can notify
+// CodeValdCross whenever a git lifecycle event occurs (repo created, branch
+// merged, conflict detected).
 package registrar
 
 import (
 	"context"
+	"log"
 	"time"
 
+	codevaldgit "github.com/aosanya/CodeValdGit"
 	sharedregistrar "github.com/aosanya/CodeValdSharedLib/registrar"
 	"github.com/aosanya/CodeValdSharedLib/types"
 )
 
-// Registrar sends periodic heartbeat registrations to CodeValdCross via the
-// shared-library registrar.
+// Registrar handles two responsibilities:
+//  1. Sending periodic heartbeat registrations to CodeValdCross via the
+//     shared-library registrar (Run / Close).
+//  2. Implementing [codevaldgit.CrossPublisher] so that GitManager can
+//     fire lifecycle events (e.g. "git.repo.created") on successful operations.
+//
+// Construct via [New]; start heartbeats by calling Run in a goroutine; stop
+// by cancelling the context then calling Close.
 type Registrar struct {
 	heartbeat sharedregistrar.Registrar
 }
+
+// Compile-time assertion that *Registrar implements codevaldgit.CrossPublisher.
+var _ codevaldgit.CrossPublisher = (*Registrar)(nil)
 
 // New constructs a Registrar that heartbeats to the CodeValdCross gRPC server
 // at crossAddr.
@@ -60,6 +70,17 @@ func (r *Registrar) Run(ctx context.Context) {
 // Call after the context passed to Run has been cancelled.
 func (r *Registrar) Close() {
 	r.heartbeat.Close()
+}
+
+// Publish implements [codevaldgit.CrossPublisher].
+// It fires a best-effort notification for the given topic and agencyID.
+// Currently logs the event; a future iteration will call a Cross Publish RPC
+// once CodeValdCross exposes one. Errors are always nil — the git operation
+// has already been persisted and must not be rolled back.
+func (r *Registrar) Publish(ctx context.Context, topic string, agencyID string) error {
+	log.Printf("registrar: publish topic=%q agencyID=%q", topic, agencyID)
+	// TODO(CROSS-007): call OrchestratorService.Publish RPC when available.
+	return nil
 }
 
 // gitRoutes returns all HTTP routes that CodeValdGit exposes via Cross.
