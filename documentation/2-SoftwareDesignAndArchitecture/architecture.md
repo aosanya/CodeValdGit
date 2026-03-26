@@ -516,3 +516,18 @@ is populated as described in §9.3.
 | `github.com/go-git/go-git/v5/plumbing/format/pktline` | (bundled) | Pkt-line framing (used via `packp`, not directly) |
 | `github.com/go-git/go-billy/v5` | v5.8.0 | Working-tree filesystem abstraction |
 | `github.com/soheilhy/cmux` | TBD (added in GIT-009) | TCP multiplexer — gRPC + HTTP on one port |
+
+---
+
+## 10. Production Safety Design Decisions
+
+Three correctness gaps — concurrency, merge strategy, and transaction
+boundaries — are documented in separate domain files.
+
+| Topic | File | Task |
+|---|---|---|
+| Concurrency and atomic ref updates — `RefLocker`, CAS on `head_commit_id`, per-agency merge serialisation | [architecture-concurrency.md](architecture-concurrency.md) | GIT-011 |
+| Merge strategy: squash merge, fork-point tracking, conflict surface | [architecture-merge.md](architecture-merge.md) | GIT-012 |
+| Transaction boundaries and idempotency — atomicity rules, `MergeRequest`, retry-safety matrix | [architecture-transactions.md](architecture-transactions.md) | GIT-013 |
+
+| ArangoDB backend design — v1/v2 evolution, object deduplication, Smart HTTP limitation, production gate | [architecture-arangodb.md](architecture-arangodb.md) | GIT-014 |

@@ -172,6 +172,55 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 
 ---
 
+## P0: Production Safety (CRITICAL)
+
+### GIT-011 — Concurrency and Atomic Ref Updates
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-011: `RefLocker` interface + CAS in `advanceBranchHead` + `ErrMergeConcurrencyConflict` | 📋 Not Started | ~~GIT-005~~ ✅ |
+
+**Scope**: Add `RefLocker` to `git.go`. Add in-process `sync.Mutex` default implementation.
+Wrap `MergeBranch` inside `WithMergeLock`. Pass expected `head_commit_id` through
+`advanceBranchHead` and return `ErrMergeConcurrencyConflict` on CAS mismatch.
+See: [mvp-details/critical-concurrency.md](mvp-details/critical-concurrency.md)
+
+### GIT-012 — Squash Merge Strategy
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-012: Fork-point tracking in `CreateBranch` + tree-diff squash merge in `MergeBranch` | 📋 Not Started | GIT-011 |
+
+**Scope**: Add `ForkPointCommitID` to `Branch` model and `CreateBranch` entity write.
+Replace HEAD-pointer-advance in `MergeBranch` with: fast-forward if no divergence,
+tree-diff apply if diverged, `ErrMergeConflict` on conflict.
+See: [mvp-details/critical-merge-strategy.md](mvp-details/critical-merge-strategy.md)
+
+### GIT-013 — Transaction Boundaries and Idempotency
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-013: `MergeRequest` struct with `IdempotencyKey` + in-process idempotency store | 📋 Not Started | GIT-012 |
+
+**Scope**: Replace `MergeBranch(ctx, branchID string)` with `MergeBranch(ctx, MergeRequest)`.
+Add `MergeRequest` to `models.go`. Implement in-process `sync.Map` idempotency cache on
+`gitManager`. Document retry contract for gRPC server layer.
+See: [mvp-details/critical-transactions.md](mvp-details/critical-transactions.md)
+
+### GIT-014 — ArangoDB Backend: Deduplication, Documentation, and Production Gate
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-014: `(agencyID, sha)` unique index + update `storage-backends.md` + experimental flag + benchmarks | 📋 Not Started | GIT-011 |
+
+**Scope**: Three subtasks — (A) add unique `(agencyID, sha)` constraint to `git_objects` and
+handle duplicate inserts gracefully in writers; (B) replace the stale v1 `storage-backends.md`
+with the v2 entitygraph collection spec; (C) add `Config.Backend` with filesystem default,
+startup warning for ArangoDB, and a benchmarking plan with measurable promotion criteria.
+See: [mvp-details/critical-arangodb.md](mvp-details/critical-arangodb.md)
+
+---
+
 ## Bugs and Issues
 
 ### Active Bugs
