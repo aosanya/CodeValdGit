@@ -250,7 +250,7 @@ func (m *gitManager) DeleteBranch(ctx context.Context, branchID string) error {
 		return ErrBranchNotFound
 	}
 	if boolProp(e.Properties, "is_default") {
-		return fmt.Errorf("DeleteBranch: cannot delete the default branch")
+		return fmt.Errorf("DeleteBranch: %w", ErrDefaultBranchDeleteForbidden)
 	}
 	if err := m.dm.DeleteEntity(ctx, m.agencyID, branchID); err != nil {
 		return fmt.Errorf("DeleteBranch: %w", err)

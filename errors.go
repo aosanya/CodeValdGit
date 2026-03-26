@@ -40,3 +40,7 @@ var ErrTagAlreadyExists = errors.New("tag already exists")
 // ErrTagNotFound is returned by [GitManager.GetTag] and [GitManager.DeleteTag]
 // when no Tag entity with the given ID exists.
 var ErrTagNotFound = errors.New("tag not found")
+
+// ErrDefaultBranchDeleteForbidden is returned by [GitManager.DeleteBranch]
+// when the caller attempts to delete the repository's default branch.
+var ErrDefaultBranchDeleteForbidden = errors.New("cannot delete the default branch")
