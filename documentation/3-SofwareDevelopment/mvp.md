@@ -148,7 +148,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-006 — gRPC GitService Server
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-006: gRPC `GitService` server (`internal/server/server.go`) | 📋 Not Started | ~~GIT-002~~ ✅, ~~GIT-003~~ ✅, ~~GIT-005~~ ✅ |
+| GIT-006: gRPC `GitService` server (`internal/server/server.go`) | ✅ Done | ~~GIT-002~~ ✅, ~~GIT-003~~ ✅, ~~GIT-005~~ ✅ |
 
 ### GIT-007 — Git Smart HTTP Handler
 | Task | Status | Depends On |
@@ -158,17 +158,17 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-008 — Config + Cross Registrar
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-008: Config + Cross registrar | 📋 Not Started | GIT-006, GIT-007 |
+| GIT-008: Config + Cross registrar | 📋 Not Started | ~~GIT-006~~ ✅, GIT-007 |
 
 ### GIT-009 — cmd/main.go
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-009: `cmd/main.go` — cmux wiring, ArangoDB backend, schema seed | 📋 Not Started | ~~GIT-004~~ ✅, GIT-006, GIT-007, GIT-008 |
+| GIT-009: `cmd/main.go` — cmux wiring, ArangoDB backend, schema seed | 📋 Not Started | ~~GIT-004~~ ✅, ~~GIT-006~~ ✅, GIT-007, GIT-008 |
 
 ### GIT-010 — Unit & Integration Tests
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-010: Unit & integration tests | 📋 Not Started | ~~GIT-005~~ ✅, GIT-006, GIT-007 |
+| GIT-010: Unit & integration tests | 📋 Not Started | ~~GIT-005~~ ✅, ~~GIT-006~~ ✅, GIT-007 |
 
 ---
 
