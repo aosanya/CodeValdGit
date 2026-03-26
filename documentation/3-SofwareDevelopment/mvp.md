@@ -158,7 +158,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-008 — Config + Cross Registrar
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-008: Config + Cross registrar | 📋 Not Started | ~~GIT-006~~ ✅, ~~GIT-007~~ ✅ |
+| GIT-008: Config + Cross registrar | ✅ Done | ~~GIT-006~~ ✅, ~~GIT-007~~ ✅ |
 
 ### GIT-009 — cmd/main.go
 | Task | Status | Depends On |
