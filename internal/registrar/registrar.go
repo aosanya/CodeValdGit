@@ -62,29 +62,15 @@ func (r *Registrar) Close() {
 	r.heartbeat.Close()
 }
 
-// gitRoutes returns the HTTP routes that CodeValdGit exposes via Cross.
-// All routes are prefixed with /git/{agencyId} to disambiguate git endpoints
-// from other services.
+// gitRoutes returns all HTTP routes that CodeValdGit exposes via Cross.
+// See routes.go for the per-concern helper functions.
 func gitRoutes() []types.RouteInfo {
-	return []types.RouteInfo{
-		{
-			Method:     "GET",
-			Pattern:    "/git/{agencyId}/tasks/{taskId}/files",
-			Capability: "list_task_files",
-			GrpcMethod: "/codevaldgit.v1.RepoService/ListDirectory",
-			PathBindings: []types.PathBinding{
-				{URLParam: "agencyId", Field: "agency_id"},
-				{URLParam: "taskId", Field: "ref"},
-			},
-		},
-		{
-			Method:     "POST",
-			Pattern:    "/git/{agencyId}/repositories",
-			Capability: "init_repo",
-			GrpcMethod: "/codevaldgit.v1.RepoService/InitRepo",
-			PathBindings: []types.PathBinding{
-				{URLParam: "agencyId", Field: "agency_id"},
-			},
-		},
-	}
+	var all []types.RouteInfo
+	all = append(all, repoRoutes()...)
+	all = append(all, branchRoutes()...)
+	all = append(all, tagRoutes()...)
+	all = append(all, fileRoutes()...)
+	all = append(all, historyRoutes()...)
+	all = append(all, smartHTTPRoutes()...)
+	return all
 }
