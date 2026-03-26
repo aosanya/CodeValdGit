@@ -143,17 +143,17 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-005 — Concrete GitManager Implementation
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-005: Concrete `GitManager` implementation (`internal/manager/`) | 📋 Not Started | ~~GIT-002~~ ✅, ~~GIT-004~~ ✅ |
+| GIT-005: Concrete `GitManager` implementation (`internal/manager/`) | ✅ Done | ~~GIT-002~~ ✅, ~~GIT-004~~ ✅ |
 
 ### GIT-006 — gRPC GitService Server
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-006: gRPC `GitService` server (`internal/server/server.go`) | 📋 Not Started | GIT-002, ~~GIT-003~~ ✅, GIT-005 |
+| GIT-006: gRPC `GitService` server (`internal/server/server.go`) | 📋 Not Started | ~~GIT-002~~ ✅, ~~GIT-003~~ ✅, ~~GIT-005~~ ✅ |
 
 ### GIT-007 — Git Smart HTTP Handler
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-007: Git Smart HTTP handler (`internal/server/githttp.go`) | 📋 Not Started | GIT-005 |
+| GIT-007: Git Smart HTTP handler (`internal/server/githttp.go`) | 📋 Not Started | ~~GIT-005~~ ✅ |
 
 ### GIT-008 — Config + Cross Registrar
 | Task | Status | Depends On |
@@ -168,7 +168,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-010 — Unit & Integration Tests
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-010: Unit & integration tests | 📋 Not Started | GIT-005, GIT-006, GIT-007 |
+| GIT-010: Unit & integration tests | 📋 Not Started | ~~GIT-005~~ ✅, GIT-006, GIT-007 |
 
 ---
 
