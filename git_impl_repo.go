@@ -60,7 +60,7 @@ func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repos
 
 	// Create the default branch pointing to no commit yet.
 	branchNow := time.Now().UTC().Format(time.RFC3339)
-	_, err = m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	defaultBranchEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Branch",
 		Properties: map[string]any{
@@ -75,6 +75,17 @@ func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repos
 	})
 	if err != nil {
 		return Repository{}, fmt.Errorf("InitRepo: create default branch: %w", err)
+	}
+
+	// Create the forward has_branch edge (repo → branch) so listBranchesByRepo
+	// can locate it via RelationshipFilter{Name:"has_branch", FromID: repoID}.
+	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: m.agencyID,
+		Name:     "has_branch",
+		FromID:   repoEntity.ID,
+		ToID:     defaultBranchEntity.ID,
+	}); err != nil {
+		return Repository{}, fmt.Errorf("InitRepo: link default branch: %w", err)
 	}
 
 	repo := entityToRepository(repoEntity, m.agencyID)
@@ -207,6 +218,17 @@ func (m *gitManager) CreateBranch(ctx context.Context, req CreateBranchRequest) 
 		}); relErr != nil {
 			return Branch{}, fmt.Errorf("CreateBranch: link head commit: %w", relErr)
 		}
+	}
+
+	// Create the forward has_branch edge (repo → branch) so listBranchesByRepo
+	// can locate it via RelationshipFilter{Name:"has_branch", FromID: repoID}.
+	if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: m.agencyID,
+		Name:     "has_branch",
+		FromID:   repo.ID,
+		ToID:     branchEntity.ID,
+	}); relErr != nil {
+		return Branch{}, fmt.Errorf("CreateBranch: link has_branch: %w", relErr)
 	}
 
 	return entityToBranch(branchEntity, repo.ID), nil
@@ -343,6 +365,18 @@ func (m *gitManager) CreateTag(ctx context.Context, req CreateTagRequest) (Tag, 
 	if err != nil {
 		return Tag{}, fmt.Errorf("CreateTag: create entity: %w", err)
 	}
+
+	// Create the forward has_tag edge (repo → tag) so listTagsByRepo
+	// can locate it via RelationshipFilter{Name:"has_tag", FromID: repoID}.
+	if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: m.agencyID,
+		Name:     "has_tag",
+		FromID:   repo.ID,
+		ToID:     tagEntity.ID,
+	}); relErr != nil {
+		return Tag{}, fmt.Errorf("CreateTag: link has_tag: %w", relErr)
+	}
+
 	return entityToTag(tagEntity, repo.ID), nil
 }
 

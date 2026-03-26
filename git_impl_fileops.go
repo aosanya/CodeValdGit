@@ -129,6 +129,30 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		return Commit{}, fmt.Errorf("WriteFile: create commit: %w", err)
 	}
 
+	// Create explicit has_tree edge (commit → tree) so TraverseGraph can
+	// locate the tree via outbound traversal with Name="has_tree".
+	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: m.agencyID,
+		Name:     "has_tree",
+		FromID:   commitEntity.ID,
+		ToID:     treeEntity.ID,
+	}); err != nil {
+		return Commit{}, fmt.Errorf("WriteFile: link has_tree: %w", err)
+	}
+
+	// Create explicit has_parent edge (commit → parentCommit) so
+	// walkCommitChain can follow the has_parent chain for Log.
+	if len(parentIDs) > 0 {
+		if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "has_parent",
+			FromID:   commitEntity.ID,
+			ToID:     parentIDs[0],
+		}); err != nil {
+			return Commit{}, fmt.Errorf("WriteFile: link has_parent: %w", err)
+		}
+	}
+
 	// Tree → belongs_to_commit (root tree).
 	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
 		AgencyID: m.agencyID,

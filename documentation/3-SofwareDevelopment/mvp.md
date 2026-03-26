@@ -168,7 +168,7 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 ### GIT-010 — Unit & Integration Tests
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-010: Unit & integration tests | 📋 Not Started | ~~GIT-005~~ ✅, ~~GIT-006~~ ✅, ~~GIT-007~~ ✅ |
+| GIT-010: Unit & integration tests | � In Progress | ~~GIT-005~~ ✅, ~~GIT-006~~ ✅, ~~GIT-007~~ ✅ |
 
 ---
 
