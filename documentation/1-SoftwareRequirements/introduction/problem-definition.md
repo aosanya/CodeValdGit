@@ -2,9 +2,9 @@
 
 ## The Problem
 
-[CodeValdCortex](../../../CodeValdCortex/README.md) is an enterprise multi-agent AI orchestration platform. AI agents inside CodeValdCortex produce **artifacts** — code files, Markdown reports, YAML configs, and any other file type — as the outputs of tasks.
+The CodeVald platform uses **CodeValdAI** to orchestrate AI agents that produce **artifacts** — code files, Markdown reports, YAML configs, and any other file type — as the outputs of tasks.
 
-Before CodeValdGit, CodeValdCortex managed these artifacts using a **custom hand-rolled Git engine** in `internal/git/` backed by ArangoDB:
+Before CodeValdGit, the platform managed these artifacts using a **custom hand-rolled Git engine** in `internal/git/` backed by ArangoDB:
 
 | Component | Problem |
 |---|---|

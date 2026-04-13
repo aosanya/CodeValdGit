@@ -2,9 +2,10 @@
 
 ## Overview
 
-**CodeValdGit** is a Go library that provides Git-based artifact management for [CodeValdCortex](../CodeValdCortex/README.md) — the enterprise multi-agent AI orchestration platform.
+**CodeValdGit** is a Go gRPC microservice that provides Git-based artifact management
+for the CodeVald platform. It is accessible to other platform services via CodeValdCross’s HTTP proxy.
 
-It replaces the custom hand-rolled Git engine (`internal/git/`) in CodeValdCortex with a proper Git implementation backed by [go-git](https://github.com/go-git/go-git).
+It replaces the custom hand-rolled Git engine (`internal/git/`) with a proper Git implementation backed by [go-git](https://github.com/go-git/go-git).
 
 ---
 
@@ -32,7 +33,7 @@ It replaces the custom hand-rolled Git engine (`internal/git/`) in CodeValdCorte
 
 - **Language**: Go
 - **Core dependency**: [go-git](https://github.com/go-git/go-git)
-- **Consumer**: CodeValdCortex (replaces `internal/git/`)
+- **Consumer**: Platform services via CodeValdCross HTTP proxy
 - **Unit of repo**: 1 Git repository per Agency
 - **Branching model**: Agents always work on `task/{task-id}` branches; auto-merged to `main` on task completion
 - **Artifact types**: Any file — code, Markdown, YAML configs, reports, etc.

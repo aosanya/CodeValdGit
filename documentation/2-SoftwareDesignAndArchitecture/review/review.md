@@ -144,7 +144,7 @@ No defined behaviour for:
 - Branch is stale because `main` moved significantly.
 - Task retries create multiple branches for the same task ID.
 
-**Recommendation**: define branch states outside Git (in CodeValdCortex): `active`, `merge_pending`, `conflicted`, `merged`, `abandoned`. Define retention: auto-clean abandoned branches after review window; prevent duplicate live branches for the same task unless explicitly resumed. Git alone must not be the task-state source of truth.
+**Recommendation**: define branch states outside Git (in CodeValdWork): `active`, `merge_pending`, `conflicted`, `merged`, `abandoned`. Define retention: auto-clean abandoned branches after review window; prevent duplicate live branches for the same task unless explicitly resumed. Git alone must not be the task-state source of truth.
 
 ---
 
@@ -255,7 +255,7 @@ Do not assume spec-level support means production-level equivalence.
 | ~~4~~ | ~~Replace rebase replay with squash merge~~ | ✅ GIT-012 |
 | 5 | Add batch commit API (`CommitFiles`) | Open — gap 9 |
 | 6 | Treat worktrees as ephemeral scratch space | Open — gap 4 |
-| 7 | Define lifecycle/state model outside Git (in Cortex) | Open — gap 8 |
+| 7 | Define lifecycle/state model outside Git (in CodeValdWork) | Open — gap 8 |
 
 ---
 

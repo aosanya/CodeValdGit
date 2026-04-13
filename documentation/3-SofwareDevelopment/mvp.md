@@ -1,8 +1,8 @@
 # MVP - Minimum Viable Product Task Breakdown
 
 ## Task Overview
-- **Objective**: Deliver CodeValdGit as a standalone gRPC microservice that provides real Git semantics for artifact versioning in CodeValdCortex, replacing the custom `internal/git/` implementation. CodeValdCortex communicates via generated gRPC client stubs rather than importing CodeValdGit as a Go module.
-- **Success Criteria**: All 10 tasks (MVP-GIT-001 through MVP-GIT-010) implemented and tested; CodeValdGit deployed as a standalone gRPC microservice; legacy `internal/git/` deleted from CodeValdCortex by a separate integration effort
+- **Objective**: Deliver CodeValdGit as a standalone gRPC microservice that provides real Git semantics for artifact versioning in the CodeVald platform, replacing the custom `internal/git/` implementation. Platform services communicate via generated gRPC client stubs proxied through CodeValdCross.
+- **Success Criteria**: All 10 tasks (MVP-GIT-001 through MVP-GIT-010) implemented and tested; CodeValdGit deployed as a standalone gRPC microservice; legacy `internal/git/` implementation retired
 - **Dependencies**: Go module infrastructure, go-git v5, ArangoDB connectivity
 
 ## Platform Documentation

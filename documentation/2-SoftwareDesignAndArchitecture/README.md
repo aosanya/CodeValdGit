@@ -10,7 +10,7 @@ This section captures the **how** — design decisions, data models, component a
 
 | Document | Description |
 |---|---|
-| [architecture.md](architecture.md) | Core design decisions, storage backends, branching model, draft API interfaces, CodeValdCortex integration table |
+| [architecture.md](architecture.md) | Core design decisions, storage backends, branching model, draft API interfaces, CodeValdCross integration table |
 | [architecture-concurrency.md](architecture-concurrency.md) | Concurrency model — `RefLocker` interface, CAS on branch HEAD, per-agency merge serialisation (GIT-011) |
 | [architecture-merge.md](architecture-merge.md) | Merge strategy — squash merge, fork-point tracking, conflict surface (GIT-012) |
 | [architecture-transactions.md](architecture-transactions.md) | Transaction boundaries — atomicity rules, `MergeRequest` idempotency key, retry-safety matrix (GIT-013) |
@@ -23,9 +23,9 @@ This section captures the **how** — design decisions, data models, component a
 | Decision | Choice | Rationale |
 |---|---|---|
 | Git engine | go-git (pure Go) | No system `git` binary dependency; embeddable in Go services |
-| Repo granularity | 1 repo per Agency | Mirrors CodeValdCortex's database-per-agency isolation |
+| Repo granularity | 1 repo per Agency | Mirrors the platform's database-per-agency isolation |
 | Agent write policy | Always on a branch, never `main` | Prevents concurrent agent writes from corrupting shared history |
-| Branch naming | `task/{task-id}` | Short-lived, traceable back to CodeValdCortex task records |
+| Branch naming | `task/{task-id}` | Short-lived, traceable back to CodeValdWork task records |
 | Merge strategy | Squash merge (V1) — tree-diff apply onto default HEAD | Simpler than cherry-pick rebase; atomic apply; preserves task branch history for audit |
 | Storage backend (gRPC / GitManager) | Pluggable via `entitygraph.DataManager` | Filesystem and ArangoDB are both valid; ArangoDB is experimental — see [architecture-arangodb.md](architecture-arangodb.md) |
 | Storage backend (Smart HTTP) | Filesystem-only (`storage.Storer` + `billy.Filesystem`) | ArangoDB backend does not implement `codevaldgit.Backend.OpenStorer` |
