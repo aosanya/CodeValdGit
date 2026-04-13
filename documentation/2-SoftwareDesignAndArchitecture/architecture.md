@@ -5,12 +5,16 @@
 | Decision | Choice | Rationale |
 |---|---|---|
 | Git engine | [go-git](https://github.com/go-git/go-git) pure-Go | No system `git` binary dependency; embeddable in Go services |
-| Repo granularity | 1 repo per Agency | Mirrors CodeValdCortex's database-per-agency isolation |
+| Repo granularity | 1 repo per Agency | Mirrors the database-per-agency isolation used across the platform |
 | Agent write policy | Always on a branch, never `main` | Prevents concurrent agent writes from corrupting shared history |
-| Branch naming | `task/{task-id}` | Short-lived, traceable back to CodeValdCortex task records |
-| Merge strategy | Auto-merge on task completion | No human approval gate for now; policy layer can extend this later |
-| Storage backend | Pluggable via `storage.Storer` interface | go-git's open/closed design; caller injects the storer — filesystem and ArangoDB are both valid implementations |
-| Worktree filesystem | Pluggable via `billy.Filesystem` interface | go-git separates object storage from the working tree; both are independently injectable |
+| Branch naming | `task/{task-id}` (convention) | Short-lived, traceable back to CodeValdWork task records |
+| Merge strategy | Auto-merge on task completion | No human approval gate in v1; policy layer can extend later |
+| Storage backend (v1 library) | Pluggable `Backend` interface wrapping `storage.Storer` | Filesystem and ArangoDB are both valid; caller injects the backend via `cmd/main.go` |
+| Storage backend (v2 service) | `entitygraph.DataManager` from CodeValdSharedLib | Git domain objects (Repository, Branch, Blob, Commit) are stored as named entities in the graph; no go-git internal storage layer exposed |
+| Worktree filesystem | Pluggable via `billy.Filesystem` interface | go-git separates object storage from the working tree; both are independently injectable (v1 only) |
+| Service API | v2 flat `GitManager` interface (`git.go`) | Replaces the nested Backend/RepoManager/Repo hierarchy for the gRPC service; each instance is scoped to one agency at construction time |
+| Cross-service events | `CrossPublisher` interface (optional) | Publishes Git lifecycle events to CodeValdCross after successful writes; `nil` = events skipped (useful in unit tests) |
+| Service registration | `internal/registrar` heartbeat to Cross every 20 s | All HTTP routes and gRPC method bindings are declared at registration time; Cross needs zero recompile when new routes are added |
 
 ---
 
@@ -44,7 +48,7 @@ type Backend interface {
 }
 ```
 
-The single `repoManager` implementation in `internal/manager/` holds a `Backend` and delegates lifecycle calls to it. `NewRepoManager(b Backend)` is the sole constructor — the caller (CodeValdCortex) picks and constructs the backend.
+The single `repoManager` implementation in `internal/manager/` holds a `Backend` and delegates lifecycle calls to it. `NewRepoManager(b Backend)` is the sole constructor — `cmd/main.go` picks and constructs the backend.
 
 ### Filesystem Backend (`storage/filesystem/`)
 
@@ -65,39 +69,61 @@ Simple, portable, works on any mounted volume (local disk, PVC, NFS).
 
 ### ArangoDB Backend (`storage/arangodb/`)
 
-| Operation | Implementation |
-|---|---|
-| `InitRepo` | Insert seed documents into `git_objects`, `git_refs`, `git_config`, `git_index` |
-| `DeleteRepo` | Set `deleted: true` flag on all agency documents (non-destructive; auditable) |
-| `PurgeRepo` | Delete all documents where `agencyID == target` from all four collections |
-| `OpenStorer` | `arango.NewStorage(db, agencyID)` + `memfs.New()` (or `osfs` for a durable worktree) |
+> **v1 → v2 evolution**: The original plan was to implement go-git's
+> `storage.Storer` interface directly in ArangoDB (four collections:
+> `git_objects`, `git_refs`, `git_index`, `git_config`). This approach was
+> superseded. See [architecture-arangodb.md](architecture-arangodb.md) for the
+> full rationale.
 
-The working tree (`billy.Filesystem`) remains on a local or in-memory filesystem — only the Git object store moves to ArangoDB. This mirrors the existing database-per-agency model in CodeValdCortex and means repos survive container restarts without a mounted volume.
+**v2 (current)** uses `CodeValdSharedLib/entitygraph` as the storage layer.
+Git domain objects are stored as named typed entities:
 
-| Collection | Contents |
-|---|---|
-| `git_objects` | Encoded Git objects (blobs, trees, commits, tags) keyed by SHA |
-| `git_refs` | Branch and tag references |
-| `git_index` | Staging area index |
-| `git_config` | Per-repo Git config |
+| Collection | Type | Contents |
+|---|---|---|
+| `git_entities` | Document | Mutable refs: Repository, Branch, Tag |
+| `git_objects` | Document | Immutable content-addressed objects: Commit, Tree, Blob |
+| `git_relationships` | **Edge** | All directed graph edges (`has_repository`, `has_branch`, `points_to`, `has_tree`, `has_blob`, `has_parent`) |
+| `git_schemas_draft` | Document | Draft TypeDefinition schemas per agency |
+| `git_schemas_published` | Document | Published schema snapshots (append-only) |
 
-> **Selection**: The caller (CodeValdCortex) constructs the desired `Backend` implementation and passes it to `NewRepoManager`. CodeValdGit's core logic is backend-agnostic.
+Named graph: `git_graph` (edge collection: `git_relationships`; vertex collections: `git_entities`, `git_objects`).
+
+Key properties:
+- **No staging area** — Blob entities are written directly; no `git_index` collection.
+- **Branch refs are entities** — a Branch entity in `git_entities` carries a `head_commit_id` property; ref updates are entity property updates, not document replacements.
+- **Immutable objects** — Commit, Tree, and Blob entities in `git_objects` are content-addressed and never mutated after creation.
+- **Schema-driven** — `DefaultGitSchema()` in `schema.go` is seeded into the entity graph on startup via `entitygraph.SchemaManager`.
+
+The `storage/arangodb` package in CodeValdGit is a **thin adapter** — it supplies CodeValdGit-specific collection names and graph names to the shared `entitygraph.NewArangoDataManager` from SharedLib.
 
 ### Package Layout
 
 ```
 github.com/aosanya/CodeValdGit/
-├── codevaldgit.go          # RepoManager + Repo + Backend interfaces
-├── types.go                # FileEntry, Commit, FileDiff, AuthorInfo, ErrMergeConflict
-├── errors.go               # Sentinel errors (ErrRepoNotFound, ErrBranchNotFound, etc.)
-├── config.go               # NewRepoManager constructor
+│
+│  ── v2 gRPC service API (current) ─────────────────────────────────────────
+├── git.go                  # GitManager interface + CrossPublisher + NewGitManager
+├── git_impl_repo.go        # GitManager: repository lifecycle, branches, tags
+├── git_impl_fileops.go     # GitManager: file writes, reads, history, diff
+├── schema.go               # DefaultGitSchema() — entity types seeded on startup
+├── models.go               # Domain model structs (Repository, Branch, Blob, Commit, …)
+├── types.go                # Request/response types (CreateRepoRequest, WriteFileRequest, …)
+├── errors.go               # Sentinel errors (ErrRepoNotInitialised, ErrBranchNotFound, …)
+│
+│  ── v1 library API (retained for filesystem backend / library consumers) ───
+├── codevaldgit.go          # Backend + RepoManager + Repo interfaces
+├── manager.go              # Concrete repoManager wrapping Backend
+├── repo.go                 # Concrete Repo implementation over storage.Storer
+│
 ├── internal/
-│   ├── manager/            # Concrete repoManager — implements RepoManager, delegates to Backend
-│   ├── repo/               # Shared Repo implementation — used by both storage backends
-│   └── gitutil/            # Shared go-git helper utilities
+│   ├── server/             # gRPC GitService handler — wraps GitManager (v2)
+│   │   ├── server.go       # Handler delegation + toGRPCError
+│   │   └── githttp.go      # Git Smart HTTP handler (cmux HTTP/1.1 path)
+│   ├── registrar/          # Cross heartbeat — Register RPC every 20 s
+│   └── config/             # Config struct + env loader
+│
 └── storage/
-    ├── filesystem/         # NewFilesystemBackend() — implements Backend (filesystem lifecycle)
-    └── arangodb/           # NewArangoBackend()    — implements Backend (ArangoDB lifecycle)
+    └── arangodb/           # Thin adapter: provides collection names to entitygraph
 ```
 
 ---
@@ -137,69 +163,150 @@ main
 
 ---
 
-## 5. Proposed Library API (Draft)
+## 5. Current Service API — v2 GitManager
+
+`GitManager` is the single interface used by the gRPC server (`internal/server/server.go`).
+Each instance is scoped to **one agency** — the `agencyID` is fixed at construction time
+via `NewGitManager` and is not passed per-call. All implementations must be safe for
+concurrent use.
 
 ```go
-// Backend abstracts storage-specific repo lifecycle.
-// Implemented by storage/filesystem and storage/arangodb.
-// The caller constructs the desired backend and passes it to NewRepoManager.
-type Backend interface {
-    InitRepo(ctx context.Context, agencyID string) error
-    OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error)
-    DeleteRepo(ctx context.Context, agencyID string) error
-    PurgeRepo(ctx context.Context, agencyID string) error
-}
+// GitManager is the primary interface for Git repository management.
+// gRPC handlers hold this interface — never the concrete type.
+// Each instance is scoped to a single agency (agencyID fixed at construction).
+type GitManager interface {
 
-// NewRepoManager constructs the shared RepoManager backed by the given Backend.
-// Use storage/filesystem.NewFilesystemBackend or storage/arangodb.NewArangoBackend
-// to obtain a Backend, then pass it here.
-func NewRepoManager(b Backend) RepoManager
+    // ── Repository Lifecycle ──────────────────────────────────────────────
 
-// RepoManager is the top-level entry point for managing per-agency Git repositories.
-// Obtain via NewRepoManager. One instance is typically shared process-wide.
-type RepoManager interface {
-    InitRepo(ctx context.Context, agencyID string) error                   // delegates to Backend.InitRepo
-    OpenRepo(ctx context.Context, agencyID string) (Repo, error)
-    DeleteRepo(ctx context.Context, agencyID string) error                 // delegates to Backend.DeleteRepo
-    PurgeRepo(ctx context.Context, agencyID string) error                  // delegates to Backend.PurgeRepo
-}
+    // InitRepo creates the single Repository entity for this agency.
+    // Returns ErrRepoAlreadyExists if a repository entity already exists.
+    // Publishes "cross.git.{agencyID}.repo.created" after a successful write.
+    InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error)
 
-// Repo represents a single agency's Git repository. Obtained via RepoManager.OpenRepo.
-// Backed by internal/repo — backend-agnostic; works over any storage.Storer.
-type Repo interface {
-    // Branch operations
-    CreateBranch(ctx context.Context, taskID string) error
-    MergeBranch(ctx context.Context, taskID string) error
-    DeleteBranch(ctx context.Context, taskID string) error
+    // GetRepository retrieves the single Repository entity for this agency.
+    // Returns ErrRepoNotInitialised if no repository has been created yet.
+    GetRepository(ctx context.Context) (Repository, error)
 
-    // File operations (always on a task branch)
-    WriteFile(ctx context.Context, taskID, path, content, author, message string) error
-    ReadFile(ctx context.Context, ref, path string) (string, error)
-    DeleteFile(ctx context.Context, taskID, path, author, message string) error
-    ListDirectory(ctx context.Context, ref, path string) ([]FileEntry, error)
+    // DeleteRepo marks the repository entity as archived (soft delete).
+    DeleteRepo(ctx context.Context) error
 
-    // History
-    Log(ctx context.Context, ref, path string) ([]Commit, error)
+    // PurgeRepo permanently removes all repository data for this agency.
+    PurgeRepo(ctx context.Context) error
+
+    // ── Branch Management ─────────────────────────────────────────────────
+
+    // CreateBranch creates a new Branch entity from the specified source.
+    // If req.FromBranchID is empty, the repository default branch is used.
+    CreateBranch(ctx context.Context, req CreateBranchRequest) (Branch, error)
+
+    GetBranch(ctx context.Context, branchID string) (Branch, error)
+    ListBranches(ctx context.Context) ([]Branch, error)
+    DeleteBranch(ctx context.Context, branchID string) error
+
+    // MergeBranch merges the given branch into the repository's default branch.
+    // Returns ErrMergeConflict with conflicting paths if auto-rebase fails.
+    MergeBranch(ctx context.Context, branchID string) (Branch, error)
+
+    // ── Tag Management ────────────────────────────────────────────────────
+
+    CreateTag(ctx context.Context, req CreateTagRequest) (Tag, error)
+    GetTag(ctx context.Context, tagID string) (Tag, error)
+    ListTags(ctx context.Context) ([]Tag, error)
+    DeleteTag(ctx context.Context, tagID string) error
+
+    // ── File Operations ───────────────────────────────────────────────────
+
+    // WriteFile commits a single file to the specified branch.
+    // Creates Commit, Tree, and Blob entities in the entity graph.
+    WriteFile(ctx context.Context, req WriteFileRequest) (Commit, error)
+
+    // ReadFile retrieves the Blob entity for a file at the branch's current HEAD.
+    ReadFile(ctx context.Context, branchID, path string) (Blob, error)
+
+    // DeleteFile removes a file from the specified branch via a deletion commit.
+    DeleteFile(ctx context.Context, req DeleteFileRequest) (Commit, error)
+
+    ListDirectory(ctx context.Context, branchID, path string) ([]FileEntry, error)
+
+    // ── History ───────────────────────────────────────────────────────────
+
+    // Log returns the commit history for the branch, newest to oldest.
+    Log(ctx context.Context, branchID string, filter LogFilter) ([]CommitEntry, error)
+
+    // Diff returns per-file change summaries between two refs (branch IDs or commit SHAs).
     Diff(ctx context.Context, fromRef, toRef string) ([]FileDiff, error)
 }
+
+// NewGitManager constructs a GitManager backed by the given DataManager and SchemaManager.
+// agencyID is the single agency scoped to this database instance.
+// pub may be nil — cross-service events are skipped when no publisher is set.
+func NewGitManager(
+    dm entitygraph.DataManager,
+    sm GitSchemaManager,
+    pub CrossPublisher,
+    agencyID string,
+) GitManager
 ```
+
+### v1 Library API (Backend / RepoManager / Repo)
+
+The v1 three-interface hierarchy (`codevaldgit.go`, `manager.go`, `repo.go`) remains
+in the codebase for the filesystem backend and any library consumers that embed
+CodeValdGit directly. It is **not** used by the gRPC server — the server delegates
+to `GitManager` (v2) exclusively.
+
+See [architecture-arangodb.md](architecture-arangodb.md) for the full v1 → v2 evolution rationale.
 
 ---
 
-## 6. Integration with CodeValdCortex
+## 6. Integration via CodeValdCross
 
-CodeValdCortex will call CodeValdGit at these lifecycle points:
+External callers (CodeValdHi, CodeValdAI, and future consumers) never call
+CodeValdGit directly. All traffic flows through the CodeValdCross HTTP
+management proxy:
 
-| CodeValdCortex Event | CodeValdGit Call |
-|---|---|
-| Agency created | `RepoManager.InitRepo(agencyID)` |
-| Task started | `Repo.CreateBranch(taskID)` |
-| Agent writes output | `Repo.WriteFile(taskID, path, content, ...)` |
-| Task completed | `Repo.MergeBranch(taskID)` → `Repo.DeleteBranch(taskID)` |
-| Agency deleted | `RepoManager.DeleteRepo(agencyID)` |
-| UI file browser | `Repo.ListDirectory("main", path)` |
-| UI file view | `Repo.ReadFile("main", path)` |
-| UI history view | `Repo.Log("main", path)` |
+```
+Caller → POST /{agencyId}/repositories   (HTTP, Cross port 8080)
+  → dynamicProxy matches RouteInfo
+    → GrpcMethod = "/codevaldgit.v1.GitService/InitRepo"
+    → ConnForAgency("codevaldgit", agencyId) → *grpc.ClientConn
+    → fetches InitRepoRequest descriptor via gRPC server reflection
+    → injects path-param agencyId → grpc.Invoke
+      → 200 OK (JSON)
+```
+
+CodeValdGit declares all its HTTP routes in its `RegisterRequest` heartbeat.
+Adding a new endpoint requires **zero changes to CodeValdCross**.
+
+### GitService gRPC endpoints (declared in `RegisterRequest.routes`)
+
+| HTTP Method | HTTP Path | gRPC Method | Notes |
+|---|---|---|---|
+| `POST` | `/{agencyId}/repositories` | `InitRepo` | Creates Repository entity |
+| `GET` | `/{agencyId}/repositories` | `GetRepository` | Returns the single agency repo |
+| `DELETE` | `/{agencyId}/repositories` | `DeleteRepo` | Soft-archives the repo |
+| `POST` | `/{agencyId}/branches` | `CreateBranch` | Creates a Branch entity |
+| `GET` | `/{agencyId}/branches` | `ListBranches` | Lists all Branch entities |
+| `GET` | `/{agencyId}/branches/{branchId}` | `GetBranch` | Returns one Branch |
+| `DELETE` | `/{agencyId}/branches/{branchId}` | `DeleteBranch` | Removes Branch entity |
+| `POST` | `/{agencyId}/branches/{branchId}/merge` | `MergeBranch` | Merges into default branch |
+| `POST` | `/{agencyId}/branches/{branchId}/files` | `WriteFile` | Commits a file to the branch |
+| `GET` | `/{agencyId}/branches/{branchId}/files/{path}` | `ReadFile` | Reads Blob at HEAD |
+| `GET` | `/{agencyId}/branches/{branchId}/tree` | `ListDirectory` | Lists directory entries |
+| `GET` | `/{agencyId}/branches/{branchId}/log` | `Log` | Commit history |
+| `GET` | `/{agencyId}/diff` | `Diff` | File diff between two refs |
+
+### Pub/sub events published by CodeValdGit
+
+After each successful mutating operation CodeValdGit publishes a typed event
+to CodeValdCross via its `CrossPublisher`:
+
+| Event | Topic | Trigger |
+|---|---|---|
+| Repository created | `cross.git.{agencyID}.repo.created` | `InitRepo` |
+| Branch created | `cross.git.{agencyID}.branch.created` | `CreateBranch` |
+| File committed | `cross.git.{agencyID}.file.committed` | `WriteFile` |
+| Branch merged | `cross.git.{agencyID}.branch.merged` | `MergeBranch` |
 
 ---
 
@@ -207,31 +314,33 @@ CodeValdCortex will call CodeValdGit at these lifecycle points:
 
 CodeValdGit imports `github.com/aosanya/CodeValdSharedLib` for:
 
-| SharedLib package | Replaces |
+| SharedLib package | What CodeValdGit uses it for |
 |---|---|
-| `registrar` | `internal/registrar/registrar.go` (identical struct; service-specific metadata passed as constructor args) |
-| `serverutil` | `envOrDefault`, `parseDuration` helpers and gRPC server setup block in `cmd/server/main.go` |
-| `arangoutil` | ArangoDB `driverhttp.NewConnection` / auth / database bootstrap in `storage/arangodb/arangodb.go` |
-| `gen/go/codevaldcross/v1` | Local copy of generated Cross stubs in `gen/go/codevaldcross/v1/` and `cmd/cross.go` |
+| `entitygraph` | `DataManager` and `SchemaManager` interfaces — the v2 storage layer; `git_entities`, `git_objects`, and `git_relationships` (edge) are managed through these interfaces |
+| `registrar` | Generic Cross heartbeat registrar — sends `Register` RPC to Cross every 20 s; all service-specific metadata (service name, topics, routes) is passed as constructor args |
+| `serverutil` | `NewGRPCServer` (enables gRPC reflection for Cross proxy), `RunWithGracefulShutdown`, `EnvOrDefault`, `ParseDurationString` |
+| `arangoutil` | `Connect(ctx, Config)` — ArangoDB connection bootstrap in `storage/arangodb` |
+| `gen/go/codevaldcross/v1` | Generated Go stubs for the Cross `OrchestratorService` used by the registrar heartbeat |
+| `types` | `PathBinding`, `RouteInfo`, `ServiceRegistration` — shared with Cross; used when constructing the `RegisterRequest` routes slice |
 
 > **Principle**: Any infrastructure code used by more than one service lives in
-> SharedLib. CodeValdGit retains only domain logic, domain errors, gRPC
-> handlers, and storage collection schemas.
-
-See task MVP-GIT-012 in [mvp.md](../3-SofwareDevelopment/mvp.md) for migration scope.
+> SharedLib. CodeValdGit retains only its domain logic (`GitManager`), domain
+> errors (`errors.go`), gRPC handlers (`internal/server/`), and storage
+> schema (`schema.go`).
 
 ---
 
-## 8. What Gets Removed from CodeValdCortex
+## 8. Integration Test Gate
 
-Once CodeValdGit is integrated, the following will be deleted:
+CodeValdGit is the authoritative Git service for the platform. The integration
+test suite (CROSS-IT-001 through CROSS-IT-004) validates the full call path:
 
-- `internal/git/ops/operations.go` — custom SHA-1 blob/tree/commit engine
-- `internal/git/storage/repository.go` — ArangoDB Git object storage
-- `internal/git/fileindex/service.go` — ArangoDB file index service
-- `internal/git/fileindex/repository.go` — ArangoDB file index repository
-- `internal/git/models/` — custom Git object models
-- ArangoDB collections: `git_objects`, `git_refs`, `repositories`
+```
+CodeValdHi / CodeValdAI → Cross HTTP proxy → GitService gRPC → ArangoDB
+```
+
+See `CodeValdCross/documentation/3-SofwareDevelopment/mvp-details/integration-test-git.md`
+for the full test specification.
 
 ---
 
