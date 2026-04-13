@@ -7,7 +7,7 @@ Topics: Proto Service Definition · gRPC Server
 ## Overview
 
 CodeValdGit is promoted from an importable Go library to a **standalone gRPC microservice**.
-CodeValdCortex communicates with it over gRPC instead of importing
+CodeValdCross communicates with it over gRPC instead of importing
 `github.com/aosanya/CodeValdGit` as a Go module dependency.
 
 This replaces the original MVP-GIT-009 (Go module wiring) with two sequential tasks:
@@ -21,11 +21,11 @@ This replaces the original MVP-GIT-009 (Go module wiring) with two sequential ta
 
 | Concern | Go Module (original plan) | gRPC Microservice (new plan) |
 |---|---|---|
-| Deployment coupling | CodeValdGit runs inside CodeValdCortex process | Independent process; independently scalable |
+| Deployment coupling | CodeValdGit runs inside CodeValdCross process | Independent process; independently scalable |
 | Language lock-in | Go only | Any gRPC client language |
-| Version upgrades | Full CodeValdCortex rebuild | Re-deploy CodeValdGit service only |
-| Failure isolation | git failure crashes Cortex | git failure isolated to CodeValdGit pod |
-| Resource limits | Shares Cortex CPU/memory | Separate pod limits for git-heavy workloads |
+| Version upgrades | Full CodeValdCross rebuild | Re-deploy CodeValdGit service only |
+| Failure isolation | git failure crashes CodeValdCross | git failure isolated to CodeValdGit pod |
+| Resource limits | Shares CodeValdCross CPU/memory | Separate pod limits for git-heavy workloads |
 | Contract enforcement | Go interfaces (compile-time) | Proto schema (cross-service boundary) |
 
 ---

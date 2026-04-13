@@ -7,7 +7,7 @@ Topics: Commit Log · File History · Diff Between Refs · UI Read Access
 ## MVP-GIT-007 — History & Diff (UI Read Access)
 
 ### Overview
-Implement the read-only history and diff operations on the `Repo` interface: `Log` (commit history for a file or path) and `Diff` (per-file changes between two refs). These provide the CodeValdCortex UI with a file browser that can navigate any point in history, view file change logs, and compare branches.
+Implement the read-only history and diff operations on the `Repo` interface: `Log` (commit history for a file or path) and `Diff` (per-file changes between two refs). These provide the CodeValdCross UI with a file browser that can navigate any point in history, view file change logs, and compare branches.
 
 All operations in this task are **non-mutating and safe to call concurrently**.
 
@@ -173,7 +173,7 @@ func operationFromAction(a merkletrie.Action) string {
 
 ### UI Integration Points
 
-The CodeValdCortex UI uses these operations at the following access points:
+The CodeValdCross UI uses these operations at the following access points:
 
 | UI Feature | Operation | Parameters |
 |---|---|---|
