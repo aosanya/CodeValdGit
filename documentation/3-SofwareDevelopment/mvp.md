@@ -172,6 +172,41 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 
 ---
 
+## P0: ArangoDB `storage.Storer` — Unified Single Backend (CRITICAL)
+
+### GIT-015 — ArangoDB `storage.Storer` + Unified Backend (no filesystem)
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-015: ArangoDB `storage.Storer` + `codevaldgit.Backend` + gRPC impl rewrite | 🚀 In Progress | ~~GIT-010~~ ✅ |
+
+**Branch**: `feature/GIT-010_arangodb-git-storer`
+
+**Problem**: `gitManager` (gRPC) writes to ArangoDB entity graph; `GitHTTPHandler`
+(Smart HTTP) reads from the filesystem. Data is never synchronised — a `git clone`
+against a repo created via gRPC fails because no `.git/` directory exists on disk.
+
+**Scope**:
+- `storage/arangodb/storer.go` — new `arangoStorer` implementing go-git `storage.Storer`
+  over five ArangoDB collections: `gitraw_objects`, `gitraw_refs`, `gitraw_config`,
+  `gitraw_index`, `gitraw_shallow`.
+- `storage/arangodb/backend.go` — new `arangoBackend` implementing `codevaldgit.Backend`
+  (`InitRepo`, `OpenStorer`, `DeleteRepo`, `PurgeRepo`) using the `arangoStorer`.
+- `git_impl_repo.go` — rewrite using go-git plumbing layer on the `arangoStorer`
+  (drop `entitygraph.DataManager` from all branch/tag/repo methods).
+- `git_impl_fileops.go` — rewrite using go-git plumbing layer
+  (WriteFile, ReadFile, Log, Diff, etc.).
+- `cmd/main.go` — pass single `arangoBackend` to both `NewGitManager` and
+  `NewGitHTTPHandler`; remove filesystem backend.
+- `internal/config/` — remove `GIT_REPOS_BASE_PATH` and `GIT_REPOS_ARCHIVE_PATH`.
+
+**Result**: git Smart HTTP (clone/fetch/push) reads and writes the same ArangoDB
+documents as the gRPC `GitManager`. No filesystem. No synchronisation required.
+
+See: [mvp-details/arangodb-storer.md](mvp-details/arangodb-storer.md)
+
+---
+
 ## P0: Production Safety (CRITICAL)
 
 ### GIT-011 — Concurrency and Atomic Ref Updates
