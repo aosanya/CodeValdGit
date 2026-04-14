@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -236,7 +237,10 @@ type backendLoader struct {
 // Load satisfies gogitserver.Loader.
 // ep.Path is expected to be "/{agencyID}/{repoName}" — both segments are
 // extracted and forwarded to Backend.OpenStorer.
-// Returns transport.ErrRepositoryNotFound when the Backend returns any error.
+// If the repository does not yet exist it is created automatically via
+// Backend.InitRepo before retrying OpenStorer.
+// Returns transport.ErrRepositoryNotFound only when OpenStorer fails after
+// the auto-create attempt.
 func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
 	trimmed := strings.Trim(ep.Path, "/")
 	if trimmed == "" {
@@ -248,12 +252,28 @@ func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
 	}
 	agencyID, repoName := parts[0], parts[1]
 
-	sto, _, err := l.b.OpenStorer(context.Background(), agencyID, repoName)
-	if err != nil {
-		return nil, transport.ErrRepositoryNotFound
+	ctx := context.Background()
+	sto, _, err := l.b.OpenStorer(ctx, agencyID, repoName)
+	if err == nil {
+		return sto, nil
 	}
 
-	return sto, nil
+	// Auto-create the repository on first access and retry.
+	if errors.Is(err, codevaldgit.ErrRepoNotFound) {
+		log.Printf("[INFO] backendLoader: repo %s/%s not found — auto-creating", agencyID, repoName)
+		if initErr := l.b.InitRepo(ctx, agencyID, repoName); initErr != nil && !errors.Is(initErr, codevaldgit.ErrRepoAlreadyExists) {
+			log.Printf("[ERROR] backendLoader: InitRepo %s/%s: %v", agencyID, repoName, initErr)
+			return nil, transport.ErrRepositoryNotFound
+		}
+		sto, _, err = l.b.OpenStorer(ctx, agencyID, repoName)
+		if err != nil {
+			log.Printf("[ERROR] backendLoader: OpenStorer after init %s/%s: %v", agencyID, repoName, err)
+			return nil, transport.ErrRepositoryNotFound
+		}
+		return sto, nil
+	}
+
+	return nil, transport.ErrRepositoryNotFound
 }
 
 // endpointFor builds a transport.Endpoint whose Path is "/{agencyID}/{repoName}".

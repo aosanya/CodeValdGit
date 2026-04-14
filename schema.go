@@ -44,10 +44,9 @@ import "github.com/aosanya/CodeValdSharedLib/types"
 // cmd/main.go on startup via GitSchemaManager.SetSchema. The operation is
 // idempotent — calling it multiple times with the same schema ID is safe.
 //
-// Repository entities are stored in "git_repositories" (one collection per agency).
-// Agency, Branch, and Tag entities are stored in "git_entities".
-// Commit, Tree, and Blob objects are stored in "git_objects" — they are
-// content-addressed by SHA and never mutated after creation.
+// All entities are stored in the "git_entities" fallback collection because
+// no StorageCollection override is declared. All edges are stored in the
+// "git_relationships" edge collection.
 func DefaultGitSchema() types.Schema {
 	return types.Schema{
 		ID:      "git-schema-v1",
@@ -59,7 +58,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Agency",
 				PathSegment:       "agencies",
 				EntityIDParam:     "agencyId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_agencies",
 				Properties: []types.PropertyDefinition{
 					// name is the human-readable label for the agency.
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
@@ -141,7 +140,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Branch",
 				PathSegment:       "branches",
 				EntityIDParam:     "branchId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_branches",
 				Properties: []types.PropertyDefinition{
 					// name is the full ref name, e.g. "main" or "task/abc-001".
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
@@ -181,7 +180,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Tag",
 				PathSegment:       "tags",
 				EntityIDParam:     "tagId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_tags",
 				// Tags are immutable once created — the target commit must never change.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -222,7 +221,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Commit",
 				PathSegment:       "commits",
 				EntityIDParam:     "commitId",
-				StorageCollection: "git_objects",
+				StorageCollection: "git_commits",
 				// Commits are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -274,7 +273,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Tree",
 				PathSegment:       "trees",
 				EntityIDParam:     "treeId",
-				StorageCollection: "git_objects",
+				StorageCollection: "git_trees",
 				// Trees are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -324,7 +323,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Blob",
 				PathSegment:       "blobs",
 				EntityIDParam:     "blobId",
-				StorageCollection: "git_objects",
+				StorageCollection: "git_blobs",
 				// Blobs are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{

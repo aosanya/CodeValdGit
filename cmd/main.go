@@ -76,6 +76,7 @@ func main() {
 		Username: cfg.ArangoUser,
 		Password: cfg.ArangoPassword,
 		Database: cfg.ArangoDatabase,
+		Schema:   codevaldgit.DefaultGitSchema(),
 	})
 	if err != nil {
 		log.Fatalf("codevaldgit: ArangoDB backend: %v", err)
