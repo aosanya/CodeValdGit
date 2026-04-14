@@ -324,8 +324,9 @@ func DefaultGitSchema() types.Schema {
 				PathSegment:       "blobs",
 				EntityIDParam:     "blobId",
 				StorageCollection: "git_blobs",
-				// Blobs are content-addressed git objects — immutable once written.
-				Immutable: true,
+				// Blobs are content-addressed by SHA — the data/sha/size fields never
+				// change once written. Metadata fields (name, path, extension) are
+				// backfilled after commit time via UpdateEntity, so Immutable is not set.
 				Properties: []types.PropertyDefinition{
 					// sha is the full 40-character hex Git blob hash.
 					{Name: "sha", Type: types.PropertyTypeString, Required: true},

@@ -21,7 +21,9 @@ import (
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	gogitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/format/index"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/storage"
 )
@@ -169,6 +171,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create %s: %w", typeID, createErr)
 	}
 	log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: stored OK", s.agencyID, typeID, hash)
+
 	return hash, nil
 }
 
@@ -708,6 +711,89 @@ func (s *arangoStorer) Module(name string) (storage.Storer, error) {
 	return newArangoStorer(s.dm, s.agencyID+"/module/"+name), nil
 }
 
+// ── Blob metadata backfill (single commit point) ──────────────────────────────
+
+// backfillBlobsFromSHA looks up the Commit with the given SHA from the store
+// (at this point every packfile object is guaranteed to be present) and walks
+// its full tree, calling backfillBlobEntity for every blob entry found.
+// It is the single point where name/path/extension are resolved for blobs
+// written via the git-push path (SetEncodedObject).
+func (s *arangoStorer) backfillBlobsFromSHA(ctx context.Context, commitSHA string) {
+	obj, err := s.EncodedObject(plumbing.CommitObject, plumbing.NewHash(commitSHA))
+	if err != nil {
+		log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: get commit: %v", s.agencyID, commitSHA, err)
+		return
+	}
+	commit := &object.Commit{}
+	if err := commit.Decode(obj); err != nil {
+		log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: decode commit: %v", s.agencyID, commitSHA, err)
+		return
+	}
+	s.backfillBlobsFromTree(ctx, "", commit.TreeHash)
+}
+
+// backfillBlobsFromTree recursively walks a tree object. For each blob entry
+// it calls backfillBlobEntity with the fully-qualified path. For subtree
+// entries it recurses with the directory prefix extended.
+func (s *arangoStorer) backfillBlobsFromTree(ctx context.Context, prefix string, treeHash plumbing.Hash) {
+	treeObj, err := s.EncodedObject(plumbing.TreeObject, treeHash)
+	if err != nil {
+		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: get: %v", s.agencyID, treeHash, err)
+		return
+	}
+	tree := &object.Tree{}
+	if err := tree.Decode(treeObj); err != nil {
+		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: decode: %v", s.agencyID, treeHash, err)
+		return
+	}
+	for _, entry := range tree.Entries {
+		entryPath := entry.Name
+		if prefix != "" {
+			entryPath = prefix + "/" + entry.Name
+		}
+		if entry.Mode == filemode.Dir || entry.Mode == filemode.Submodule {
+			s.backfillBlobsFromTree(ctx, entryPath, entry.Hash)
+			continue
+		}
+		s.backfillBlobEntity(ctx, entry.Hash.String(), entry.Name, entryPath)
+	}
+}
+
+// backfillBlobEntity patches the name, path, and extension properties on the
+// Blob entity identified by sha, but only when name is not already set.
+// This makes the call idempotent: blobs written by WriteFile already carry
+// the fields and are left unchanged.
+func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path string) {
+	blobs, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "Blob",
+		Properties: map[string]any{"sha": sha},
+	})
+	if err != nil || len(blobs) == 0 {
+		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: not found", s.agencyID, sha)
+		return
+	}
+	// Idempotent: skip if already enriched (written by the WriteFile path).
+	if existing, ok := blobs[0].Properties["name"].(string); ok && existing != "" {
+		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: already enriched, skip", s.agencyID, sha)
+		return
+	}
+	ext := ""
+	if dot := strings.LastIndexByte(name, '.'); dot >= 0 {
+		ext = name[dot+1:]
+	}
+	if _, err := s.dm.UpdateEntity(ctx, s.agencyID, blobs[0].ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{
+			"name":      name,
+			"path":      path,
+			"extension": ext,
+		},
+	}); err != nil {
+		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: update failed: %v", s.agencyID, sha, err)
+	}
+	log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s name=%s path=%s: enriched OK", s.agencyID, sha, name, path)
+}
+
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 // setRepositoryHeadRef updates the head_ref property on the Repository entity
@@ -788,6 +874,9 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 			return fmt.Errorf("SetReference refs/heads/%s: link branch to repo: %w", branchName, relErr)
 		}
 		log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: created OK", s.agencyID, branchName, sha)
+
+		// All packfile objects are now stored — backfill blob metadata.
+		s.backfillBlobsFromSHA(ctx, sha)
 		return nil
 	}
 	_, err = s.dm.UpdateEntity(ctx, s.agencyID, branches[0].ID, entitygraph.UpdateEntityRequest{
@@ -796,5 +885,8 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 	if err != nil {
 		return fmt.Errorf("SetReference refs/heads/%s: update branch: %w", branchName, err)
 	}
+
+	// All packfile objects are now in the store — backfill blob metadata.
+	s.backfillBlobsFromSHA(ctx, sha)
 	return nil
 }
