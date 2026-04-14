@@ -2,7 +2,7 @@
 
 ## Feature Overview
 
-CodeValdGit provides the following top-level capabilities to CodeValdCortex:
+CodeValdGit provides the following top-level capabilities to CodeValdCross:
 
 ---
 
@@ -45,6 +45,6 @@ CodeValdGit provides the following top-level capabilities to CodeValdCortex:
 | Out of Scope | Reason |
 |---|---|
 | Remote Git hosting (GitHub / GitLab push/pull) | Local repos only for MVP |
-| Authentication / access control | Handled by CodeValdCortex's policy layer |
+| Authentication / access control | Handled by CodeValdCross's policy layer |
 | Pull request UI | Merge is programmatic, not UI-driven |
 | HTTP API | This is a Go library, not a service |

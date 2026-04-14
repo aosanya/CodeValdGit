@@ -25,6 +25,7 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 
+	codevaldgit "github.com/aosanya/CodeValdGit"
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	sharedadb "github.com/aosanya/CodeValdSharedLib/entitygraph/arangodb"
 	"github.com/aosanya/CodeValdSharedLib/types"
@@ -89,4 +90,12 @@ func NewBackendFromDB(db driver.Database, schema types.Schema) (*Backend, error)
 	}
 	scfg := toSharedConfig(Config{Schema: schema})
 	return sharedadb.NewBackendFromDB(db, scfg)
+}
+
+// NewArangoStorerBackend constructs a codevaldgit.Backend from an existing
+// entitygraph.DataManager. Use this in cmd/main.go to share the same
+// DataManager between the gRPC GitManager and the git Smart HTTP handler
+// without maintaining a separate driver.Database reference.
+func NewArangoStorerBackend(dm entitygraph.DataManager) codevaldgit.Backend {
+	return &arangoBackend{dm: dm}
 }

@@ -1,4 +1,4 @@
-# CodeValdCortex Integration
+# CodeValdCross Integration
 
 > ⚠️ **SUPERSEDED** — The original Go-module wiring approach described in this file has been replaced by the **gRPC Microservice Integration** design.
 > See [grpc-service.md](grpc-service.md) for the active specifications covering:
@@ -9,25 +9,25 @@
 
 ---
 
-## MVP-GIT-009 — CodeValdCortex Integration
+## MVP-GIT-009 — CodeValdCross Integration
 
 ### Overview
-Wire CodeValdGit into CodeValdCortex as a drop-in replacement for the custom `internal/git/` package. This task covers: adding CodeValdGit as a dependency, updating the CodeValdCortex lifecycle hooks (agency create/delete, task start/complete), deleting the replaced packages, and dropping the ArangoDB Git collections.
+Wire CodeValdGit into CodeValdCross as a drop-in replacement for the custom `internal/git/` package. This task covers: adding CodeValdGit as a dependency, updating the CodeValdCross lifecycle hooks (agency create/delete, task start/complete), deleting the replaced packages, and dropping the ArangoDB Git collections.
 
 This is the final MVP task. All earlier tasks must be complete and tested before starting integration.
 
 ### Acceptance Criteria
-- [ ] `go.mod` in CodeValdCortex references `github.com/aosanya/CodeValdGit`
-- [ ] `internal/git/` is fully deleted from CodeValdCortex
+- [ ] `go.mod` in CodeValdCross references `github.com/aosanya/CodeValdGit`
+- [ ] `internal/git/` is fully deleted from CodeValdCross
 - [ ] All compilation errors from the deletion are resolved
 - [ ] `git_objects`, `git_refs`, `repositories` ArangoDB collections are no longer used (collections may be dropped via a migration script)
-- [ ] All five CodeValdCortex lifecycle events call the correct CodeValdGit operations (see mapping table below)
+- [ ] All five CodeValdCross lifecycle events call the correct CodeValdGit operations (see mapping table below)
 - [ ] Existing integration tests for agent file output pass
-- [ ] No regressions in CodeValdCortex's test suite
+- [ ] No regressions in CodeValdCross's test suite
 
 ### Lifecycle Hook Mapping
 
-| CodeValdCortex Event | Location | CodeValdGit Call |
+| CodeValdCross Event | Location | CodeValdGit Call |
 |---|---|---|
 | Agency created | `internal/agency/service.go` — `CreateAgency` | `RepoManager.InitRepo(agencyID)` |
 | Agency deleted | `internal/agency/service.go` — `DeleteAgency` | `RepoManager.DeleteRepo(agencyID)` |
@@ -35,7 +35,7 @@ This is the final MVP task. All earlier tasks must be complete and tested before
 | Agent writes output | `internal/agent/` — file write handler | `Repo.WriteFile(taskID, path, content, agentID, message)` |
 | Task completed | `internal/task/service.go` — `CompleteTask` | `Repo.MergeBranch(taskID)` → `Repo.DeleteBranch(taskID)` |
 
-### Files to Delete in CodeValdCortex
+### Files to Delete in CodeValdCross
 
 After integration is verified, remove these files entirely:
 
@@ -49,7 +49,7 @@ internal/git/models/                   ← custom GitObject, GitTree, GitCommit 
 
 > After deletion, run `go build ./...` to surface all import sites that need updating.
 
-### Packages to Update in CodeValdCortex
+### Packages to Update in CodeValdCross
 
 | Package | Change Required |
 |---|---|
@@ -61,7 +61,7 @@ internal/git/models/                   ← custom GitObject, GitTree, GitCommit 
 
 ### Dependency Injection Pattern
 
-CodeValdCortex uses constructor injection. Add `codevaldgit.RepoManager` to the service layer:
+CodeValdCross uses constructor injection. Add `codevaldgit.RepoManager` to the service layer:
 
 ```go
 // In internal/agency/service.go
@@ -126,7 +126,7 @@ func (s *Service) CompleteTask(ctx context.Context, taskID, agencyID string) err
 
 ### Merge Conflict Routing
 
-When `CompleteTask` receives `*ErrMergeConflict`, CodeValdCortex must:
+When `CompleteTask` receives `*ErrMergeConflict`, CodeValdCross must:
 
 1. Mark the task as `conflict` state (new task state — add if not present)
 2. Send an event to the responsible agent with the conflicting file list
@@ -207,7 +207,7 @@ taskService   := task.NewService(taskDB, repoManager)
 ### config.yaml Changes
 
 ```yaml
-# Add to CodeValdCortex config.yaml
+# Add to CodeValdCross config.yaml
 git:
   backend: filesystem       # "filesystem" | "arangodb"
   base_path: /data/repos    # for filesystem backend
@@ -246,6 +246,6 @@ All of:
 | Risk | Mitigation |
 |---|---|
 | Data in legacy `git_objects` not migrated | No migration needed — ArangoDB Git collections are standalone versioning; existing artifact history in ArangoDB is superseded by CodeValdGit from integration date |
-| Concurrent writes from multiple CodeValdCortex replicas | Each `Repo` call is per-task; task branches are isolated; main is only updated at task completion — low collision risk for MVP |
+| Concurrent writes from multiple CodeValdCross replicas | Each `Repo` call is per-task; task branches are isolated; main is only updated at task completion — low collision risk for MVP |
 | go-git rebase edge cases | Covered by MVP-GIT-006 tests; `ErrMergeConflict` provides a safe fallback path |
 | Volume provisioning for filesystem backend | Document that `/data/repos` must be a persistent volume in Kubernetes deployments |

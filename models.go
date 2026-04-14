@@ -203,8 +203,16 @@ type Blob struct {
 	// SHA is the full 40-character hex Git blob hash.
 	SHA string `json:"sha"`
 
-	// Path is the file path relative to the repository root.
+	// Path is the file path relative to the repository root,
+	// e.g. "src/handlers/server.go".
 	Path string `json:"path"`
+
+	// Name is the base file name including extension, e.g. "Test.txt".
+	Name string `json:"name,omitempty"`
+
+	// Extension is the file extension without the leading dot, e.g. "txt".
+	// Empty for files with no extension or dotfiles.
+	Extension string `json:"extension,omitempty"`
 
 	// Size is the byte size of the file content.
 	Size int64 `json:"size,omitempty"`

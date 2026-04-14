@@ -74,7 +74,7 @@ CodeValdGit **fully replaces** the legacy `internal/git/` hand-rolled Git engine
 ### FR-006: Merge Conflict Resolution
 - When `MergeBranch` is called and `main` has advanced since the task branch was created (fast-forward not possible), the library **must first attempt an auto-rebase** of the task branch onto the current `main`
 - If the rebase succeeds (no file-level conflicts), the fast-forward merge proceeds automatically
-- If the rebase encounters a content conflict, the library **must return a structured error** to the caller (CodeValdCortex) containing:
+- If the rebase encounters a content conflict, the library **must return a structured error** to the caller (CodeValdCross) containing:
   - The conflicting file path(s)
   - The nature of the conflict
 - The caller is responsible for routing the conflict back to the agent for resolution
@@ -90,7 +90,7 @@ CodeValdGit **fully replaces** the legacy `internal/git/` hand-rolled Git engine
 - The `RepoManager` must be configured with both a `base_path` (live repos) and an `archive_base_path` (archived repos)
 
 ### FR-008: History and Diff Read Access (UI)
-- The library must support reading historical state for the CodeValdCortex UI at launch
+- The library must support reading historical state for the CodeValdCross UI at launch
 - Required operations:
   - **File content at any ref**: `ReadFile(ctx, ref, path)` where `ref` is a branch name, tag, or commit SHA
   - **Directory listing at any ref**: `ListDirectory(ctx, ref, path)` — enables a file browser at any point in history
@@ -106,7 +106,7 @@ CodeValdGit **fully replaces** the legacy `internal/git/` hand-rolled Git engine
 ### NFR-001: Embeddable Library
 - Must be importable as a standard Go module
 - No long-running daemon or sidecar process required
-- Caller (CodeValdCortex) controls concurrency
+- Caller (CodeValdCross) controls concurrency
 - Storage backend is injected by the caller via `storage.Storer` — supports filesystem and ArangoDB out of the box
 
 ### NFR-002: No External Git Binary
@@ -122,5 +122,5 @@ CodeValdGit **fully replaces** the legacy `internal/git/` hand-rolled Git engine
 | ~~OQ-001~~ | ~~Where are Git repos stored? Filesystem path, shared PVC, or in-memory?~~ | ✅ **Resolved** — pluggable via `storage.Storer`; filesystem and ArangoDB are both supported backends; caller injects the implementation |
 | ~~OQ-002~~ | ~~What happens when an auto-merge fails due to a conflict?~~ | ✅ **Resolved** — see FR-006: auto-rebase then surface conflict error to caller |
 | ~~OQ-003~~ | ~~What happens to the Git repo when an Agency is deleted?~~ | ✅ **Resolved** — see FR-007: `DeleteRepo` archives to `archive_base_path`; `PurgeRepo` hard-deletes |
-| ~~OQ-004~~ | ~~Should the library support read access to historical commits from the CodeValdCortex UI?~~ | ✅ **Resolved** — yes, at launch; see FR-008 |
+| ~~OQ-004~~ | ~~Should the library support read access to historical commits from the CodeValdCross UI?~~ | ✅ **Resolved** — yes, at launch; see FR-008 |
 | ~~OQ-005~~ | ~~Are there any file size limits or quotas per repo?~~ | ✅ **Resolved** — no limits enforced; library imposes no file size or repo size constraints |

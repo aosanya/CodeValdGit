@@ -172,6 +172,12 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 
 ---
 
+## P0: ArangoDB `storage.Storer` — Unified Single Backend (CRITICAL)
+
+*~~GIT-015a~~ ✅, ~~GIT-015b~~ ✅, ~~GIT-015c~~ ✅, ~~GIT-015d~~ ✅, ~~GIT-015e~~ ✅ complete — see `mvp_done.md`.*
+
+---
+
 ## P0: Production Safety (CRITICAL)
 
 ### GIT-011 — Concurrency and Atomic Ref Updates
@@ -218,6 +224,26 @@ handle duplicate inserts gracefully in writers; (B) replace the stale v1 `storag
 with the v2 entitygraph collection spec; (C) add `Config.Backend` with filesystem default,
 startup warning for ArangoDB, and a benchmarking plan with measurable promotion criteria.
 See: [mvp-details/critical-arangodb.md](mvp-details/critical-arangodb.md)
+
+---
+
+## P1: Repository Import (IMPORTANT)
+
+### GIT-016 — Import External Repository
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-016a: `ImportJob` TypeDefinition + `git_importjobs` collection in `schema.go` | 📋 Not Started | ~~GIT-001~~ ✅ |
+| GIT-016b: Types (`ImportRepoRequest`, `ImportJob`) + errors + `GitManager` interface additions | 📋 Not Started | GIT-016a |
+| GIT-016c: Core implementation — background goroutine, go-git clone, all-branch entity walk, cancel map | 📋 Not Started | GIT-016b |
+| GIT-016d: Proto additions (3 RPCs) + `buf generate` | 📋 Not Started | GIT-016b |
+| GIT-016e: gRPC server handlers + error mapping for all 3 RPCs | 📋 Not Started | GIT-016c, GIT-016d |
+| GIT-016f: Unit tests — import manager, cancel, concurrency rejection | 📋 Not Started | GIT-016e |
+
+**Scope**: Full async import of a public HTTPS Git repository into the entity graph.
+Six sub-tasks cover the schema addition, interface contract, core ingestion goroutine,
+proto codegen, gRPC server wiring, and unit tests.
+See: [mvp-details/repo-import.md](mvp-details/repo-import.md)
 
 ---
 

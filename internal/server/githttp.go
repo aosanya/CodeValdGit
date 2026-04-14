@@ -4,7 +4,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -21,10 +23,10 @@ import (
 //
 // URL structure:
 //
-//	GET  /{agencyID}/info/refs?service=git-upload-pack   — ref advertisement (fetch/clone)
-//	GET  /{agencyID}/info/refs?service=git-receive-pack  — ref advertisement (push)
-//	POST /{agencyID}/git-upload-pack                     — pack transfer (fetch/clone)
-//	POST /{agencyID}/git-receive-pack                    — pack transfer (push)
+//	GET  /{agencyID}/{repoName}/info/refs?service=git-upload-pack   — ref advertisement (fetch/clone)
+//	GET  /{agencyID}/{repoName}/info/refs?service=git-receive-pack  — ref advertisement (push)
+//	POST /{agencyID}/{repoName}/git-upload-pack                     — pack transfer (fetch/clone)
+//	POST /{agencyID}/{repoName}/git-receive-pack                    — pack transfer (push)
 //
 // The handler is designed to be served via cmux alongside the gRPC server on a
 // single port (see GIT-009 / cmd/main.go).
@@ -43,27 +45,27 @@ func NewGitHTTPHandler(b codevaldgit.Backend) *GitHTTPHandler {
 // ServeHTTP implements http.Handler.
 // It routes the four Smart HTTP endpoints to their respective handlers.
 func (h *GitHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	agencyID, rest, ok := extractAgencyID(r.URL.Path)
-	if !ok || agencyID == "" {
+	agencyID, repoName, rest, ok := extractAgencyRepo(r.URL.Path)
+	if !ok || agencyID == "" || repoName == "" {
 		http.Error(w, "invalid repository path", http.StatusBadRequest)
 		return
 	}
 
 	switch {
 	case r.Method == http.MethodGet && rest == "/info/refs":
-		h.infoRefs(w, r, agencyID)
+		h.infoRefs(w, r, agencyID, repoName)
 	case r.Method == http.MethodPost && rest == "/git-upload-pack":
-		h.uploadPack(w, r, agencyID)
+		h.uploadPack(w, r, agencyID, repoName)
 	case r.Method == http.MethodPost && rest == "/git-receive-pack":
-		h.receivePack(w, r, agencyID)
+		h.receivePack(w, r, agencyID, repoName)
 	default:
 		http.Error(w, "not found", http.StatusNotFound)
 	}
 }
 
-// infoRefs handles GET /{agencyID}/info/refs?service=git-{upload,receive}-pack.
+// infoRefs handles GET /{agencyID}/{repoName}/info/refs?service=git-{upload,receive}-pack.
 // It emits the Smart HTTP service announcement followed by the advertised refs.
-func (h *GitHTTPHandler) infoRefs(w http.ResponseWriter, r *http.Request, agencyID string) {
+func (h *GitHTTPHandler) infoRefs(w http.ResponseWriter, r *http.Request, agencyID, repoName string) {
 	service := r.URL.Query().Get("service")
 	switch service {
 	case transport.UploadPackServiceName, transport.ReceivePackServiceName:
@@ -72,7 +74,7 @@ func (h *GitHTTPHandler) infoRefs(w http.ResponseWriter, r *http.Request, agency
 		return
 	}
 
-	ep, err := endpointFor(agencyID)
+	ep, err := endpointFor(agencyID, repoName)
 	if err != nil {
 		http.Error(w, "bad endpoint", http.StatusInternalServerError)
 		return
@@ -128,9 +130,9 @@ func (h *GitHTTPHandler) infoRefs(w http.ResponseWriter, r *http.Request, agency
 	}
 }
 
-// uploadPack handles POST /{agencyID}/git-upload-pack (fetch / clone).
-func (h *GitHTTPHandler) uploadPack(w http.ResponseWriter, r *http.Request, agencyID string) {
-	ep, err := endpointFor(agencyID)
+// uploadPack handles POST /{agencyID}/{repoName}/git-upload-pack (fetch / clone).
+func (h *GitHTTPHandler) uploadPack(w http.ResponseWriter, r *http.Request, agencyID, repoName string) {
+	ep, err := endpointFor(agencyID, repoName)
 	if err != nil {
 		http.Error(w, "bad endpoint", http.StatusInternalServerError)
 		return
@@ -169,9 +171,9 @@ func (h *GitHTTPHandler) uploadPack(w http.ResponseWriter, r *http.Request, agen
 	_ = resp.Encode(w)
 }
 
-// receivePack handles POST /{agencyID}/git-receive-pack (push).
-func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, agencyID string) {
-	ep, err := endpointFor(agencyID)
+// receivePack handles POST /{agencyID}/{repoName}/git-receive-pack (push).
+func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, agencyID, repoName string) {
+	ep, err := endpointFor(agencyID, repoName)
 	if err != nil {
 		http.Error(w, "bad endpoint", http.StatusInternalServerError)
 		return
@@ -192,14 +194,28 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 
 	req := packp.NewReferenceUpdateRequest()
 	if err := req.Decode(r.Body); err != nil {
+		log.Printf("[DEBUG] receivePack %s/%s: Decode error: %v", agencyID, repoName, err)
 		http.Error(w, "malformed receive-pack request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("[DEBUG] receivePack %s/%s: %d commands, packfile=%v", agencyID, repoName, len(req.Commands), req.Packfile != nil)
+	for _, cmd := range req.Commands {
+		log.Printf("[DEBUG] receivePack %s/%s:   cmd %s old=%s new=%s", agencyID, repoName, cmd.Name, cmd.Old, cmd.New)
+	}
+
 	status, err := sess.ReceivePack(r.Context(), req)
 	if err != nil {
+		log.Printf("[DEBUG] receivePack %s/%s: ReceivePack error: %v", agencyID, repoName, err)
 		httpErrorFromTransport(w, err)
 		return
+	}
+
+	if status != nil {
+		log.Printf("[DEBUG] receivePack %s/%s: unpack=%s", agencyID, repoName, status.UnpackStatus)
+		for ref, e := range status.CommandStatuses {
+			log.Printf("[DEBUG] receivePack %s/%s:   ref %v => %v", agencyID, repoName, ref, e)
+		}
 	}
 
 	setNoCacheHeaders(w)
@@ -219,43 +235,83 @@ type backendLoader struct {
 }
 
 // Load satisfies gogitserver.Loader.
-// Returns transport.ErrRepositoryNotFound when the Backend returns any error.
+// ep.Path is expected to be "/{agencyID}/{repoName}" — both segments are
+// extracted and forwarded to Backend.OpenStorer.
+// If the repository does not yet exist it is created automatically via
+// Backend.InitRepo before retrying OpenStorer.
+// Returns transport.ErrRepositoryNotFound only when OpenStorer fails after
+// the auto-create attempt.
 func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
-	agencyID := strings.Trim(ep.Path, "/")
-	if agencyID == "" {
+	trimmed := strings.Trim(ep.Path, "/")
+	if trimmed == "" {
 		return nil, transport.ErrRepositoryNotFound
 	}
-
-	sto, _, err := l.b.OpenStorer(context.Background(), agencyID)
-	if err != nil {
+	parts := strings.SplitN(trimmed, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return nil, transport.ErrRepositoryNotFound
 	}
+	agencyID, repoName := parts[0], parts[1]
 
-	return sto, nil
+	ctx := context.Background()
+	sto, _, err := l.b.OpenStorer(ctx, agencyID, repoName)
+	if err == nil {
+		return sto, nil
+	}
+
+	// Auto-create the repository on first access and retry.
+	if errors.Is(err, codevaldgit.ErrRepoNotFound) {
+		log.Printf("[INFO] backendLoader: repo %s/%s not found — auto-creating", agencyID, repoName)
+		if initErr := l.b.InitRepo(ctx, agencyID, repoName); initErr != nil && !errors.Is(initErr, codevaldgit.ErrRepoAlreadyExists) {
+			log.Printf("[ERROR] backendLoader: InitRepo %s/%s: %v", agencyID, repoName, initErr)
+			return nil, transport.ErrRepositoryNotFound
+		}
+		sto, _, err = l.b.OpenStorer(ctx, agencyID, repoName)
+		if err != nil {
+			log.Printf("[ERROR] backendLoader: OpenStorer after init %s/%s: %v", agencyID, repoName, err)
+			return nil, transport.ErrRepositoryNotFound
+		}
+		return sto, nil
+	}
+
+	return nil, transport.ErrRepositoryNotFound
 }
 
-// endpointFor builds a transport.Endpoint whose Path is "/{agencyID}".
+// endpointFor builds a transport.Endpoint whose Path is "/{agencyID}/{repoName}".
 // go-git's server.Loader uses Endpoint.Path as the repository key.
-func endpointFor(agencyID string) (*transport.Endpoint, error) {
-	return transport.NewEndpoint(fmt.Sprintf("/%s", agencyID))
+func endpointFor(agencyID, repoName string) (*transport.Endpoint, error) {
+	return transport.NewEndpoint(fmt.Sprintf("/%s/%s", agencyID, repoName))
 }
 
-// extractAgencyID splits a URL path of the form "/{agencyID}/rest..."
-// into (agencyID, "/rest...", true). Returns ("", "", false) on bad input.
-func extractAgencyID(path string) (agencyID, rest string, ok bool) {
+// extractAgencyRepo splits a URL path of the form "/{agencyID}/{repoName}/rest"
+// into (agencyID, repoName, "/rest", true).
+// Returns ("", "", "", false) on bad input (missing agencyID, repoName, or rest).
+func extractAgencyRepo(path string) (agencyID, repoName, rest string, ok bool) {
 	// Strip leading slash.
 	trimmed := strings.TrimPrefix(path, "/")
 	if trimmed == "" {
-		return "", "", false
+		return "", "", "", false
 	}
 
+	// First segment: agencyID.
 	idx := strings.Index(trimmed, "/")
 	if idx < 0 {
-		// No trailing segment — not a valid Smart HTTP path.
-		return "", "", false
+		return "", "", "", false
 	}
+	agency := trimmed[:idx]
+	after := trimmed[idx+1:] // everything after the first slash
 
-	return trimmed[:idx], trimmed[idx:], true
+	// Second segment: repoName.
+	idx2 := strings.Index(after, "/")
+	if idx2 < 0 {
+		return "", "", "", false
+	}
+	repo := after[:idx2]
+	restSuffix := after[idx2:] // includes the leading slash
+
+	if agency == "" || repo == "" || restSuffix == "/" || restSuffix == "" {
+		return "", "", "", false
+	}
+	return agency, repo, restSuffix, true
 }
 
 // setNoCacheHeaders sets the standard Git Smart HTTP cache-control headers.

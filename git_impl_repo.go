@@ -533,8 +533,10 @@ func (m *gitManager) resolveParentID(ctx context.Context, entityID, relName stri
 	return rels[0].ToID
 }
 
-// advanceBranchHead updates a branch's points_to edge (and head_commit_id
-// property) to point at newCommitID. Returns the updated Branch.
+// advanceBranchHead updates a branch's points_to edge, head_commit_id, and
+// sha properties to point at newCommitID. The sha is copied from the Commit
+// entity so that the go-git storage.Storer can resolve refs without an extra
+// graph traversal. Returns the updated Branch.
 func (m *gitManager) advanceBranchHead(ctx context.Context, branchID, newCommitID string) (Branch, error) {
 	// Remove old points_to edge if it exists.
 	oldRels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
@@ -558,13 +560,24 @@ func (m *gitManager) advanceBranchHead(ctx context.Context, branchID, newCommitI
 		return Branch{}, fmt.Errorf("advanceBranchHead: link commit: %w", err)
 	}
 
-	// Update the denormalised head_commit_id property.
+	// Fetch the new Commit entity to read its real git SHA.
+	commitEntity, err := m.dm.GetEntity(ctx, m.agencyID, newCommitID)
+	if err != nil {
+		return Branch{}, fmt.Errorf("advanceBranchHead: get commit: %w", err)
+	}
+	commitSHA := strProp(commitEntity.Properties, "sha")
+
+	// Update head_commit_id, sha, and updated_at in a single call.
 	now := time.Now().UTC().Format(time.RFC3339)
+	updateProps := map[string]any{
+		"head_commit_id": newCommitID,
+		"updated_at":     now,
+	}
+	if commitSHA != "" {
+		updateProps["sha"] = commitSHA
+	}
 	updated, err := m.dm.UpdateEntity(ctx, m.agencyID, branchID, entitygraph.UpdateEntityRequest{
-		Properties: map[string]any{
-			"head_commit_id": newCommitID,
-			"updated_at":     now,
-		},
+		Properties: updateProps,
 	})
 	if err != nil {
 		return Branch{}, fmt.Errorf("advanceBranchHead: update entity: %w", err)

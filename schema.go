@@ -21,9 +21,11 @@
 //	                                       ──has_commit──► Commit ──has_parent──► Commit
 //
 // Storage:
-//   - Agency, Repository, Branch, Tag → "git_entities" document collection (mutable refs / live state)
-//   - Commit, Tree, Blob              → "git_objects" document collection (immutable, content-addressed by SHA)
-//   - All edges                       → "git_relationships" edge collection
+//   - Agency, Branch, Tag  → "git_entities" document collection (mutable refs / live state)
+//   - Repository           → "git_repositories" document collection (one per agency; mutable)
+//   - Commit, Tree, Blob   → "git_objects" document collection (immutable, content-addressed by SHA)
+//   - GitInternalState     → "git_internal" document collection (go-git internal: config, index, shallow)
+//   - All edges            → "git_relationships" edge collection
 //
 // Inverse relationships auto-created by [entitygraph.DataManager.CreateRelationship]:
 //
@@ -42,9 +44,9 @@ import "github.com/aosanya/CodeValdSharedLib/types"
 // cmd/main.go on startup via GitSchemaManager.SetSchema. The operation is
 // idempotent — calling it multiple times with the same schema ID is safe.
 //
-// Repository, Branch, and Tag entities are stored in "git_entities".
-// Commit, Tree, and Blob objects are stored in "git_objects" — they are
-// content-addressed by SHA and never mutated after creation.
+// All entities are stored in the "git_entities" fallback collection because
+// no StorageCollection override is declared. All edges are stored in the
+// "git_relationships" edge collection.
 func DefaultGitSchema() types.Schema {
 	return types.Schema{
 		ID:      "git-schema-v1",
@@ -56,7 +58,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Agency",
 				PathSegment:       "agencies",
 				EntityIDParam:     "agencyId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_agencies",
 				Properties: []types.PropertyDefinition{
 					// name is the human-readable label for the agency.
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
@@ -82,13 +84,17 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Repository",
 				PathSegment:       "repositories",
 				EntityIDParam:     "repositoryId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_repositories",
 				Properties: []types.PropertyDefinition{
 					// name is the human-readable label, e.g. the agency ID used as repo key.
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
 					{Name: "description", Type: types.PropertyTypeString},
 					// default_branch is the name of the primary branch (e.g. "main").
 					{Name: "default_branch", Type: types.PropertyTypeString, Required: true},
+					// head_ref is the symbolic HEAD target, e.g. "refs/heads/main".
+					// Written by the go-git storage.Storer on InitRepo and updated on
+					// symbolic-ref changes. Required for Smart HTTP (git clone/fetch).
+					{Name: "head_ref", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -134,12 +140,17 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Branch",
 				PathSegment:       "branches",
 				EntityIDParam:     "branchId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_branches",
 				Properties: []types.PropertyDefinition{
 					// name is the full ref name, e.g. "main" or "task/abc-001".
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
 					// is_default is true for the repository's default branch.
 					{Name: "is_default", Type: types.PropertyTypeBoolean},
+					// sha is the target commit hash for this branch head.
+					// Updated by the go-git storage.Storer on every SetReference call
+					// so that Smart HTTP (git clone/fetch) can resolve refs without
+					// traversing the points_to relationship.
+					{Name: "sha", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -169,7 +180,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Tag",
 				PathSegment:       "tags",
 				EntityIDParam:     "tagId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_tags",
 				// Tags are immutable once created — the target commit must never change.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -210,7 +221,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Commit",
 				PathSegment:       "commits",
 				EntityIDParam:     "commitId",
-				StorageCollection: "git_objects",
+				StorageCollection: "git_commits",
 				// Commits are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -262,7 +273,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Tree",
 				PathSegment:       "trees",
 				EntityIDParam:     "treeId",
-				StorageCollection: "git_objects",
+				StorageCollection: "git_trees",
 				// Trees are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -271,6 +282,10 @@ func DefaultGitSchema() types.Schema {
 					// path is the directory path within the commit tree hierarchy.
 					// An empty string ("") denotes the root tree of a commit.
 					{Name: "path", Type: types.PropertyTypeString},
+					// entries is a JSON array of child entries in the form
+					// [{"name":"","mode":"100644","sha":""}] serialised at write time.
+					// Consumed by the go-git storage.Storer to decode the tree object.
+					{Name: "entries", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 				},
 				Relationships: []types.RelationshipDefinition{
@@ -308,14 +323,22 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Blob",
 				PathSegment:       "blobs",
 				EntityIDParam:     "blobId",
-				StorageCollection: "git_objects",
-				// Blobs are content-addressed git objects — immutable once written.
-				Immutable: true,
+				StorageCollection: "git_blobs",
+				// Blobs are content-addressed by SHA — the data/sha/size fields never
+				// change once written. Metadata fields (name, path, extension) are
+				// backfilled after commit time via UpdateEntity, so Immutable is not set.
 				Properties: []types.PropertyDefinition{
 					// sha is the full 40-character hex Git blob hash.
 					{Name: "sha", Type: types.PropertyTypeString, Required: true},
-					// path is the file path relative to the repository root.
+					// path is the file path relative to the repository root,
+					// e.g. "src/handlers/server.go".
 					{Name: "path", Type: types.PropertyTypeString, Required: true},
+					// name is the base file name including extension, e.g. "Test.txt".
+					// Derived from the last path segment.
+					{Name: "name", Type: types.PropertyTypeString, Required: true},
+					// extension is the file extension without the leading dot, e.g. "txt".
+					// Empty string for files with no extension.
+					{Name: "extension", Type: types.PropertyTypeString},
 					// size is the byte size of the file content.
 					{Name: "size", Type: types.PropertyTypeInteger},
 					// encoding is "utf-8" for text files or "base64" for binary files.
@@ -334,6 +357,28 @@ func DefaultGitSchema() types.Schema {
 						Required:    true,
 						Inverse:     "has_blob",
 					},
+				},
+			},
+			{
+				Name:              "GitInternalState",
+				DisplayName:       "Git Internal State",
+				PathSegment:       "internal-state",
+				EntityIDParam:     "internalStateId",
+				StorageCollection: "git_internal",
+				// GitInternalState stores per-agency go-git internal data used exclusively
+				// by the storage.Storer implementation. One document per agency per
+				// state_type — enforced via UniqueKey so UpsertEntity is always safe.
+				// Not exposed via gRPC or HTTP routes.
+				UniqueKey: []string{"state_type"},
+				Properties: []types.PropertyDefinition{
+					// state_type is the discriminator: "config", "index", or "shallow".
+					{Name: "state_type", Type: types.PropertyTypeString, Required: true},
+					// data is the base64-encoded binary payload:
+					//   config  — git config ini format
+					//   index   — git index binary
+					//   shallow — newline-separated shallow commit SHAs
+					{Name: "data", Type: types.PropertyTypeString, Required: true},
+					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
 		},

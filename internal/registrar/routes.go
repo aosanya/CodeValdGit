@@ -173,17 +173,17 @@ func smartHTTPRoutes() []types.RouteInfo {
 	return []types.RouteInfo{
 		{
 			Method:     "GET",
-			Pattern:    "/{agencyId}/info/refs",
+			Pattern:    "/{agencyId}/{repoId}/info/refs",
 			Capability: "git_info_refs",
 		},
 		{
 			Method:     "POST",
-			Pattern:    "/{agencyId}/git-upload-pack",
+			Pattern:    "/{agencyId}/{repoId}/git-upload-pack",
 			Capability: "git_upload_pack",
 		},
 		{
 			Method:     "POST",
-			Pattern:    "/{agencyId}/git-receive-pack",
+			Pattern:    "/{agencyId}/{repoId}/git-receive-pack",
 			Capability: "git_receive_pack",
 		},
 	}

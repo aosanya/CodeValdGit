@@ -20,8 +20,8 @@ import (
 // mockRepoManager is a minimal stub used only for compile-time checks.
 type mockRepoManager struct{}
 
-func (m *mockRepoManager) InitRepo(_ context.Context, _ string) error { return nil }
-func (m *mockRepoManager) OpenRepo(_ context.Context, _ string) (codevaldgit.Repo, error) {
+func (m *mockRepoManager) InitRepo(_ context.Context, _, _ string) error { return nil }
+func (m *mockRepoManager) OpenRepo(_ context.Context, _, _ string) (codevaldgit.Repo, error) {
 	return nil, nil
 }
 func (m *mockRepoManager) DeleteRepo(_ context.Context, _ string) error { return nil }
@@ -49,8 +49,8 @@ func (r *mockRepo) Diff(_ context.Context, _, _ string) ([]codevaldgit.FileDiff,
 // mockBackend is a minimal stub used only for compile-time checks.
 type mockBackend struct{}
 
-func (b *mockBackend) InitRepo(_ context.Context, _ string) error { return nil }
-func (b *mockBackend) OpenStorer(_ context.Context, _ string) (storage.Storer, billy.Filesystem, error) {
+func (b *mockBackend) InitRepo(_ context.Context, _, _ string) error { return nil }
+func (b *mockBackend) OpenStorer(_ context.Context, _, _ string) (storage.Storer, billy.Filesystem, error) {
 	return nil, nil, nil
 }
 func (b *mockBackend) DeleteRepo(_ context.Context, _ string) error { return nil }

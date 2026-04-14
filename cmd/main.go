@@ -11,8 +11,6 @@
 //	GIT_ARANGO_USER          ArangoDB username (default "root")
 //	GIT_ARANGO_PASSWORD      ArangoDB password
 //	GIT_ARANGO_DATABASE      ArangoDB database (default "codevaldgit")
-//	GIT_REPOS_BASE_PATH      filesystem backend repos root (default "/tmp/codevaldgit/repos")
-//	GIT_REPOS_ARCHIVE_PATH   filesystem backend archive root (default "/tmp/codevaldgit/archive")
 //	CROSS_GRPC_ADDR          CodeValdCross gRPC address; empty disables registration
 //	GIT_GRPC_ADVERTISE_ADDR  address CodeValdCross dials back on (default: listen addr)
 //	CODEVALDGIT_AGENCY_ID    agency scope for this instance (empty = all agencies)
@@ -39,7 +37,6 @@ import (
 	"github.com/aosanya/CodeValdGit/internal/registrar"
 	"github.com/aosanya/CodeValdGit/internal/server"
 	gitarangodb "github.com/aosanya/CodeValdGit/storage/arangodb"
-	"github.com/aosanya/CodeValdGit/storage/filesystem"
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	healthpb "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldhealth/v1"
 	"github.com/aosanya/CodeValdSharedLib/health"
@@ -79,6 +76,7 @@ func main() {
 		Username: cfg.ArangoUser,
 		Password: cfg.ArangoPassword,
 		Database: cfg.ArangoDatabase,
+		Schema:   codevaldgit.DefaultGitSchema(),
 	})
 	if err != nil {
 		log.Fatalf("codevaldgit: ArangoDB backend: %v", err)
@@ -95,20 +93,15 @@ func main() {
 		log.Println("codevaldgit: CODEVALDGIT_AGENCY_ID not set — skipping schema seed")
 	}
 
-	// ── GitManager (gRPC service) ─────────────────────────────────────────────
+	// ── GitManager (gRPC service) ──────────────────────────────────────────
 	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID)
 
-	// ── Filesystem backend (git Smart HTTP) ──────────────────────────────────
-	// The Git Smart HTTP handler uses the v1 filesystem backend so that git
-	// clients can clone/push/pull against real .git directories on disk.
-	fsBackend, err := filesystem.NewFilesystemBackend(filesystem.FilesystemConfig{
-		BasePath:    cfg.ReposBasePath,
-		ArchivePath: cfg.ReposArchivePath,
-	})
-	if err != nil {
-		log.Fatalf("codevaldgit: filesystem backend: %v", err)
-	}
-	gitHTTPHandler := server.NewGitHTTPHandler(fsBackend)
+	// ── Git Smart HTTP backend (shared ArangoDB DataManager) ─────────────────
+	// Both the gRPC GitManager and the Smart HTTP handler share the same
+	// entitygraph.DataManager so that repos created via gRPC are immediately
+	// accessible for git clone/fetch/push over HTTP.
+	gitBackend := gitarangodb.NewArangoStorerBackend(arangoBackend)
+	gitHTTPHandler := server.NewGitHTTPHandler(gitBackend)
 
 	// ── TCP listener ─────────────────────────────────────────────────────────
 	lis, err := net.Listen("tcp", cfg.ListenAddr)

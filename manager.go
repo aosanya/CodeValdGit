@@ -25,20 +25,20 @@ func NewRepoManager(b Backend) (RepoManager, error) {
 }
 
 // InitRepo delegates to [Backend.InitRepo].
-func (m *repoManager) InitRepo(ctx context.Context, agencyID string) error {
-	return m.backend.InitRepo(ctx, agencyID)
+func (m *repoManager) InitRepo(ctx context.Context, agencyID, repoName string) error {
+	return m.backend.InitRepo(ctx, agencyID, repoName)
 }
 
 // OpenRepo delegates to [Backend.OpenStorer] to obtain a storage.Storer and
 // billy.Filesystem, then wraps them in the shared Repo implementation.
-func (m *repoManager) OpenRepo(ctx context.Context, agencyID string) (Repo, error) {
-	storer, fs, err := m.backend.OpenStorer(ctx, agencyID)
+func (m *repoManager) OpenRepo(ctx context.Context, agencyID, repoName string) (Repo, error) {
+	storer, fs, err := m.backend.OpenStorer(ctx, agencyID, repoName)
 	if err != nil {
-		return nil, fmt.Errorf("OpenRepo %s: %w", agencyID, err)
+		return nil, fmt.Errorf("OpenRepo %s/%s: %w", agencyID, repoName, err)
 	}
 	r, err := newRepo(storer, fs)
 	if err != nil {
-		return nil, fmt.Errorf("OpenRepo %s: %w", agencyID, err)
+		return nil, fmt.Errorf("OpenRepo %s/%s: %w", agencyID, repoName, err)
 	}
 	return r, nil
 }

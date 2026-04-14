@@ -47,14 +47,15 @@ import (
 // Construct the desired Backend using NewFilesystemBackend or NewArangoBackend,
 // then pass it to [NewRepoManager].
 type Backend interface {
-	// InitRepo provisions a new Git store for the given agencyID.
-	// Returns [ErrRepoAlreadyExists] if a store already exists.
-	InitRepo(ctx context.Context, agencyID string) error
+	// InitRepo provisions a new Git store for the given agencyID and repoName.
+	// Returns [ErrRepoAlreadyExists] if a store already exists for that pair.
+	InitRepo(ctx context.Context, agencyID, repoName string) error
 
-	// OpenStorer returns a go-git storage.Storer and billy.Filesystem for agencyID.
+	// OpenStorer returns a go-git storage.Storer and billy.Filesystem for the
+	// named repository within agencyID.
 	// Called internally by [RepoManager.OpenRepo] to construct a Repo.
-	// Returns [ErrRepoNotFound] if no store exists for agencyID.
-	OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error)
+	// Returns [ErrRepoNotFound] if no store exists for (agencyID, repoName).
+	OpenStorer(ctx context.Context, agencyID, repoName string) (storage.Storer, billy.Filesystem, error)
 
 	// DeleteRepo archives or flags the agency repo as deleted (behaviour is backend-specific).
 	// Filesystem: os.Rename to ArchivePath (non-destructive; repo remains valid).
@@ -73,16 +74,15 @@ type Backend interface {
 // per-agency Git repositories. Obtain an instance via [NewRepoManager].
 // One RepoManager is typically shared process-wide.
 type RepoManager interface {
-	// InitRepo creates a new empty Git repository for the given agency.
-	// Delegates to [Backend.InitRepo]. Returns [ErrRepoAlreadyExists] if a
-	// repo already exists for this agencyID.
-	InitRepo(ctx context.Context, agencyID string) error
+	// InitRepo creates a new empty Git repository for the given agency and
+	// repository name. Delegates to [Backend.InitRepo].
+	// Returns [ErrRepoAlreadyExists] if a repo already exists for (agencyID, repoName).
+	InitRepo(ctx context.Context, agencyID, repoName string) error
 
-	// OpenRepo opens an existing live repository by agency ID and returns a
-	// backend-agnostic [Repo]. Delegates to [Backend.OpenStorer] then wraps
-	// the storer in the shared Repo implementation.
-	// Returns [ErrRepoNotFound] if no store exists for agencyID.
-	OpenRepo(ctx context.Context, agencyID string) (Repo, error)
+	// OpenRepo opens an existing repository by agency ID and repository name,
+	// returning a backend-agnostic [Repo]. Delegates to [Backend.OpenStorer].
+	// Returns [ErrRepoNotFound] if no store exists for (agencyID, repoName).
+	OpenRepo(ctx context.Context, agencyID, repoName string) (Repo, error)
 
 	// DeleteRepo delegates to [Backend.DeleteRepo].
 	// For the filesystem backend this archives the repo to ArchivePath.

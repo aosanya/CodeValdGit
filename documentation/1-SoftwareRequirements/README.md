@@ -19,7 +19,7 @@ This section captures everything **what** CodeValdGit must do and **why** — wi
 
 ## Summary
 
-CodeValdGit is a **Go library** that provides Git-based artifact versioning for [CodeValdCortex](../../CodeValdCortex/README.md). It replaces the hand-rolled Git engine (`internal/git/`) with proper Git semantics backed by [go-git](https://github.com/go-git/go-git).
+CodeValdGit is a **Go library** that provides Git-based artifact versioning for [CodeValdCross](../../CodeValdCross/README.md). It replaces the hand-rolled Git engine (`internal/git/`) with proper Git semantics backed by [go-git](https://github.com/go-git/go-git).
 
 ### Core Requirements at a Glance
 
@@ -32,4 +32,4 @@ CodeValdGit is a **Go library** that provides Git-based artifact versioning for 
 | FR-005 | File operations (read/write/delete/list at any ref) |
 | FR-006 | Merge conflict resolution via auto-rebase; structured error returned |
 | FR-007 | Repository archiving on Agency deletion (never hard-delete immediately) |
-| FR-008 | History and diff read access for the CodeValdCortex UI |
+| FR-008 | History and diff read access for the CodeValdCross UI |

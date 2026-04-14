@@ -14,7 +14,8 @@ This section captures the **how** — design decisions, data models, component a
 | [architecture-concurrency.md](architecture-concurrency.md) | Concurrency model — `RefLocker` interface, CAS on branch HEAD, per-agency merge serialisation (GIT-011) |
 | [architecture-merge.md](architecture-merge.md) | Merge strategy — squash merge, fork-point tracking, conflict surface (GIT-012) |
 | [architecture-transactions.md](architecture-transactions.md) | Transaction boundaries — atomicity rules, `MergeRequest` idempotency key, retry-safety matrix (GIT-013) |
-| [architecture-arangodb.md](architecture-arangodb.md) | ArangoDB backend — v1/v2 design evolution, sub-gap analysis, object deduplication fix, Smart HTTP limitation, production promotion criteria (GIT-014) |
+| [architecture-arangodb.md](architecture-arangodb.md) | ArangoDB v2 entitygraph backend — design evolution, sub-gap analysis, deduplication, production criteria (GIT-014) |
+| [architecture-arangodb-storer.md](architecture-arangodb-storer.md) | ArangoDB v3 `storage.Storer` — unified single backend for gRPC + Smart HTTP; eliminates filesystem (GIT-015) |
 
 ---
 
@@ -28,7 +29,7 @@ This section captures the **how** — design decisions, data models, component a
 | Branch naming | `task/{task-id}` | Short-lived, traceable back to CodeValdWork task records |
 | Merge strategy | Squash merge (V1) — tree-diff apply onto default HEAD | Simpler than cherry-pick rebase; atomic apply; preserves task branch history for audit |
 | Storage backend (gRPC / GitManager) | Pluggable via `entitygraph.DataManager` | Filesystem and ArangoDB are both valid; ArangoDB is experimental — see [architecture-arangodb.md](architecture-arangodb.md) |
-| Storage backend (Smart HTTP) | Filesystem-only (`storage.Storer` + `billy.Filesystem`) | ArangoDB backend does not implement `codevaldgit.Backend.OpenStorer` |
+| Storage backend (Smart HTTP + unified) | ArangoDB `storage.Storer` (GIT-015 🚀) | Single backend for both gRPC and Smart HTTP — no filesystem needed; see [architecture-arangodb-storer.md](architecture-arangodb-storer.md) |
 | Worktree filesystem | Pluggable via `billy.Filesystem` | Both storage and worktree are independently injectable |
 | Merge conflict handling | Tree-diff conflict detection | Returns `ErrMergeConflict{Files}` — caller routes back to agent |
 
