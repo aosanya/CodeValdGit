@@ -329,8 +329,15 @@ func DefaultGitSchema() types.Schema {
 				Properties: []types.PropertyDefinition{
 					// sha is the full 40-character hex Git blob hash.
 					{Name: "sha", Type: types.PropertyTypeString, Required: true},
-					// path is the file path relative to the repository root.
+					// path is the file path relative to the repository root,
+					// e.g. "src/handlers/server.go".
 					{Name: "path", Type: types.PropertyTypeString, Required: true},
+					// name is the base file name including extension, e.g. "Test.txt".
+					// Derived from the last path segment.
+					{Name: "name", Type: types.PropertyTypeString, Required: true},
+					// extension is the file extension without the leading dot, e.g. "txt".
+					// Empty string for files with no extension.
+					{Name: "extension", Type: types.PropertyTypeString},
 					// size is the byte size of the file content.
 					{Name: "size", Type: types.PropertyTypeInteger},
 					// encoding is "utf-8" for text files or "base64" for binary files.

@@ -118,6 +118,8 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		Properties: map[string]any{
 			"sha":        blobSHA,
 			"path":       req.Path,
+			"name":       fileName(req.Path),
+			"extension":  fileExtension(req.Path),
 			"size":       int64(len(req.Content)),
 			"encoding":   encoding,
 			"content":    req.Content,
@@ -563,6 +565,8 @@ func entityToBlob(e entitygraph.Entity) Blob {
 		ID:        e.ID,
 		SHA:       strProp(p, "sha"),
 		Path:      strProp(p, "path"),
+		Name:      strProp(p, "name"),
+		Extension: strProp(p, "extension"),
 		Size:      int64Prop(p, "size"),
 		Encoding:  strProp(p, "encoding"),
 		Content:   strProp(p, "content"),
@@ -635,4 +639,15 @@ func fileName(p string) string {
 		return p
 	}
 	return p[idx+1:]
+}
+
+// fileExtension returns the file extension without the leading dot, e.g. "txt".
+// Returns an empty string for files with no extension or dotfiles (e.g. ".gitignore").
+func fileExtension(p string) string {
+	name := fileName(p)
+	idx := strings.LastIndex(name, ".")
+	if idx <= 0 {
+		return ""
+	}
+	return name[idx+1:]
 }
