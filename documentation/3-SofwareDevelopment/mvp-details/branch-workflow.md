@@ -16,7 +16,7 @@ Implement `CreateBranch` and `DeleteBranch` on the `Repo` interface. Agents **mu
 | Main trunk | `main` | `main` |
 | Task branch | `task/{task-id}` | `task/task-abc-001` |
 
-Task IDs come from CodeValdCortex's task records. The library does not validate or generate task IDs — callers provide them.
+Task IDs come from CodeValdCross's task records. The library does not validate or generate task IDs — callers provide them.
 
 ### Acceptance Criteria
 - [ ] `CreateBranch(ctx, taskID)` creates `refs/heads/task/{taskID}` pointing at the current `HEAD` of `main`
@@ -315,7 +315,7 @@ if err := repo.MergeBranch(ctx, taskID); err != nil {
 ### Agent Retry Flow (after conflict)
 
 1. `MergeBranch` returns `*ErrMergeConflict` with file list
-2. CodeValdCortex routes conflict details back to the responsible agent
+2. CodeValdCross routes conflict details back to the responsible agent
 3. Agent calls `WriteFile` to resolve each conflicting file on the task branch
 4. Agent requests task completion again → `MergeBranch` retried
 5. If `main` has not changed: fast-forward succeeds

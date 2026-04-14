@@ -27,7 +27,7 @@ This section tracks the development plan, MVP task breakdown, and implementation
 | MVP-GIT-006 | Auto-Rebase & Conflict Resolution | 🔲 Not Started |
 | MVP-GIT-007 | History & Diff (UI Read Access) | 🔲 Not Started |
 | MVP-GIT-008 | ArangoDB Storage Backend | 🔲 Not Started |
-| MVP-GIT-009 | CodeValdCortex Integration | 🔲 Not Started |
+| MVP-GIT-009 | CodeValdCross Integration | 🔲 Not Started |
 
 ---
 

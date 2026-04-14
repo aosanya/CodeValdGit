@@ -53,7 +53,7 @@ Every commit created by this library **must** record:
 | Timestamp | `time.Now().UTC()` | RFC3339 |
 | Committer | Same as author for agent commits | |
 
-The `author` string is the agent ID from CodeValdCortex. Callers should pass structured messages (e.g. `task/{task-id}: {description}`) for traceability.
+The `author` string is the agent ID from CodeValdCross. Callers should pass structured messages (e.g. `task/{task-id}: {description}`) for traceability.
 
 ### Implementation Notes
 
@@ -255,9 +255,9 @@ There is no file size limit enforced by this library. Large binary blobs will im
 
 `ReadFile` and `ListDirectory` are **read-only and safe to call concurrently** — they only walk the object DAG and do not touch the worktree.
 
-`WriteFile`, `DeleteFile`, and `CreateBranch`/`DeleteBranch` **mutate the worktree** and must not be called concurrently for the same `taskID`. The caller (CodeValdCortex) is responsible for serialising writes per task. Multiple tasks writing to *different* branches concurrently is safe because each branch is independent.
+`WriteFile`, `DeleteFile`, and `CreateBranch`/`DeleteBranch` **mutate the worktree** and must not be called concurrently for the same `taskID`. The caller (CodeValdCross) is responsible for serialising writes per task. Multiple tasks writing to *different* branches concurrently is safe because each branch is independent.
 
-> **Note on worktree**: go-git's filesystem backend uses a single shared worktree directory. Concurrent checkouts to different branches on the same `Repo` instance will corrupt the worktree. If CodeValdCortex needs concurrent multi-task writes on the same repo, use a per-task `Repo` instance (call `OpenRepo` per task) or switch to the in-memory/ArangoDB backend.
+> **Note on worktree**: go-git's filesystem backend uses a single shared worktree directory. Concurrent checkouts to different branches on the same `Repo` instance will corrupt the worktree. If CodeValdCross needs concurrent multi-task writes on the same repo, use a per-task `Repo` instance (call `OpenRepo` per task) or switch to the in-memory/ArangoDB backend.
 
 ### Dependencies
 - MVP-GIT-003 (branch must exist before writing)

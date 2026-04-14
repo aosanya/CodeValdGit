@@ -9,7 +9,7 @@ Topics: ArangoDB Storage Backend · go-git Pluggable Storage
 ### Overview
 Implement a custom `storage.Storer` backed by ArangoDB so that Git object stores survive container restarts without a mounted volume. The working tree (`billy.Filesystem`) remains on local/in-memory storage; only the Git object DAG (blobs, trees, commits, refs, config, index) moves to ArangoDB.
 
-This mirrors CodeValdCortex's existing database-per-agency isolation model and is the preferred backend for production deployments on Kubernetes without persistent volumes.
+This mirrors CodeValdCross's existing database-per-agency isolation model and is the preferred backend for production deployments on Kubernetes without persistent volumes.
 
 ### Why ArangoDB
 
@@ -220,7 +220,7 @@ require (
 )
 ```
 
-Use the official ArangoDB Go driver. Connection is passed in by the caller (CodeValdCortex injects its existing ArangoDB connection).
+Use the official ArangoDB Go driver. Connection is passed in by the caller (CodeValdCross injects its existing ArangoDB connection).
 
 ### Backend Selection in RepoManager
 
@@ -257,7 +257,7 @@ type FilesystemConfig struct {
 func NewFilesystemBackend(cfg FilesystemConfig) (codevaldgit.Backend, error)
 ```
 
-**Wiring in CodeValdCortex:**
+**Wiring in CodeValdCross:**
 
 ```go
 // Filesystem backend (default / dev)
@@ -269,7 +269,7 @@ mgr, err := codevaldgit.NewRepoManager(b)
 
 // ArangoDB backend (production / containerised)
 b, err := arangodb.NewArangoBackend(arangodb.ArangoConfig{
-    Database:     db, // existing driver.Database from CodeValdCortex
+    Database:     db, // existing driver.Database from CodeValdCross
     WorktreePath: "",  // "" = in-memory worktree
 })
 mgr, err := codevaldgit.NewRepoManager(b)
