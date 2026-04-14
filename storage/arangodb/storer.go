@@ -1,14 +1,8 @@
 // storer.go implements arangoStorer, which satisfies the go-git
-// storage.Storer interface backed by five ArangoDB document collections:
-//
-//   - gitraw_objects  — raw git objects keyed by {agencyID}:{sha}
-//   - gitraw_refs     — branch/tag references keyed by {agencyID}:{sanitisedRef}
-//   - gitraw_config   — per-repo git configuration keyed by {agencyID}
-//   - gitraw_index    — staging area index keyed by {agencyID}
-//   - gitraw_shallow  — shallow clone hash list keyed by {agencyID}
-//
-// All collection names are package-level constants so backend.go and storer.go
-// agree on the same names without duplication.
+// storage.Storer interface. Git objects (Blob, Tree, Commit, Tag) are stored
+// via [entitygraph.DataManager]; refs, config, index, and shallow state are
+// stored in ArangoDB document collections (gitraw_refs, gitraw_config,
+// gitraw_index, gitraw_shallow) until those are migrated in GIT-015d.
 //
 // ArangoDB key constraint: only letters, digits, underscore (_), dash (−), and
 // colon (:) are allowed; the first character must be alphanumeric. This file
@@ -19,10 +13,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	driver "github.com/arangodb/go-driver"
 	gogitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -31,33 +27,34 @@ import (
 	"github.com/go-git/go-git/v5/storage"
 )
 
-// Collection names used by both storer.go and backend.go.
+// Collection names for ref, config, index, and shallow state.
+// git objects (Blob, Tree, Commit, Tag) are stored in entitygraph (see GIT-015c).
+// gitraw_refs, gitraw_config, gitraw_index, gitraw_shallow are migrated to
+// entitygraph in GIT-015d.
 const (
-	colObjects = "gitraw_objects"
 	colRefs    = "gitraw_refs"
 	colConfig  = "gitraw_config"
 	colIndex   = "gitraw_index"
 	colShallow = "gitraw_shallow"
 )
 
-// arangoStorer implements storage.Storer backed by ArangoDB.
-// Each instance is scoped to a single agencyID; all documents are keyed
-// with the agencyID prefix so multiple agencies share the same collections.
-//
-// Method implementations that accept context.Context from callers use
-// context.Background() internally because the go-git storage.Storer interface
-// does not thread context through its methods.
+// arangoStorer implements storage.Storer backed by ArangoDB and
+// entitygraph.DataManager.
+// Each instance is scoped to a single agencyID.
+//   - git objects (Blob, Tree, Commit, Tag) → dm (entitygraph.DataManager)
+//   - refs, config, index, shallow → db (raw ArangoDB, migrated in GIT-015d)
 type arangoStorer struct {
-	db       driver.Database
+	db       driver.Database         // refs, config, index, shallow (until GIT-015d)
+	dm       entitygraph.DataManager // git objects: Blob, Tree, Commit, Tag
 	agencyID string
 }
 
 // newArangoStorer constructs a storer scoped to agencyID.
-func newArangoStorer(db driver.Database, agencyID string) *arangoStorer {
-	return &arangoStorer{db: db, agencyID: agencyID}
+func newArangoStorer(db driver.Database, dm entitygraph.DataManager, agencyID string) *arangoStorer {
+	return &arangoStorer{db: db, dm: dm, agencyID: agencyID}
 }
 
-// ── Key helpers ───────────────────────────────────────────────────────────────
+// ── Key helpers (refs, config, index, shallow) ────────────────────────────────
 
 // safeSegment replaces any character that is not alphanumeric, dash, or colon
 // with an underscore so the result is a valid ArangoDB key segment.
@@ -75,12 +72,6 @@ func safeSegment(s string) string {
 	return b.String()
 }
 
-// objKey returns the ArangoDB document key for a git object.
-// Format: {safeAgencyID}:{sha40hex}
-func (s *arangoStorer) objKey(h plumbing.Hash) string {
-	return safeSegment(s.agencyID) + ":" + h.String()
-}
-
 // refKey returns the ArangoDB document key for a git reference.
 // Format: {safeAgencyID}:{sanitisedRefName}
 // Forward-slashes in ref names (e.g. refs/heads/main) are replaced by '_'.
@@ -94,17 +85,105 @@ func (s *arangoStorer) singleKey() string {
 	return safeSegment(s.agencyID)
 }
 
-// ── EncodedObjectStorer ───────────────────────────────────────────────────────
+// ── EncodedObjectStorer (via entitygraph.DataManager) ────────────────────────
+
+// gitObjectTypeIDs lists the entitygraph TypeIDs that map to git objects.
+// Order is arbitrary; used for AnyObject searches.
+var gitObjectTypeIDs = []string{"Blob", "Tree", "Commit", "Tag"}
+
+// typeIDForObject maps a go-git object type to its entitygraph TypeID.
+func typeIDForObject(t plumbing.ObjectType) string {
+	switch t {
+	case plumbing.BlobObject:
+		return "Blob"
+	case plumbing.TreeObject:
+		return "Tree"
+	case plumbing.CommitObject:
+		return "Commit"
+	case plumbing.TagObject:
+		return "Tag"
+	default:
+		return "Blob"
+	}
+}
+
+// plumbingTypeFromTypeID maps an entitygraph TypeID back to a go-git object type.
+func plumbingTypeFromTypeID(typeID string) plumbing.ObjectType {
+	switch typeID {
+	case "Blob":
+		return plumbing.BlobObject
+	case "Tree":
+		return plumbing.TreeObject
+	case "Commit":
+		return plumbing.CommitObject
+	case "Tag":
+		return plumbing.TagObject
+	default:
+		return plumbing.AnyObject
+	}
+}
+
+// int64StorerProp extracts an int64 from an entitygraph properties map.
+func int64StorerProp(props map[string]any, key string) int64 {
+	if v, ok := props[key]; ok {
+		switch vv := v.(type) {
+		case int64:
+			return vv
+		case int:
+			return int64(vv)
+		case float64:
+			return int64(vv)
+		}
+	}
+	return 0
+}
+
+// decodeEntityToObject reconstructs a plumbing.EncodedObject from the raw bytes
+// stored in an entitygraph entity's "data" property.
+func decodeEntityToObject(e entitygraph.Entity) (plumbing.EncodedObject, error) {
+	dataStr, _ := e.Properties["data"].(string)
+	if dataStr == "" {
+		return nil, fmt.Errorf("entity %s has no data property", e.ID)
+	}
+	raw, err := base64.StdEncoding.DecodeString(dataStr)
+	if err != nil {
+		return nil, fmt.Errorf("decodeEntityToObject %s: base64: %w", e.ID, err)
+	}
+	objType := plumbingTypeFromTypeID(e.TypeID)
+	size := int64StorerProp(e.Properties, "size")
+	obj := &plumbing.MemoryObject{}
+	obj.SetType(objType)
+	obj.SetSize(size)
+	if _, err := obj.Write(raw); err != nil {
+		return nil, fmt.Errorf("decodeEntityToObject %s: write: %w", e.ID, err)
+	}
+	return obj, nil
+}
 
 // NewEncodedObject returns a new in-memory encoded object.
 func (s *arangoStorer) NewEncodedObject() plumbing.EncodedObject {
 	return &plumbing.MemoryObject{}
 }
 
-// SetEncodedObject reads raw bytes from obj, base64-encodes them, and upserts
-// a document into gitraw_objects. Duplicate writes (same SHA) are idempotent.
+// SetEncodedObject reads raw bytes from obj, base64-encodes them, and creates
+// an entitygraph entity of the matching TypeID. Idempotent: if an entity with
+// the same sha already exists for this agency, the call is a no-op.
 func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Hash, error) {
 	ctx := context.Background()
+	hash := obj.Hash()
+	typeID := typeIDForObject(obj.Type())
+
+	// Idempotent: skip if already stored.
+	existing, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     typeID,
+		Properties: map[string]any{"sha": hash.String()},
+	})
+	if err == nil && len(existing) > 0 {
+		return hash, nil
+	}
+
+	// Read raw bytes from the encoded object.
 	r, err := obj.Reader()
 	if err != nil {
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: reader: %w", err)
@@ -114,134 +193,128 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 	if err != nil {
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: read: %w", err)
 	}
-	col, err := s.db.Collection(ctx, colObjects)
-	if err != nil {
-		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: collection: %w", err)
+
+	_, createErr := s.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: s.agencyID,
+		TypeID:   typeID,
+		Properties: map[string]any{
+			"sha":  hash.String(),
+			"data": base64.StdEncoding.EncodeToString(raw),
+			"size": obj.Size(),
+		},
+	})
+	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create %s: %w", typeID, createErr)
 	}
-	doc := map[string]any{
-		"_key":     s.objKey(obj.Hash()),
-		"agencyID": s.agencyID,
-		"sha":      obj.Hash().String(),
-		"objType":  int(obj.Type()),
-		"size":     obj.Size(),
-		"data":     base64.StdEncoding.EncodeToString(raw),
-	}
-	if _, err = col.CreateDocument(ctx, doc); err != nil && !driver.IsConflict(err) {
-		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create: %w", err)
-	}
-	return obj.Hash(), nil
+	return hash, nil
 }
 
-// EncodedObject retrieves a git object by type and hash.
+// EncodedObject retrieves a git object by type and hash from entitygraph.
 // Returns plumbing.ErrObjectNotFound when the object is absent.
 func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (plumbing.EncodedObject, error) {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colObjects)
-	if err != nil {
-		return nil, fmt.Errorf("EncodedObject: collection: %w", err)
-	}
-	var doc struct {
-		ObjType int    `json:"objType"`
-		Size    int64  `json:"size"`
-		Data    string `json:"data"`
-	}
-	if _, err = col.ReadDocument(ctx, s.objKey(h), &doc); err != nil {
-		if driver.IsNotFound(err) {
+	sha := h.String()
+
+	search := func(typeID string) (plumbing.EncodedObject, error) {
+		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     typeID,
+			Properties: map[string]any{"sha": sha},
+		})
+		if err != nil || len(list) == 0 {
 			return nil, plumbing.ErrObjectNotFound
 		}
-		return nil, fmt.Errorf("EncodedObject: read: %w", err)
+		return decodeEntityToObject(list[0])
 	}
-	if t != plumbing.AnyObject && plumbing.ObjectType(doc.ObjType) != t {
-		return nil, plumbing.ErrObjectNotFound
-	}
-	raw, err := base64.StdEncoding.DecodeString(doc.Data)
-	if err != nil {
-		return nil, fmt.Errorf("EncodedObject: decode: %w", err)
-	}
-	obj := &plumbing.MemoryObject{}
-	obj.SetType(plumbing.ObjectType(doc.ObjType))
-	obj.SetSize(doc.Size)
-	if _, err := obj.Write(raw); err != nil {
-		return nil, fmt.Errorf("EncodedObject: write: %w", err)
-	}
-	return obj, nil
-}
 
-// objDoc is the ArangoDB document shape for gitraw_objects.
-type objDoc struct {
-	ObjType int    `json:"objType"`
-	Size    int64  `json:"size"`
-	Data    string `json:"data"`
+	if t != plumbing.AnyObject {
+		return search(typeIDForObject(t))
+	}
+	for _, typeID := range gitObjectTypeIDs {
+		if obj, err := search(typeID); err == nil {
+			return obj, nil
+		}
+	}
+	return nil, plumbing.ErrObjectNotFound
 }
 
 // IterEncodedObjects returns an iterator over all objects of the given type
 // belonging to this agency. Pass plumbing.AnyObject to iterate all types.
 func (s *arangoStorer) IterEncodedObjects(t plumbing.ObjectType) (storer.EncodedObjectIter, error) {
 	ctx := context.Background()
-	query := "FOR doc IN " + colObjects + " FILTER doc.agencyID == @a"
-	vars := map[string]any{"a": s.agencyID}
-	if t != plumbing.AnyObject {
-		query += " AND doc.objType == @t"
-		vars["t"] = int(t)
-	}
-	query += " RETURN {objType: doc.objType, size: doc.size, data: doc.data}"
-	cursor, err := s.db.Query(ctx, query, vars)
-	if err != nil {
-		return nil, fmt.Errorf("IterEncodedObjects: query: %w", err)
-	}
-	defer cursor.Close()
-	var objs []plumbing.EncodedObject
-	for cursor.HasMore() {
-		var doc objDoc
-		if _, err := cursor.ReadDocument(ctx, &doc); err != nil {
-			return nil, fmt.Errorf("IterEncodedObjects: read: %w", err)
+
+	collect := func(typeID string) ([]plumbing.EncodedObject, error) {
+		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID: s.agencyID,
+			TypeID:   typeID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("IterEncodedObjects %s: list: %w", typeID, err)
 		}
-		obj, err := decodeObjDoc(doc)
+		objs := make([]plumbing.EncodedObject, 0, len(list))
+		for _, e := range list {
+			obj, err := decodeEntityToObject(e)
+			if err != nil {
+				continue // skip entities without raw data (e.g. created by GitManager layer)
+			}
+			objs = append(objs, obj)
+		}
+		return objs, nil
+	}
+
+	if t != plumbing.AnyObject {
+		objs, err := collect(typeIDForObject(t))
 		if err != nil {
 			return nil, err
 		}
-		objs = append(objs, obj)
+		return storer.NewEncodedObjectSliceIter(objs), nil
 	}
-	return storer.NewEncodedObjectSliceIter(objs), nil
+	var all []plumbing.EncodedObject
+	for _, typeID := range gitObjectTypeIDs {
+		objs, err := collect(typeID)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, objs...)
+	}
+	return storer.NewEncodedObjectSliceIter(all), nil
 }
 
 // HasEncodedObject returns nil if the object exists, plumbing.ErrObjectNotFound otherwise.
 func (s *arangoStorer) HasEncodedObject(h plumbing.Hash) error {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colObjects)
-	if err != nil {
-		return fmt.Errorf("HasEncodedObject: collection: %w", err)
+	sha := h.String()
+	for _, typeID := range gitObjectTypeIDs {
+		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     typeID,
+			Properties: map[string]any{"sha": sha},
+		})
+		if err == nil && len(list) > 0 {
+			return nil
+		}
 	}
-	exists, err := col.DocumentExists(ctx, s.objKey(h))
-	if err != nil {
-		return fmt.Errorf("HasEncodedObject: %w", err)
-	}
-	if !exists {
-		return plumbing.ErrObjectNotFound
-	}
-	return nil
+	return plumbing.ErrObjectNotFound
 }
 
 // EncodedObjectSize returns the byte size of the raw object data.
 func (s *arangoStorer) EncodedObjectSize(h plumbing.Hash) (int64, error) {
 	ctx := context.Background()
-	query := "FOR doc IN " + colObjects + " FILTER doc._key == @k LIMIT 1 RETURN doc.size"
-	cursor, err := s.db.Query(ctx, query, map[string]any{"k": s.objKey(h)})
-	if err != nil {
-		return 0, fmt.Errorf("EncodedObjectSize: query: %w", err)
+	sha := h.String()
+	for _, typeID := range gitObjectTypeIDs {
+		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     typeID,
+			Properties: map[string]any{"sha": sha},
+		})
+		if err == nil && len(list) > 0 {
+			return int64StorerProp(list[0].Properties, "size"), nil
+		}
 	}
-	defer cursor.Close()
-	if !cursor.HasMore() {
-		return 0, plumbing.ErrObjectNotFound
-	}
-	var size int64
-	if _, err := cursor.ReadDocument(ctx, &size); err != nil {
-		return 0, fmt.Errorf("EncodedObjectSize: read: %w", err)
-	}
-	return size, nil
+	return 0, plumbing.ErrObjectNotFound
 }
 
-// AddAlternate is a no-op; alternates are not needed for the ArangoDB store.
+// AddAlternate is a no-op; alternates are not needed for the entitygraph store.
 func (s *arangoStorer) AddAlternate(_ string) error { return nil }
 
 // ── ReferenceStorer ───────────────────────────────────────────────────────────
@@ -526,10 +599,11 @@ func (s *arangoStorer) Shallow() ([]plumbing.Hash, error) {
 // ── ModuleStorer ──────────────────────────────────────────────────────────────
 
 // Module returns a sub-storer scoped to a git submodule.
-// The submodule storer shares the same database but uses a namespace-prefixed
-// agencyID so its objects and refs do not collide with the parent repo.
+// The submodule storer shares the same database and DataManager but uses a
+// namespace-prefixed agencyID so its objects and refs do not collide with the
+// parent repo.
 func (s *arangoStorer) Module(name string) (storage.Storer, error) {
-	return newArangoStorer(s.db, s.agencyID+"/"+name), nil
+	return newArangoStorer(s.db, s.dm, s.agencyID+"/"+name), nil
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -557,19 +631,4 @@ func (s *arangoStorer) docToRef(doc refDoc) *plumbing.Reference {
 		return plumbing.NewSymbolicReference(name, plumbing.ReferenceName(doc.Symbolic))
 	}
 	return plumbing.NewHashReference(name, plumbing.NewHash(doc.Target))
-}
-
-// decodeObjDoc reconstructs a plumbing.EncodedObject from an objDoc.
-func decodeObjDoc(doc objDoc) (plumbing.EncodedObject, error) {
-	raw, err := base64.StdEncoding.DecodeString(doc.Data)
-	if err != nil {
-		return nil, fmt.Errorf("decodeObjDoc: base64: %w", err)
-	}
-	obj := &plumbing.MemoryObject{}
-	obj.SetType(plumbing.ObjectType(doc.ObjType))
-	obj.SetSize(doc.Size)
-	if _, err := obj.Write(raw); err != nil {
-		return nil, fmt.Errorf("decodeObjDoc: write: %w", err)
-	}
-	return obj, nil
 }

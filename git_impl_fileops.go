@@ -8,13 +8,15 @@ package codevaldgit
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec // SHA-1 matches Git's content-addressing convention.
-	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // ── File Operations ───────────────────────────────────────────────────────────
@@ -42,11 +44,72 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	if message == "" {
 		message = "Update " + req.Path
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
+	commitTime := time.Now().UTC()
+	now := commitTime.Format(time.RFC3339)
 
-	blobSHA := contentSHA(req.Content)
+	// Blob SHA — real git canonical format "blob {size}\x00{content}".
+	blobObj := &plumbing.MemoryObject{}
+	blobObj.SetType(plumbing.BlobObject)
+	blobW, _ := blobObj.Writer() // MemoryObject.Writer never returns an error.
+	_, _ = blobW.Write([]byte(req.Content))
+	_ = blobW.Close()
+	blobHash := blobObj.Hash()
+	blobSHA := blobHash.String()
+
+	// Tree SHA — encoded via go-git tree format; one entry per WriteFile call.
 	treeDir := dirPath(req.Path)
-	treeSHA := contentSHA(treeDir + ":" + req.Path + ":" + blobSHA)
+	treeGitObj := &object.Tree{
+		Entries: []object.TreeEntry{
+			{Name: fileName(req.Path), Mode: filemode.Regular, Hash: blobHash},
+		},
+	}
+	treeMemObj := &plumbing.MemoryObject{}
+	if err := treeGitObj.Encode(treeMemObj); err != nil {
+		return Commit{}, fmt.Errorf("WriteFile: encode tree: %w", err)
+	}
+	treeHash := treeMemObj.Hash()
+	treeSHA := treeHash.String()
+
+	// Serialise entries as a JSON array [{name, mode, sha}] for the Tree entity.
+	entriesJSON, _ := json.Marshal([]map[string]string{
+		{"name": fileName(req.Path), "mode": "100644", "sha": blobSHA},
+	})
+
+	// Parent entity IDs (graph edges) and git hashes (commit SHA computation).
+	var parentIDs []string
+	var parentHashes []plumbing.Hash
+	if branch.HeadCommitID != "" {
+		parentIDs = []string{branch.HeadCommitID}
+		parentEntity, err := m.dm.GetEntity(ctx, m.agencyID, branch.HeadCommitID)
+		if err != nil {
+			return Commit{}, fmt.Errorf("WriteFile: get parent commit sha: %w", err)
+		}
+		if sha := strProp(parentEntity.Properties, "sha"); sha != "" {
+			parentHashes = []plumbing.Hash{plumbing.NewHash(sha)}
+		}
+	}
+
+	// Commit SHA — encoded via go-git commit format.
+	gitCommitObj := &object.Commit{
+		TreeHash:     treeHash,
+		ParentHashes: parentHashes,
+		Author: object.Signature{
+			Name:  req.AuthorName,
+			Email: req.AuthorEmail,
+			When:  commitTime,
+		},
+		Committer: object.Signature{
+			Name:  req.AuthorName,
+			Email: req.AuthorEmail,
+			When:  commitTime,
+		},
+		Message: message,
+	}
+	commitMemObj := &plumbing.MemoryObject{}
+	if err := gitCommitObj.Encode(commitMemObj); err != nil {
+		return Commit{}, fmt.Errorf("WriteFile: encode commit: %w", err)
+	}
+	commitSHA := commitMemObj.Hash().String()
 
 	// 1. Create the Blob entity.
 	blobEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
@@ -72,6 +135,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		Properties: map[string]any{
 			"sha":        treeSHA,
 			"path":       treeDir,
+			"entries":    string(entriesJSON),
 			"created_at": now,
 		},
 	})
@@ -89,13 +153,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		return Commit{}, fmt.Errorf("WriteFile: link blob to tree: %w", err)
 	}
 
-	// 3. Compute commit SHA and create the Commit entity.
-	var parentIDs []string
-	if branch.HeadCommitID != "" {
-		parentIDs = []string{branch.HeadCommitID}
-	}
-	commitSHA := commitSHA(treeSHA, branch.HeadCommitID, req.Message, now)
-
+	// 3. Create the Commit entity.
 	commitProps := map[string]any{
 		"sha":             commitSHA,
 		"message":         message,
@@ -557,27 +615,6 @@ func diffBlobs(fromBlobs, toBlobs []Blob) []FileDiff {
 		}
 	}
 	return diffs
-}
-
-// ── SHA helpers ───────────────────────────────────────────────────────────────
-
-// contentSHA returns the Git-style SHA-1 hex digest for content.
-// Uses SHA-1 to match Git's content-addressing convention.
-//
-//nolint:gosec
-func contentSHA(content string) string {
-	h := sha1.New() //nolint:gosec
-	h.Write([]byte(content))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-// commitSHA computes a deterministic SHA-1 for a commit given its parts.
-//
-//nolint:gosec
-func commitSHA(treeSHA, parentSHA, message, ts string) string {
-	h := sha1.New() //nolint:gosec
-	h.Write([]byte(treeSHA + parentSHA + message + ts))
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 // ── Path helpers ──────────────────────────────────────────────────────────────

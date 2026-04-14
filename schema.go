@@ -281,6 +281,10 @@ func DefaultGitSchema() types.Schema {
 					// path is the directory path within the commit tree hierarchy.
 					// An empty string ("") denotes the root tree of a commit.
 					{Name: "path", Type: types.PropertyTypeString},
+					// entries is a JSON array of child entries in the form
+					// [{"name":"","mode":"100644","sha":""}] serialised at write time.
+					// Consumed by the go-git storage.Storer to decode the tree object.
+					{Name: "entries", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 				},
 				Relationships: []types.RelationshipDefinition{
