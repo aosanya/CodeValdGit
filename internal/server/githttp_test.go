@@ -88,7 +88,9 @@ func TestInfoRefs_ReceivePack(t *testing.T) {
 	}
 }
 
-func TestInfoRefs_UnknownRepo(t *testing.T) {
+func TestInfoRefs_UnknownRepo_AutoCreates(t *testing.T) {
+	// backendLoader auto-creates a repository on first access, so a previously
+	// unknown repo returns 200 (not 404) — the repo is initialised on the fly.
 	base := t.TempDir()
 	archive := filepath.Join(base, "archive")
 	_ = os.MkdirAll(archive, 0o755)
@@ -107,8 +109,8 @@ func TestInfoRefs_UnknownRepo(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Result().StatusCode)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 (auto-created), got %d", w.Result().StatusCode)
 	}
 }
 
