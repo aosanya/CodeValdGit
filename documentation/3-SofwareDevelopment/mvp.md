@@ -172,12 +172,6 @@ entitygraph redesign; all other GIT v2 tasks depend on the schema and models bei
 
 ---
 
-## P0: ArangoDB `storage.Storer` — Unified Single Backend (CRITICAL)
-
-*~~GIT-015a~~ ✅, ~~GIT-015b~~ ✅, ~~GIT-015c~~ ✅, ~~GIT-015d~~ ✅, ~~GIT-015e~~ ✅ complete — see `mvp_done.md`.*
-
----
-
 ## P0: Production Safety (CRITICAL)
 
 ### GIT-011 — Concurrency and Atomic Ref Updates
