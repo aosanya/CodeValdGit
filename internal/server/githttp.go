@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -192,14 +193,28 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 
 	req := packp.NewReferenceUpdateRequest()
 	if err := req.Decode(r.Body); err != nil {
+		log.Printf("[DEBUG] receivePack %s: Decode error: %v", agencyID, err)
 		http.Error(w, "malformed receive-pack request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("[DEBUG] receivePack %s: %d commands, packfile=%v", agencyID, len(req.Commands), req.Packfile != nil)
+	for _, cmd := range req.Commands {
+		log.Printf("[DEBUG] receivePack %s:   cmd %s old=%s new=%s", agencyID, cmd.Name, cmd.Old, cmd.New)
+	}
+
 	status, err := sess.ReceivePack(r.Context(), req)
 	if err != nil {
+		log.Printf("[DEBUG] receivePack %s: ReceivePack error: %v", agencyID, err)
 		httpErrorFromTransport(w, err)
 		return
+	}
+
+	if status != nil {
+		log.Printf("[DEBUG] receivePack %s: unpack=%s", agencyID, status.UnpackStatus)
+		for ref, e := range status.CommandStatuses {
+			log.Printf("[DEBUG] receivePack %s:   ref %v => %v", agencyID, ref, e)
+		}
 	}
 
 	setNoCacheHeaders(w)

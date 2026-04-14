@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -96,10 +97,12 @@ func int64StorerProp(props map[string]any, key string) int64 {
 // decodeEntityToObject reconstructs a plumbing.EncodedObject from the raw bytes
 // stored in an entitygraph entity's "data" property.
 func decodeEntityToObject(e entitygraph.Entity) (plumbing.EncodedObject, error) {
-	dataStr, _ := e.Properties["data"].(string)
-	if dataStr == "" {
+	dataRaw, ok := e.Properties["data"]
+	if !ok {
 		return nil, fmt.Errorf("entity %s has no data property", e.ID)
 	}
+	// dataStr is "" for an empty blob (e.g. e69de29b…) — that is valid.
+	dataStr, _ := dataRaw.(string)
 	raw, err := base64.StdEncoding.DecodeString(dataStr)
 	if err != nil {
 		return nil, fmt.Errorf("decodeEntityToObject %s: base64: %w", e.ID, err)
@@ -127,6 +130,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 	ctx := context.Background()
 	hash := obj.Hash()
 	typeID := typeIDForObject(obj.Type())
+	log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s", s.agencyID, typeID, hash)
 
 	// Idempotent: skip if already stored.
 	existing, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
@@ -135,10 +139,12 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		Properties: map[string]any{"sha": hash.String()},
 	})
 	if err == nil && len(existing) > 0 {
+		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: already exists (skip)", s.agencyID, typeID, hash)
 		return hash, nil
 	}
-
-	// Read raw bytes from the encoded object.
+	if err != nil {
+		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: idempotency check error: %v", s.agencyID, typeID, hash, err)
+	}
 	r, err := obj.Reader()
 	if err != nil {
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: reader: %w", err)
@@ -159,8 +165,10 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		},
 	})
 	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: create failed: %v", s.agencyID, typeID, hash, createErr)
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create %s: %w", typeID, createErr)
 	}
+	log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: stored OK", s.agencyID, typeID, hash)
 	return hash, nil
 }
 
@@ -169,6 +177,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (plumbing.EncodedObject, error) {
 	ctx := context.Background()
 	sha := h.String()
+	log.Printf("[DEBUG] EncodedObject agency=%s type=%v sha=%s", s.agencyID, t, sha)
 
 	search := func(typeID string) (plumbing.EncodedObject, error) {
 		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
@@ -176,10 +185,21 @@ func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (pl
 			TypeID:     typeID,
 			Properties: map[string]any{"sha": sha},
 		})
-		if err != nil || len(list) == 0 {
+		if err != nil {
+			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: ListEntities error: %v", s.agencyID, typeID, sha, err)
 			return nil, plumbing.ErrObjectNotFound
 		}
-		return decodeEntityToObject(list[0])
+		if len(list) == 0 {
+			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: not found in ArangoDB", s.agencyID, typeID, sha)
+			return nil, plumbing.ErrObjectNotFound
+		}
+		obj, decErr := decodeEntityToObject(list[0])
+		if decErr != nil {
+			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: decode error: %v", s.agencyID, typeID, sha, decErr)
+			return nil, plumbing.ErrObjectNotFound
+		}
+		log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: found OK", s.agencyID, typeID, sha)
+		return obj, nil
 	}
 
 	if t != plumbing.AnyObject {
@@ -246,9 +266,11 @@ func (s *arangoStorer) HasEncodedObject(h plumbing.Hash) error {
 			Properties: map[string]any{"sha": sha},
 		})
 		if err == nil && len(list) > 0 {
+			log.Printf("[DEBUG] HasEncodedObject agency=%s sha=%s: found (type=%s)", s.agencyID, sha, typeID)
 			return nil
 		}
 	}
+	log.Printf("[DEBUG] HasEncodedObject agency=%s sha=%s: NOT FOUND", s.agencyID, sha)
 	return plumbing.ErrObjectNotFound
 }
 
@@ -361,6 +383,12 @@ func (s *arangoStorer) Reference(name plumbing.ReferenceName) (*plumbing.Referen
 			return nil, plumbing.ErrReferenceNotFound
 		}
 		sha, _ := branches[0].Properties["sha"].(string)
+		// A branch with no commits (empty or zero SHA) is treated as
+		// non-existent so that referenceExists returns false and go-git
+		// allows a Create-action push to succeed on the first push.
+		if sha == "" || sha == plumbing.ZeroHash.String() {
+			return nil, plumbing.ErrReferenceNotFound
+		}
 		return plumbing.NewHashReference(name, plumbing.NewHash(sha)), nil
 	}
 
@@ -414,7 +442,10 @@ func (s *arangoStorer) IterReferences() (storer.ReferenceIter, error) {
 	for _, b := range branches {
 		bname, _ := b.Properties["name"].(string)
 		sha, _ := b.Properties["sha"].(string)
-		if bname == "" {
+		// Skip branches with no commits yet (zero/empty SHA). Advertising
+		// a zero-SHA ref causes go-git's server to reject the first push
+		// with ErrUpdateReference (Create + exists == true conflict).
+		if bname == "" || sha == "" || sha == plumbing.ZeroHash.String() {
 			continue
 		}
 		refs = append(refs, plumbing.NewHashReference(
@@ -704,6 +735,7 @@ func (s *arangoStorer) setRepositoryHeadRef(ctx context.Context, target string) 
 // setBranchSHA updates the sha property on the Branch entity identified by
 // branchName for this agency.
 func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string) error {
+	log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: looking up branch entity", s.agencyID, branchName, sha)
 	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID:   s.agencyID,
 		TypeID:     "Branch",
