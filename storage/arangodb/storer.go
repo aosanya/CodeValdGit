@@ -1,25 +1,23 @@
 // storer.go implements arangoStorer, which satisfies the go-git
-// storage.Storer interface. Git objects (Blob, Tree, Commit, Tag) are stored
-// via [entitygraph.DataManager]; refs, config, index, and shallow state are
-// stored in ArangoDB document collections (gitraw_refs, gitraw_config,
-// gitraw_index, gitraw_shallow) until those are migrated in GIT-015d.
-//
-// ArangoDB key constraint: only letters, digits, underscore (_), dash (−), and
-// colon (:) are allowed; the first character must be alphanumeric. This file
-// sanitises all inputs accordingly.
+// storage.Storer interface. All git state — objects (Blob, Tree, Commit, Tag),
+// references (HEAD via Repository, Branch, Tag entities), and internal state
+// (config, index, shallow via GitInternalState entities) — is stored via
+// [entitygraph.DataManager]. No raw ArangoDB collection references remain after
+// GIT-015d.
 package arangodb
 
 import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
-	driver "github.com/arangodb/go-driver"
 	gogitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/format/index"
@@ -27,62 +25,19 @@ import (
 	"github.com/go-git/go-git/v5/storage"
 )
 
-// Collection names for ref, config, index, and shallow state.
-// git objects (Blob, Tree, Commit, Tag) are stored in entitygraph (see GIT-015c).
-// gitraw_refs, gitraw_config, gitraw_index, gitraw_shallow are migrated to
-// entitygraph in GIT-015d.
-const (
-	colRefs    = "gitraw_refs"
-	colConfig  = "gitraw_config"
-	colIndex   = "gitraw_index"
-	colShallow = "gitraw_shallow"
-)
-
-// arangoStorer implements storage.Storer backed by ArangoDB and
-// entitygraph.DataManager.
-// Each instance is scoped to a single agencyID.
-//   - git objects (Blob, Tree, Commit, Tag) → dm (entitygraph.DataManager)
-//   - refs, config, index, shallow → db (raw ArangoDB, migrated in GIT-015d)
+// arangoStorer implements storage.Storer backed exclusively by
+// entitygraph.DataManager. Each instance is scoped to a single agencyID.
+//   - git objects (Blob, Tree, Commit, Tag)  → dm, TypeID = object type name
+//   - refs (HEAD, branches, tags)             → dm, Repository / Branch / Tag entities
+//   - internal state (config, index, shallow) → dm, GitInternalState entities
 type arangoStorer struct {
-	db       driver.Database         // refs, config, index, shallow (until GIT-015d)
-	dm       entitygraph.DataManager // git objects: Blob, Tree, Commit, Tag
+	dm       entitygraph.DataManager
 	agencyID string
 }
 
 // newArangoStorer constructs a storer scoped to agencyID.
-func newArangoStorer(db driver.Database, dm entitygraph.DataManager, agencyID string) *arangoStorer {
-	return &arangoStorer{db: db, dm: dm, agencyID: agencyID}
-}
-
-// ── Key helpers (refs, config, index, shallow) ────────────────────────────────
-
-// safeSegment replaces any character that is not alphanumeric, dash, or colon
-// with an underscore so the result is a valid ArangoDB key segment.
-func safeSegment(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
-			r == '-', r == ':':
-			b.WriteRune(r)
-		default:
-			b.WriteRune('_')
-		}
-	}
-	return b.String()
-}
-
-// refKey returns the ArangoDB document key for a git reference.
-// Format: {safeAgencyID}:{sanitisedRefName}
-// Forward-slashes in ref names (e.g. refs/heads/main) are replaced by '_'.
-func (s *arangoStorer) refKey(name plumbing.ReferenceName) string {
-	return safeSegment(s.agencyID) + ":" + safeSegment(name.String())
-}
-
-// singleKey returns the document key for single-document stores
-// (config, index, shallow). Format: {safeAgencyID}
-func (s *arangoStorer) singleKey() string {
-	return safeSegment(s.agencyID)
+func newArangoStorer(dm entitygraph.DataManager, agencyID string) *arangoStorer {
+	return &arangoStorer{dm: dm, agencyID: agencyID}
 }
 
 // ── EncodedObjectStorer (via entitygraph.DataManager) ────────────────────────
@@ -319,123 +274,231 @@ func (s *arangoStorer) AddAlternate(_ string) error { return nil }
 
 // ── ReferenceStorer ───────────────────────────────────────────────────────────
 
-// refDoc is the ArangoDB document shape for gitraw_refs.
-type refDoc struct {
-	Key      string `json:"_key,omitempty"`
-	AgencyID string `json:"agencyID"`
-	RefName  string `json:"refName"`
-	Target   string `json:"target,omitempty"`   // direct ref hash
-	Symbolic string `json:"symbolic,omitempty"` // symbolic ref target
-}
-
-// SetReference upserts a reference document. Creates if absent; replaces if present.
+// SetReference upserts a git reference via entitygraph entities.
+//
+//   - HEAD (symbolic) → updates Repository.head_ref with the symbolic target.
+//   - HEAD (hash / detached) → updates Repository.head_ref with the hash string.
+//   - refs/heads/<name> → updates Branch.sha with the commit hash.
+//   - refs/tags/<name> → no-op: tag sha is set at creation by the gRPC layer;
+//     Tag entities are immutable in entitygraph.
 func (s *arangoStorer) SetReference(ref *plumbing.Reference) error {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colRefs)
-	if err != nil {
-		return fmt.Errorf("SetReference: collection: %w", err)
-	}
-	doc := s.refToDoc(ref)
-	if _, createErr := col.CreateDocument(ctx, doc); driver.IsConflict(createErr) {
-		_, updateErr := col.UpdateDocument(ctx, doc.Key, doc)
-		return updateErr
-	} else {
-		return createErr
+	name := ref.Name()
+	switch {
+	case name == plumbing.HEAD:
+		target := ref.Target().String()
+		if ref.Type() == plumbing.HashReference {
+			target = ref.Hash().String()
+		}
+		return s.setRepositoryHeadRef(ctx, target)
+	case strings.HasPrefix(name.String(), "refs/heads/"):
+		branchName := strings.TrimPrefix(name.String(), "refs/heads/")
+		return s.setBranchSHA(ctx, branchName, ref.Hash().String())
+	default:
+		// refs/tags/* and any other refs: no-op.
+		return nil
 	}
 }
 
-// CheckAndSetReference atomically updates a reference. If old is non-nil, the
-// current stored hash must match old.Hash() — otherwise an error is returned.
+// CheckAndSetReference atomically updates a branch reference.
+// If old is non-nil, the stored Branch.sha must match old.Hash(); otherwise
+// [storage.ErrReferenceHasChanged] is returned.
+// Non-branch refs (HEAD, tags) fall through to SetReference without CAS.
 func (s *arangoStorer) CheckAndSetReference(new, old *plumbing.Reference) error {
 	if old == nil {
 		return s.SetReference(new)
 	}
+	if !strings.HasPrefix(old.Name().String(), "refs/heads/") {
+		return s.SetReference(new)
+	}
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colRefs)
-	if err != nil {
-		return fmt.Errorf("CheckAndSetReference: collection: %w", err)
+	branchName := strings.TrimPrefix(old.Name().String(), "refs/heads/")
+	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "Branch",
+		Properties: map[string]any{"name": branchName},
+	})
+	if err != nil || len(branches) == 0 {
+		return fmt.Errorf("CheckAndSetReference: branch %q not found", branchName)
 	}
-	var existing refDoc
-	if _, err = col.ReadDocument(ctx, s.refKey(old.Name()), &existing); err != nil {
-		if driver.IsNotFound(err) {
-			return fmt.Errorf("CheckAndSetReference: reference %q not found", old.Name())
-		}
-		return fmt.Errorf("CheckAndSetReference: read: %w", err)
-	}
-	if existing.Target != old.Hash().String() {
-		return fmt.Errorf("CheckAndSetReference: reference %q has changed (expected %s got %s)",
-			old.Name(), old.Hash(), existing.Target)
+	currentSHA, _ := branches[0].Properties["sha"].(string)
+	if currentSHA != old.Hash().String() {
+		return storage.ErrReferenceHasChanged
 	}
 	return s.SetReference(new)
 }
 
 // Reference returns the reference with the given name.
-// Returns plumbing.ErrReferenceNotFound when absent.
+// Returns [plumbing.ErrReferenceNotFound] when absent.
 func (s *arangoStorer) Reference(name plumbing.ReferenceName) (*plumbing.Reference, error) {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colRefs)
-	if err != nil {
-		return nil, fmt.Errorf("Reference: collection: %w", err)
-	}
-	var doc refDoc
-	if _, err = col.ReadDocument(ctx, s.refKey(name), &doc); err != nil {
-		if driver.IsNotFound(err) {
+
+	// HEAD — read head_ref from the Repository entity.
+	if name == plumbing.HEAD {
+		repos, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID: s.agencyID,
+			TypeID:   "Repository",
+		})
+		if err != nil || len(repos) == 0 {
 			return nil, plumbing.ErrReferenceNotFound
 		}
-		return nil, fmt.Errorf("Reference: read: %w", err)
+		headRef, _ := repos[0].Properties["head_ref"].(string)
+		if headRef == "" {
+			return nil, plumbing.ErrReferenceNotFound
+		}
+		return plumbing.NewSymbolicReference(plumbing.HEAD, plumbing.ReferenceName(headRef)), nil
 	}
-	return s.docToRef(doc), nil
+
+	// refs/heads/<name> — read sha from the Branch entity.
+	if strings.HasPrefix(name.String(), "refs/heads/") {
+		branchName := strings.TrimPrefix(name.String(), "refs/heads/")
+		branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     "Branch",
+			Properties: map[string]any{"name": branchName},
+		})
+		if err != nil || len(branches) == 0 {
+			return nil, plumbing.ErrReferenceNotFound
+		}
+		sha, _ := branches[0].Properties["sha"].(string)
+		return plumbing.NewHashReference(name, plumbing.NewHash(sha)), nil
+	}
+
+	// refs/tags/<name> — read sha from the Tag entity.
+	if strings.HasPrefix(name.String(), "refs/tags/") {
+		tagName := strings.TrimPrefix(name.String(), "refs/tags/")
+		tags, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     "Tag",
+			Properties: map[string]any{"name": tagName},
+		})
+		if err != nil || len(tags) == 0 {
+			return nil, plumbing.ErrReferenceNotFound
+		}
+		sha, _ := tags[0].Properties["sha"].(string)
+		return plumbing.NewHashReference(name, plumbing.NewHash(sha)), nil
+	}
+
+	return nil, plumbing.ErrReferenceNotFound
 }
 
-// IterReferences returns an iterator over all references for this agency.
+// IterReferences returns an iterator over all references for this agency:
+// HEAD (from Repository.head_ref), all Branch refs (refs/heads/*), and all
+// Tag refs (refs/tags/*).
 func (s *arangoStorer) IterReferences() (storer.ReferenceIter, error) {
 	ctx := context.Background()
-	query := "FOR doc IN " + colRefs + " FILTER doc.agencyID == @a RETURN doc"
-	cursor, err := s.db.Query(ctx, query, map[string]any{"a": s.agencyID})
-	if err != nil {
-		return nil, fmt.Errorf("IterReferences: query: %w", err)
-	}
-	defer cursor.Close()
 	var refs []*plumbing.Reference
-	for cursor.HasMore() {
-		var doc refDoc
-		if _, err := cursor.ReadDocument(ctx, &doc); err != nil {
-			return nil, fmt.Errorf("IterReferences: read: %w", err)
+
+	// HEAD from Repository.head_ref.
+	repos, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: s.agencyID,
+		TypeID:   "Repository",
+	})
+	if err == nil && len(repos) > 0 {
+		headRef, _ := repos[0].Properties["head_ref"].(string)
+		if headRef != "" {
+			refs = append(refs, plumbing.NewSymbolicReference(
+				plumbing.HEAD, plumbing.ReferenceName(headRef),
+			))
 		}
-		refs = append(refs, s.docToRef(doc))
 	}
+
+	// Branch entities → refs/heads/<name>.
+	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: s.agencyID,
+		TypeID:   "Branch",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("IterReferences: list branches: %w", err)
+	}
+	for _, b := range branches {
+		bname, _ := b.Properties["name"].(string)
+		sha, _ := b.Properties["sha"].(string)
+		if bname == "" {
+			continue
+		}
+		refs = append(refs, plumbing.NewHashReference(
+			plumbing.ReferenceName("refs/heads/"+bname),
+			plumbing.NewHash(sha),
+		))
+	}
+
+	// Tag entities → refs/tags/<name>.
+	tags, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: s.agencyID,
+		TypeID:   "Tag",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("IterReferences: list tags: %w", err)
+	}
+	for _, t := range tags {
+		tname, _ := t.Properties["name"].(string)
+		sha, _ := t.Properties["sha"].(string)
+		if tname == "" {
+			continue
+		}
+		refs = append(refs, plumbing.NewHashReference(
+			plumbing.ReferenceName("refs/tags/"+tname),
+			plumbing.NewHash(sha),
+		))
+	}
+
 	return storer.NewReferenceSliceIter(refs), nil
 }
 
-// RemoveReference deletes a reference by name. No-op if already absent.
+// RemoveReference soft-deletes the entity backing the given ref.
+// HEAD removal is a no-op. Unknown ref prefixes are silently ignored.
 func (s *arangoStorer) RemoveReference(name plumbing.ReferenceName) error {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colRefs)
-	if err != nil {
-		return fmt.Errorf("RemoveReference: collection: %w", err)
+
+	if strings.HasPrefix(name.String(), "refs/heads/") {
+		branchName := strings.TrimPrefix(name.String(), "refs/heads/")
+		branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     "Branch",
+			Properties: map[string]any{"name": branchName},
+		})
+		if err != nil || len(branches) == 0 {
+			return nil // already absent — no-op
+		}
+		return s.dm.DeleteEntity(ctx, s.agencyID, branches[0].ID)
 	}
-	if _, err = col.RemoveDocument(ctx, s.refKey(name)); err != nil && !driver.IsNotFound(err) {
-		return fmt.Errorf("RemoveReference: %w", err)
+
+	if strings.HasPrefix(name.String(), "refs/tags/") {
+		tagName := strings.TrimPrefix(name.String(), "refs/tags/")
+		tags, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   s.agencyID,
+			TypeID:     "Tag",
+			Properties: map[string]any{"name": tagName},
+		})
+		if err != nil || len(tags) == 0 {
+			return nil // already absent — no-op
+		}
+		return s.dm.DeleteEntity(ctx, s.agencyID, tags[0].ID)
 	}
-	return nil
+
+	return nil // HEAD and other refs: no-op
 }
 
-// CountLooseRefs returns the number of references for this agency.
+// CountLooseRefs returns the combined count of Branch and Tag entities for
+// this agency. ArangoDB has no concept of packed vs loose refs.
 func (s *arangoStorer) CountLooseRefs() (int, error) {
 	ctx := context.Background()
-	query := "RETURN LENGTH(FOR doc IN " + colRefs + " FILTER doc.agencyID == @a RETURN 1)"
-	cursor, err := s.db.Query(ctx, query, map[string]any{"a": s.agencyID})
+	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: s.agencyID,
+		TypeID:   "Branch",
+	})
 	if err != nil {
-		return 0, fmt.Errorf("CountLooseRefs: query: %w", err)
+		return 0, fmt.Errorf("CountLooseRefs: list branches: %w", err)
 	}
-	defer cursor.Close()
-	var count int
-	if cursor.HasMore() {
-		if _, err := cursor.ReadDocument(ctx, &count); err != nil {
-			return 0, fmt.Errorf("CountLooseRefs: read: %w", err)
-		}
+	tags, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: s.agencyID,
+		TypeID:   "Tag",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("CountLooseRefs: list tags: %w", err)
 	}
-	return count, nil
+	return len(branches) + len(tags), nil
 }
 
 // PackRefs is a no-op; ArangoDB has no concept of packed vs loose references.
@@ -443,23 +506,23 @@ func (s *arangoStorer) PackRefs() error { return nil }
 
 // ── ConfigStorer ──────────────────────────────────────────────────────────────
 
-// Config retrieves the per-repo git config. Returns an empty config when none is stored.
+// Config retrieves the per-repo git config from a GitInternalState entity
+// (state_type="config"). Returns an empty config when none is stored.
 func (s *arangoStorer) Config() (*gogitconfig.Config, error) {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colConfig)
-	if err != nil {
+	entities, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "GitInternalState",
+		Properties: map[string]any{"state_type": "config"},
+	})
+	if err != nil || len(entities) == 0 {
 		return gogitconfig.NewConfig(), nil
 	}
-	var doc struct {
-		Data string `json:"data"`
+	dataStr, _ := entities[0].Properties["data"].(string)
+	if dataStr == "" {
+		return gogitconfig.NewConfig(), nil
 	}
-	if _, err = col.ReadDocument(ctx, s.singleKey(), &doc); err != nil {
-		if driver.IsNotFound(err) {
-			return gogitconfig.NewConfig(), nil
-		}
-		return nil, fmt.Errorf("Config: read: %w", err)
-	}
-	raw, err := base64.StdEncoding.DecodeString(doc.Data)
+	raw, err := base64.StdEncoding.DecodeString(dataStr)
 	if err != nil {
 		return nil, fmt.Errorf("Config: base64 decode: %w", err)
 	}
@@ -470,49 +533,48 @@ func (s *arangoStorer) Config() (*gogitconfig.Config, error) {
 	return cfg, nil
 }
 
-// SetConfig serialises and upserts the git config document.
+// SetConfig serialises the git config and upserts a GitInternalState entity
+// with state_type="config".
 func (s *arangoStorer) SetConfig(cfg *gogitconfig.Config) error {
 	ctx := context.Background()
 	raw, err := cfg.Marshal()
 	if err != nil {
 		return fmt.Errorf("SetConfig: marshal: %w", err)
 	}
-	col, err := s.db.Collection(ctx, colConfig)
+	_, err = s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: s.agencyID,
+		TypeID:   "GitInternalState",
+		Properties: map[string]any{
+			"state_type": "config",
+			"data":       base64.StdEncoding.EncodeToString(raw),
+			"updated_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("SetConfig: collection: %w", err)
+		return fmt.Errorf("SetConfig: upsert: %w", err)
 	}
-	doc := map[string]any{
-		"_key":     s.singleKey(),
-		"agencyID": s.agencyID,
-		"data":     base64.StdEncoding.EncodeToString(raw),
-	}
-	if _, createErr := col.CreateDocument(ctx, doc); driver.IsConflict(createErr) {
-		_, updateErr := col.UpdateDocument(ctx, s.singleKey(), doc)
-		return updateErr
-	} else {
-		return createErr
-	}
+	return nil
 }
 
 // ── IndexStorer ───────────────────────────────────────────────────────────────
 
-// Index retrieves the staging-area index. Returns an empty index when none is stored.
+// Index retrieves the staging-area index from a GitInternalState entity
+// (state_type="index"). Returns an empty index when none is stored.
 func (s *arangoStorer) Index() (*index.Index, error) {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colIndex)
-	if err != nil {
+	entities, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "GitInternalState",
+		Properties: map[string]any{"state_type": "index"},
+	})
+	if err != nil || len(entities) == 0 {
 		return &index.Index{}, nil
 	}
-	var doc struct {
-		Data string `json:"data"`
+	dataStr, _ := entities[0].Properties["data"].(string)
+	if dataStr == "" {
+		return &index.Index{}, nil
 	}
-	if _, err = col.ReadDocument(ctx, s.singleKey(), &doc); err != nil {
-		if driver.IsNotFound(err) {
-			return &index.Index{}, nil
-		}
-		return nil, fmt.Errorf("Index: read: %w", err)
-	}
-	raw, err := base64.StdEncoding.DecodeString(doc.Data)
+	raw, err := base64.StdEncoding.DecodeString(dataStr)
 	if err != nil {
 		return nil, fmt.Errorf("Index: base64 decode: %w", err)
 	}
@@ -523,74 +585,84 @@ func (s *arangoStorer) Index() (*index.Index, error) {
 	return idx, nil
 }
 
-// SetIndex serialises and upserts the staging-area index document.
+// SetIndex serialises the staging-area index and upserts a GitInternalState
+// entity with state_type="index".
 func (s *arangoStorer) SetIndex(idx *index.Index) error {
 	ctx := context.Background()
 	var buf bytes.Buffer
 	if err := index.NewEncoder(&buf).Encode(idx); err != nil {
 		return fmt.Errorf("SetIndex: encode: %w", err)
 	}
-	col, err := s.db.Collection(ctx, colIndex)
+	_, err := s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: s.agencyID,
+		TypeID:   "GitInternalState",
+		Properties: map[string]any{
+			"state_type": "index",
+			"data":       base64.StdEncoding.EncodeToString(buf.Bytes()),
+			"updated_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("SetIndex: collection: %w", err)
+		return fmt.Errorf("SetIndex: upsert: %w", err)
 	}
-	doc := map[string]any{
-		"_key":     s.singleKey(),
-		"agencyID": s.agencyID,
-		"data":     base64.StdEncoding.EncodeToString(buf.Bytes()),
-	}
-	if _, createErr := col.CreateDocument(ctx, doc); driver.IsConflict(createErr) {
-		_, updateErr := col.UpdateDocument(ctx, s.singleKey(), doc)
-		return updateErr
-	} else {
-		return createErr
-	}
+	return nil
 }
 
 // ── ShallowStorer ─────────────────────────────────────────────────────────────
 
-// SetShallow persists the list of shallow clone commit hashes.
+// SetShallow persists the list of shallow-clone commit hashes as a
+// JSON-encoded, base64-wrapped payload in a GitInternalState entity
+// (state_type="shallow").
 func (s *arangoStorer) SetShallow(hashes []plumbing.Hash) error {
 	ctx := context.Background()
 	strs := make([]string, len(hashes))
 	for i, h := range hashes {
 		strs[i] = h.String()
 	}
-	col, err := s.db.Collection(ctx, colShallow)
+	raw, err := json.Marshal(strs)
 	if err != nil {
-		return fmt.Errorf("SetShallow: collection: %w", err)
+		return fmt.Errorf("SetShallow: marshal: %w", err)
 	}
-	doc := map[string]any{
-		"_key":     s.singleKey(),
-		"agencyID": s.agencyID,
-		"hashes":   strs,
+	_, err = s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: s.agencyID,
+		TypeID:   "GitInternalState",
+		Properties: map[string]any{
+			"state_type": "shallow",
+			"data":       base64.StdEncoding.EncodeToString(raw),
+			"updated_at": time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("SetShallow: upsert: %w", err)
 	}
-	if _, createErr := col.CreateDocument(ctx, doc); driver.IsConflict(createErr) {
-		_, updateErr := col.UpdateDocument(ctx, s.singleKey(), doc)
-		return updateErr
-	} else {
-		return createErr
-	}
+	return nil
 }
 
-// Shallow returns the stored shallow clone hash list. Returns nil when absent.
+// Shallow returns the stored shallow-clone hash list. Returns nil when absent.
 func (s *arangoStorer) Shallow() ([]plumbing.Hash, error) {
 	ctx := context.Background()
-	col, err := s.db.Collection(ctx, colShallow)
-	if err != nil {
+	entities, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "GitInternalState",
+		Properties: map[string]any{"state_type": "shallow"},
+	})
+	if err != nil || len(entities) == 0 {
 		return nil, nil
 	}
-	var doc struct {
-		Hashes []string `json:"hashes"`
+	dataStr, _ := entities[0].Properties["data"].(string)
+	if dataStr == "" {
+		return nil, nil
 	}
-	if _, err = col.ReadDocument(ctx, s.singleKey(), &doc); err != nil {
-		if driver.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("Shallow: read: %w", err)
+	raw, err := base64.StdEncoding.DecodeString(dataStr)
+	if err != nil {
+		return nil, fmt.Errorf("Shallow: base64 decode: %w", err)
 	}
-	hashes := make([]plumbing.Hash, len(doc.Hashes))
-	for i, h := range doc.Hashes {
+	var strs []string
+	if err := json.Unmarshal(raw, &strs); err != nil {
+		return nil, fmt.Errorf("Shallow: json decode: %w", err)
+	}
+	hashes := make([]plumbing.Hash, len(strs))
+	for i, h := range strs {
 		hashes[i] = plumbing.NewHash(h)
 	}
 	return hashes, nil
@@ -598,37 +670,56 @@ func (s *arangoStorer) Shallow() ([]plumbing.Hash, error) {
 
 // ── ModuleStorer ──────────────────────────────────────────────────────────────
 
-// Module returns a sub-storer scoped to a git submodule.
-// The submodule storer shares the same database and DataManager but uses a
-// namespace-prefixed agencyID so its objects and refs do not collide with the
-// parent repo.
+// Module returns a sub-storer scoped to a git submodule. The submodule storer
+// shares the same DataManager but uses a namespace-prefixed agencyID so its
+// objects, refs, and internal state do not collide with the parent repo.
 func (s *arangoStorer) Module(name string) (storage.Storer, error) {
-	return newArangoStorer(s.db, s.dm, s.agencyID+"/"+name), nil
+	return newArangoStorer(s.dm, s.agencyID+"/module/"+name), nil
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Private helpers ───────────────────────────────────────────────────────────
 
-// refToDoc converts a plumbing.Reference to its ArangoDB document form.
-func (s *arangoStorer) refToDoc(ref *plumbing.Reference) refDoc {
-	doc := refDoc{
-		Key:      s.refKey(ref.Name()),
+// setRepositoryHeadRef updates the head_ref property on the Repository entity
+// for this agency to the given target (e.g. "refs/heads/main").
+func (s *arangoStorer) setRepositoryHeadRef(ctx context.Context, target string) error {
+	repos, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID: s.agencyID,
-		RefName:  ref.Name().String(),
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		return fmt.Errorf("SetReference HEAD: list repositories: %w", err)
 	}
-	switch ref.Type() {
-	case plumbing.HashReference:
-		doc.Target = ref.Hash().String()
-	case plumbing.SymbolicReference:
-		doc.Symbolic = ref.Target().String()
+	if len(repos) == 0 {
+		return fmt.Errorf("SetReference HEAD: no repository for agency %q", s.agencyID)
 	}
-	return doc
+	_, err = s.dm.UpdateEntity(ctx, s.agencyID, repos[0].ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{"head_ref": target},
+	})
+	if err != nil {
+		return fmt.Errorf("SetReference HEAD: update repository: %w", err)
+	}
+	return nil
 }
 
-// docToRef converts an ArangoDB refDoc to a plumbing.Reference.
-func (s *arangoStorer) docToRef(doc refDoc) *plumbing.Reference {
-	name := plumbing.ReferenceName(doc.RefName)
-	if doc.Symbolic != "" {
-		return plumbing.NewSymbolicReference(name, plumbing.ReferenceName(doc.Symbolic))
+// setBranchSHA updates the sha property on the Branch entity identified by
+// branchName for this agency.
+func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string) error {
+	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     "Branch",
+		Properties: map[string]any{"name": branchName},
+	})
+	if err != nil {
+		return fmt.Errorf("SetReference refs/heads/%s: list branches: %w", branchName, err)
 	}
-	return plumbing.NewHashReference(name, plumbing.NewHash(doc.Target))
+	if len(branches) == 0 {
+		return fmt.Errorf("SetReference refs/heads/%s: branch not found", branchName)
+	}
+	_, err = s.dm.UpdateEntity(ctx, s.agencyID, branches[0].ID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{"sha": sha},
+	})
+	if err != nil {
+		return fmt.Errorf("SetReference refs/heads/%s: update branch: %w", branchName, err)
+	}
+	return nil
 }

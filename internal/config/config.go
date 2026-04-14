@@ -34,15 +34,6 @@ type Config struct {
 	// (memfs) working tree.
 	ArangoWorktreePath string
 
-	// ReposBasePath is the root directory for live agency repositories
-	// (filesystem backend only). Default: "/tmp/codevaldgit/repos".
-	ReposBasePath string
-
-	// ReposArchivePath is the root directory for archived (soft-deleted)
-	// repositories (filesystem backend only).
-	// Default: "/tmp/codevaldgit/archive".
-	ReposArchivePath string
-
 	// CrossGRPCAddr is the CodeValdCross gRPC address used for heartbeat
 	// registration. Empty string disables registration (standalone mode).
 	CrossGRPCAddr string
@@ -75,8 +66,6 @@ type Config struct {
 //	GIT_ARANGO_PASSWORD      - ArangoDB password (default "")
 //	GIT_ARANGO_DATABASE      - ArangoDB database name (default "codevaldgit")
 //	GIT_ARANGO_WORKTREE_PATH - working tree root for ArangoDB backend (default ""; uses memfs)
-//	GIT_REPOS_BASE_PATH      - live repos root for filesystem backend (default "/tmp/codevaldgit/repos")
-//	GIT_REPOS_ARCHIVE_PATH   - archive root (default "/tmp/codevaldgit/archive")
 //	CROSS_GRPC_ADDR          - CodeValdCross gRPC address (default ""; disables registration)
 //	GIT_GRPC_ADVERTISE_ADDR  - address Cross dials back on (default: ListenAddr)
 //	CODEVALDGIT_AGENCY_ID    - agency scope for this instance (default ""; all agencies)
@@ -92,8 +81,6 @@ func Load() Config {
 		ArangoPassword:     serverutil.EnvOrDefault("GIT_ARANGO_PASSWORD", ""),
 		ArangoDatabase:     serverutil.EnvOrDefault("GIT_ARANGO_DATABASE", "codevaldgit"),
 		ArangoWorktreePath: serverutil.EnvOrDefault("GIT_ARANGO_WORKTREE_PATH", ""),
-		ReposBasePath:      serverutil.EnvOrDefault("GIT_REPOS_BASE_PATH", "/tmp/codevaldgit/repos"),
-		ReposArchivePath:   serverutil.EnvOrDefault("GIT_REPOS_ARCHIVE_PATH", "/tmp/codevaldgit/archive"),
 		CrossGRPCAddr:      serverutil.EnvOrDefault("CROSS_GRPC_ADDR", ""),
 		AdvertiseAddr:      serverutil.EnvOrDefault("GIT_GRPC_ADVERTISE_ADDR", listenAddr),
 		AgencyID:           serverutil.EnvOrDefault("CODEVALDGIT_AGENCY_ID", ""),

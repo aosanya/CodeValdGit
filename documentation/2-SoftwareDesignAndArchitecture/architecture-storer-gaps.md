@@ -1,5 +1,11 @@
 # GIT-015 — ArangoDB Storer: Gap Analysis and Resolved Solutions
 
+> **Status: ✅ All six gaps resolved and implemented (2026-04-14).**
+> GIT-015a through GIT-015e are complete; `go build ./...` and
+> `go test -race ./...` pass. See
+> [mvp-details/arangodb-storer.md](../../3-SofwareDevelopment/mvp-details/arangodb-storer.md)
+> for the implementation notes and final acceptance criteria status.
+
 Design review of the GIT-015 `storage.Storer` implementation identified six
 structural gaps between the entitygraph data model and what go-git's interface
 requires. This document records each gap and its resolved solution.
@@ -15,14 +21,14 @@ interoperable.
 
 ## Summary
 
-| # | Gap | Difficulty | Touches |
-|---|---|---|---|
-| 1 | Tree binary reconstruction | Hard | `schema.go`, `git_impl_fileops.go`, `storer.go` |
-| 2 | `advanceBranchHead` missing `sha` write | Easy | `git_impl_repo.go` (~3 lines) |
-| 3 | Real vs synthetic SHA for Commit/Tree/Blob | Hard | `git_impl_fileops.go`, `storer.go` |
-| 4 | `InitRepo` ownership | Easy | `storage/arangodb/backend.go` |
-| 5 | `storer.go` full DataManager-backed rewrite | Medium | `storage/arangodb/storer.go`, `backend.go` |
-| 6 | Blob name vs full path in tree entries | Easy | Resolved by Gap 1 |
+| # | Gap | Difficulty | Touches | Status |
+|---|---|---|---|---|
+| 1 | Tree binary reconstruction | Hard | `schema.go`, `git_impl_fileops.go`, `storer.go` | ✅ |
+| 2 | `advanceBranchHead` missing `sha` write | Easy | `git_impl_repo.go` (~3 lines) | ✅ |
+| 3 | Real vs synthetic SHA for Commit/Tree/Blob | Hard | `git_impl_fileops.go`, `storer.go` | ✅ |
+| 4 | `InitRepo` ownership | Easy | `storage/arangodb/backend.go` | ✅ |
+| 5 | `storer.go` full DataManager-backed rewrite | Medium | `storage/arangodb/storer.go`, `backend.go` | ✅ |
+| 6 | Blob name vs full path in tree entries | Easy | Resolved by Gap 1 | ✅ |
 
 ---
 

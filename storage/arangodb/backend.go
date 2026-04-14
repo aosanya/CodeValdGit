@@ -7,23 +7,20 @@
 //
 // Construction:
 //
-//	b, err := NewArangoGitBackend(db)
+//	b := NewArangoStorerBackend(dm)
 //
-// InitRepo creates an initial empty commit so that git clients can clone
-// immediately after repo creation without encountering an empty HEAD error.
+// InitRepo is a no-op: the gRPC GitManager.InitRepo creates the Repository
+// entity in entitygraph. OpenStorer verifies the Repository entity exists
+// before returning the storer, so the first successful git clone is gated on
+// a prior GitManager.InitRepo call.
 package arangodb
 
 import (
 	"context"
 	"fmt"
-	"time"
 
-	driver "github.com/arangodb/go-driver"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
-	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
@@ -31,83 +28,21 @@ import (
 )
 
 // arangoBackend implements codevaldgit.Backend backed by ArangoDB.
-// Git objects (Blob, Tree, Commit, Tag) are stored via dm (entitygraph.DataManager).
-// Refs, config, index and shallow state are stored in gitraw_* collections until GIT-015d.
-// It is constructed once per process and shared across all gRPC and Smart HTTP request handlers.
+// All git state — objects (Blob, Tree, Commit, Tag), refs, config, index, and
+// shallow — is stored via dm (entitygraph.DataManager).
+// It is constructed once per process and shared across all gRPC and Smart HTTP
+// request handlers.
 type arangoBackend struct {
-	db driver.Database
-	dm entitygraph.DataManager // git objects: Blob, Tree, Commit, Tag
-}
-
-// NewArangoGitBackend constructs an arangoBackend from an already-open
-// driver.Database and an entitygraph.DataManager. It ensures the gitraw_*
-// collections (refs, config, index, shallow) and their indexes exist before returning.
-// Git objects are stored via dm; the gitraw_objects collection is no longer used.
-//
-// Callers should use the existing arangodb.NewBackend / arangodb.NewBackendFromDB
-// which call this function after setting up the entitygraph collections.
-func NewArangoGitBackend(db driver.Database, dm entitygraph.DataManager) (codevaldgit.Backend, error) {
-	if db == nil {
-		return nil, fmt.Errorf("arangodb: NewArangoGitBackend: database must not be nil")
-	}
-	if dm == nil {
-		return nil, fmt.Errorf("arangodb: NewArangoGitBackend: dm must not be nil")
-	}
-	ctx := context.Background()
-	if err := ensureGitRawCollections(ctx, db); err != nil {
-		return nil, fmt.Errorf("arangodb: NewArangoGitBackend: %w", err)
-	}
-	return &arangoBackend{db: db, dm: dm}, nil
-}
-
-// ensureGitRawCollections creates the four gitraw_* document collections and
-// their indexes if they do not already exist.
-// gitraw_objects is no longer created here; git objects are stored via entitygraph (GIT-015c).
-func ensureGitRawCollections(ctx context.Context, db driver.Database) error {
-	cols := []string{colRefs, colConfig, colIndex, colShallow}
-	for _, name := range cols {
-		if _, err := ensureDocumentCollection(ctx, db, name); err != nil {
-			return fmt.Errorf("ensure %s: %w", name, err)
-		}
-	}
-	// Persistent index on [agencyID, refName] for gitraw_refs (fast iteration).
-	refCol, err := db.Collection(ctx, colRefs)
-	if err != nil {
-		return fmt.Errorf("open %s: %w", colRefs, err)
-	}
-	if _, _, err := refCol.EnsurePersistentIndex(ctx, []string{"agencyID", "refName"}, &driver.EnsurePersistentIndexOptions{
-		Name: "idx_refs_agency_refname",
-	}); err != nil {
-		return fmt.Errorf("index on %s: %w", colRefs, err)
-	}
-	return nil
+	dm entitygraph.DataManager
 }
 
 // ── codevaldgit.Backend implementation ───────────────────────────────────────
 
-// InitRepo provisions a new git store for agencyID. It calls gogit.Init with
-// an in-memory worktree (discarded after init) and creates an initial empty
-// commit so that git clients can clone immediately.
-//
-// Returns codevaldgit.ErrRepoAlreadyExists if HEAD already exists for the agency.
-func (b *arangoBackend) InitRepo(ctx context.Context, agencyID string) error {
-	s := newArangoStorer(b.db, b.dm, agencyID)
-	// Check if already initialised (HEAD exists).
-	if _, err := s.Reference(plumbing.HEAD); err == nil {
-		return codevaldgit.ErrRepoAlreadyExists
-	}
-	// Initialise the go-git repository with an in-memory working tree.
-	wt := memfs.New()
-	repo, err := gogit.InitWithOptions(s, wt, gogit.InitOptions{
-		DefaultBranch: plumbing.Main,
-	})
-	if err != nil {
-		return fmt.Errorf("InitRepo %s: init: %w", agencyID, err)
-	}
-	// Create an initial empty commit so the repo is clonable immediately.
-	if err := createInitialCommit(repo); err != nil {
-		return fmt.Errorf("InitRepo %s: initial commit: %w", agencyID, err)
-	}
+// InitRepo is a no-op for the ArangoDB backend.
+// Repository entity creation is owned by gitManager.InitRepo, which writes
+// the Repository, Agency, and Branch entities to entitygraph before a client
+// can clone. OpenStorer gates git access on the Repository entity existing.
+func (b *arangoBackend) InitRepo(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -115,101 +50,54 @@ func (b *arangoBackend) InitRepo(ctx context.Context, agencyID string) error {
 // working tree. The Smart HTTP transport only reads the object store; the
 // in-memory working tree is never persisted.
 //
-// Returns codevaldgit.ErrRepoNotFound if no HEAD reference exists for the agency.
+// Returns codevaldgit.ErrRepoNotFound if no Repository entity exists for the agency.
 func (b *arangoBackend) OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error) {
-	s := newArangoStorer(b.db, b.dm, agencyID)
-	// Verify the repo is initialised by checking HEAD.
-	if _, err := s.Reference(plumbing.HEAD); err != nil {
-		if err == plumbing.ErrReferenceNotFound {
-			return nil, nil, codevaldgit.ErrRepoNotFound
-		}
-		return nil, nil, fmt.Errorf("OpenStorer %s: check HEAD: %w", agencyID, err)
+	repos, err := b.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("OpenStorer %s: list repositories: %w", agencyID, err)
 	}
-	return s, memfs.New(), nil
+	if len(repos) == 0 {
+		return nil, nil, codevaldgit.ErrRepoNotFound
+	}
+	return newArangoStorer(b.dm, agencyID), memfs.New(), nil
 }
 
-// DeleteRepo removes all gitraw_* documents for agencyID using AQL batch deletes.
-// Both DeleteRepo and PurgeRepo have identical behaviour: ArangoDB provides its
-// own durable storage and audit trail; there is no archive concept at the object level.
+// DeleteRepo soft-deletes the Repository entity for agencyID via
+// dm.DeleteEntity. Downstream entitygraph records (branches, commits, blobs)
+// are retained as orphans (auditable, non-destructive).
 //
-// Returns codevaldgit.ErrRepoNotFound if the agency has no git data.
+// Returns codevaldgit.ErrRepoNotFound if no Repository entity exists.
 func (b *arangoBackend) DeleteRepo(ctx context.Context, agencyID string) error {
-	return b.purgeAgencyDocs(ctx, agencyID)
+	return b.deleteRepoEntity(ctx, agencyID)
 }
 
-// PurgeRepo permanently removes all storage for agencyID. Identical to DeleteRepo
-// for the ArangoDB backend.
+// PurgeRepo permanently removes all repository data for agencyID.
+// For the ArangoDB backend this is identical to DeleteRepo: entitygraph
+// soft-deletes the Repository entity; there is no separate hard-delete path.
 func (b *arangoBackend) PurgeRepo(ctx context.Context, agencyID string) error {
-	return b.purgeAgencyDocs(ctx, agencyID)
+	return b.deleteRepoEntity(ctx, agencyID)
 }
 
-// purgeAgencyDocs deletes all documents across the four gitraw_* collections
-// where agencyID matches. Returns codevaldgit.ErrRepoNotFound if nothing exists.
-// git objects are stored in entitygraph and are not purged here (see GIT-015e).
-func (b *arangoBackend) purgeAgencyDocs(ctx context.Context, agencyID string) error {
-	cols := []string{colRefs, colConfig, colIndex, colShallow}
-	deleted := 0
-	for _, col := range cols {
-		query := fmt.Sprintf(
-			"FOR doc IN %s FILTER doc.agencyID == @a REMOVE doc IN %s RETURN 1",
-			col, col,
-		)
-		cursor, err := b.db.Query(ctx, query, map[string]any{"a": agencyID})
-		if err != nil {
-			return fmt.Errorf("purgeAgencyDocs %s: %s: %w", agencyID, col, err)
-		}
-		// Count removed documents to distinguish "not found" from "exists".
-		for cursor.HasMore() {
-			var v int
-			cursor.ReadDocument(ctx, &v) //nolint:errcheck // counting only
-			deleted++
-		}
-		cursor.Close()
+// deleteRepoEntity locates the Repository entity for agencyID and calls
+// dm.DeleteEntity on it. Returns codevaldgit.ErrRepoNotFound if none exists.
+func (b *arangoBackend) deleteRepoEntity(ctx context.Context, agencyID string) error {
+	repos, err := b.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: agencyID,
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		return fmt.Errorf("deleteRepoEntity %s: list: %w", agencyID, err)
 	}
-	if deleted == 0 {
+	if len(repos) == 0 {
 		return codevaldgit.ErrRepoNotFound
 	}
-	return nil
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// createInitialCommit creates an empty "Initial commit" on the repo's current
-// HEAD branch. This ensures the repo is immediately clonable via Smart HTTP.
-func createInitialCommit(repo *gogit.Repository) error {
-	wt, err := repo.Worktree()
-	if err != nil {
-		return err
-	}
-	sig := &object.Signature{
-		Name:  "CodeValdGit",
-		Email: "init@codevald.io",
-		When:  time.Now().UTC(),
-	}
-	_, err = wt.Commit("Initial commit", &gogit.CommitOptions{
-		Author:            sig,
-		Committer:         sig,
-		AllowEmptyCommits: true,
-	})
-	return err
-}
-
-// localEnsureDocumentCollection creates a document collection if it does not
-// already exist. Returns the opened collection.
-func ensureDocumentCollection(ctx context.Context, db driver.Database, name string) (driver.Collection, error) {
-	exists, err := db.CollectionExists(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return db.Collection(ctx, name)
-	}
-	col, err := db.CreateCollection(ctx, name, nil)
-	if err != nil {
-		if driver.IsConflict(err) {
-			return db.Collection(ctx, name)
+	for _, repo := range repos {
+		if err := b.dm.DeleteEntity(ctx, agencyID, repo.ID); err != nil {
+			return fmt.Errorf("deleteRepoEntity %s: delete %s: %w", agencyID, repo.ID, err)
 		}
-		return nil, err
 	}
-	return col, nil
+	return nil
 }
