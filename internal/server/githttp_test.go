@@ -32,17 +32,20 @@ func newTestHandler(t *testing.T, agencyID string) *server.GitHTTPHandler {
 		t.Fatalf("NewFilesystemBackend: %v", err)
 	}
 
-	if err := b.InitRepo(t.Context(), agencyID); err != nil {
+	if err := b.InitRepo(t.Context(), agencyID, testRepoName); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 
 	return server.NewGitHTTPHandler(b)
 }
 
+// testRepoName is the repository name used across all githttp tests.
+const testRepoName = "repo"
+
 func TestInfoRefs_UploadPack(t *testing.T) {
 	h := newTestHandler(t, "agency-1")
 
-	req := httptest.NewRequest(http.MethodGet, "/agency-1/info/refs?service=git-upload-pack", nil)
+	req := httptest.NewRequest(http.MethodGet, "/agency-1/"+testRepoName+"/info/refs?service=git-upload-pack", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
@@ -65,7 +68,7 @@ func TestInfoRefs_UploadPack(t *testing.T) {
 func TestInfoRefs_ReceivePack(t *testing.T) {
 	h := newTestHandler(t, "agency-2")
 
-	req := httptest.NewRequest(http.MethodGet, "/agency-2/info/refs?service=git-receive-pack", nil)
+	req := httptest.NewRequest(http.MethodGet, "/agency-2/"+testRepoName+"/info/refs?service=git-receive-pack", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
@@ -100,7 +103,7 @@ func TestInfoRefs_UnknownRepo(t *testing.T) {
 
 	h := server.NewGitHTTPHandler(b)
 
-	req := httptest.NewRequest(http.MethodGet, "/no-such-agency/info/refs?service=git-upload-pack", nil)
+	req := httptest.NewRequest(http.MethodGet, "/no-such-agency/no-such-repo/info/refs?service=git-upload-pack", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
@@ -112,7 +115,7 @@ func TestInfoRefs_UnknownRepo(t *testing.T) {
 func TestInfoRefs_UnsupportedService(t *testing.T) {
 	h := newTestHandler(t, "agency-3")
 
-	req := httptest.NewRequest(http.MethodGet, "/agency-3/info/refs?service=git-daemon-export-ok", nil)
+	req := httptest.NewRequest(http.MethodGet, "/agency-3/"+testRepoName+"/info/refs?service=git-daemon-export-ok", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
@@ -129,7 +132,8 @@ func TestServeHTTP_InvalidPath(t *testing.T) {
 		desc string
 	}{
 		{"/", "root path"},
-		{"/no-slash", "no trailing slash or segment"},
+		{"/agency-only", "agency only, no repo segment"},
+		{"/agency/repo", "agency+repo but no trailing git endpoint"},
 	}
 
 	for _, tc := range cases {
@@ -146,7 +150,7 @@ func TestServeHTTP_InvalidPath(t *testing.T) {
 func TestNoCacheHeaders(t *testing.T) {
 	h := newTestHandler(t, "agency-5")
 
-	req := httptest.NewRequest(http.MethodGet, "/agency-5/info/refs?service=git-upload-pack", nil)
+	req := httptest.NewRequest(http.MethodGet, "/agency-5/"+testRepoName+"/info/refs?service=git-upload-pack", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 

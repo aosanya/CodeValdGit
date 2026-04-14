@@ -62,14 +62,17 @@ func NewFilesystemBackend(cfg FilesystemConfig) (codevaldgit.Backend, error) {
 	return &filesystemBackend{cfg: cfg}, nil
 }
 
-// InitRepo creates a new Git repository at {BasePath}/{agencyID}/ with an
+// InitRepo creates a new Git repository at {BasePath}/{agencyID}/{repoName}/ with an
 // initial empty commit on the main branch.
 // Returns [codevaldgit.ErrRepoAlreadyExists] if a repo already exists there.
-func (b *filesystemBackend) InitRepo(_ context.Context, agencyID string) error {
+func (b *filesystemBackend) InitRepo(_ context.Context, agencyID, repoName string) error {
 	if err := validateAgencyID(agencyID); err != nil {
 		return err
 	}
-	repoPath := filepath.Join(b.cfg.BasePath, agencyID)
+	if err := validateAgencyID(repoName); err != nil {
+		return fmt.Errorf("repoName: %w", err)
+	}
+	repoPath := filepath.Join(b.cfg.BasePath, agencyID, repoName)
 	if _, err := os.Stat(repoPath); err == nil {
 		return codevaldgit.ErrRepoAlreadyExists
 	}
@@ -79,18 +82,18 @@ func (b *filesystemBackend) InitRepo(_ context.Context, agencyID string) error {
 		if errors.Is(err, gogit.ErrRepositoryAlreadyExists) {
 			return codevaldgit.ErrRepoAlreadyExists
 		}
-		return fmt.Errorf("InitRepo %s: PlainInit: %w", agencyID, err)
+		return fmt.Errorf("InitRepo %s/%s: PlainInit: %w", agencyID, repoName, err)
 	}
 
 	// go-git defaults HEAD to refs/heads/master; point it at refs/heads/main.
 	mainRef := plumbing.NewBranchReferenceName("main")
 	if err := r.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, mainRef)); err != nil {
-		return fmt.Errorf("InitRepo %s: set HEAD to main: %w", agencyID, err)
+		return fmt.Errorf("InitRepo %s/%s: set HEAD to main: %w", agencyID, repoName, err)
 	}
 
 	wt, err := r.Worktree()
 	if err != nil {
-		return fmt.Errorf("InitRepo %s: get worktree: %w", agencyID, err)
+		return fmt.Errorf("InitRepo %s/%s: get worktree: %w", agencyID, repoName, err)
 	}
 
 	// Create the initial empty commit so branch refs can be resolved.
@@ -103,19 +106,23 @@ func (b *filesystemBackend) InitRepo(_ context.Context, agencyID string) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("InitRepo %s: initial commit: %w", agencyID, err)
+		return fmt.Errorf("InitRepo %s/%s: initial commit: %w", agencyID, repoName, err)
 	}
 	return nil
 }
 
 // OpenStorer returns a filesystem [gogitstorage.Storer] and osfs working tree
-// for the given agencyID.
-// Returns [codevaldgit.ErrRepoNotFound] if no live repository exists for agencyID.
-func (b *filesystemBackend) OpenStorer(_ context.Context, agencyID string) (gogitstorage.Storer, billy.Filesystem, error) {
+// for the given agencyID and repoName.
+// Returns [codevaldgit.ErrRepoNotFound] if no live repository exists at
+// {BasePath}/{agencyID}/{repoName}/.
+func (b *filesystemBackend) OpenStorer(_ context.Context, agencyID, repoName string) (gogitstorage.Storer, billy.Filesystem, error) {
 	if err := validateAgencyID(agencyID); err != nil {
 		return nil, nil, err
 	}
-	repoPath := filepath.Join(b.cfg.BasePath, agencyID)
+	if err := validateAgencyID(repoName); err != nil {
+		return nil, nil, fmt.Errorf("repoName: %w", err)
+	}
+	repoPath := filepath.Join(b.cfg.BasePath, agencyID, repoName)
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
 		return nil, nil, codevaldgit.ErrRepoNotFound
 	}

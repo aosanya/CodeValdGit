@@ -42,22 +42,24 @@ type arangoBackend struct {
 // Repository entity creation is owned by gitManager.InitRepo, which writes
 // the Repository, Agency, and Branch entities to entitygraph before a client
 // can clone. OpenStorer gates git access on the Repository entity existing.
-func (b *arangoBackend) InitRepo(_ context.Context, _ string) error {
+func (b *arangoBackend) InitRepo(_ context.Context, _, _ string) error {
 	return nil
 }
 
-// OpenStorer returns the arangoStorer for agencyID plus a fresh in-memory
-// working tree. The Smart HTTP transport only reads the object store; the
-// in-memory working tree is never persisted.
+// OpenStorer returns the arangoStorer for the named repository within agencyID,
+// plus a fresh in-memory working tree. The Smart HTTP transport only reads the
+// object store; the in-memory working tree is never persisted.
 //
-// Returns codevaldgit.ErrRepoNotFound if no Repository entity exists for the agency.
-func (b *arangoBackend) OpenStorer(ctx context.Context, agencyID string) (storage.Storer, billy.Filesystem, error) {
+// Returns codevaldgit.ErrRepoNotFound if no Repository entity with the given
+// name exists for the agency.
+func (b *arangoBackend) OpenStorer(ctx context.Context, agencyID, repoName string) (storage.Storer, billy.Filesystem, error) {
 	repos, err := b.dm.ListEntities(ctx, entitygraph.EntityFilter{
-		AgencyID: agencyID,
-		TypeID:   "Repository",
+		AgencyID:   agencyID,
+		TypeID:     "Repository",
+		Properties: map[string]any{"name": repoName},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("OpenStorer %s: list repositories: %w", agencyID, err)
+		return nil, nil, fmt.Errorf("OpenStorer %s/%s: list repositories: %w", agencyID, repoName, err)
 	}
 	if len(repos) == 0 {
 		return nil, nil, codevaldgit.ErrRepoNotFound

@@ -21,10 +21,11 @@
 //	                                       ──has_commit──► Commit ──has_parent──► Commit
 //
 // Storage:
-//   - Agency, Repository, Branch, Tag → "git_entities" document collection (mutable refs / live state)
-//   - Commit, Tree, Blob              → "git_objects" document collection (immutable, content-addressed by SHA)
-//   - GitInternalState                → "git_internal" document collection (go-git internal: config, index, shallow)
-//   - All edges                       → "git_relationships" edge collection
+//   - Agency, Branch, Tag  → "git_entities" document collection (mutable refs / live state)
+//   - Repository           → "git_repositories" document collection (one per agency; mutable)
+//   - Commit, Tree, Blob   → "git_objects" document collection (immutable, content-addressed by SHA)
+//   - GitInternalState     → "git_internal" document collection (go-git internal: config, index, shallow)
+//   - All edges            → "git_relationships" edge collection
 //
 // Inverse relationships auto-created by [entitygraph.DataManager.CreateRelationship]:
 //
@@ -43,7 +44,8 @@ import "github.com/aosanya/CodeValdSharedLib/types"
 // cmd/main.go on startup via GitSchemaManager.SetSchema. The operation is
 // idempotent — calling it multiple times with the same schema ID is safe.
 //
-// Repository, Branch, and Tag entities are stored in "git_entities".
+// Repository entities are stored in "git_repositories" (one collection per agency).
+// Agency, Branch, and Tag entities are stored in "git_entities".
 // Commit, Tree, and Blob objects are stored in "git_objects" — they are
 // content-addressed by SHA and never mutated after creation.
 func DefaultGitSchema() types.Schema {
@@ -83,7 +85,7 @@ func DefaultGitSchema() types.Schema {
 				DisplayName:       "Repository",
 				PathSegment:       "repositories",
 				EntityIDParam:     "repositoryId",
-				StorageCollection: "git_entities",
+				StorageCollection: "git_repositories",
 				Properties: []types.PropertyDefinition{
 					// name is the human-readable label, e.g. the agency ID used as repo key.
 					{Name: "name", Type: types.PropertyTypeString, Required: true},

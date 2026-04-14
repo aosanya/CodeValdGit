@@ -26,7 +26,8 @@ func openTestRepo(t *testing.T) codevaldgit.Repo {
 	}
 	ctx := context.Background()
 	const agency = "test-agency"
-	if err := b.InitRepo(ctx, agency); err != nil {
+	const repo = "test-repo"
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 	// Ensure BasePath dir exists before creating subdirs via os.MkdirAll.
@@ -36,11 +37,11 @@ func openTestRepo(t *testing.T) codevaldgit.Repo {
 	if err != nil {
 		t.Fatalf("NewRepoManager: %v", err)
 	}
-	repo, err := mgr.OpenRepo(ctx, agency)
+	r, err := mgr.OpenRepo(ctx, agency, repo)
 	if err != nil {
 		t.Fatalf("OpenRepo: %v", err)
 	}
-	return repo
+	return r
 }
 
 // ---------------------------------------------------------------------------

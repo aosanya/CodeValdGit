@@ -35,11 +35,12 @@ func TestInitRepo_CreatesGitDir(t *testing.T) {
 	b, base, _ := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-001"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
-	gitDir := filepath.Join(base, agency, ".git")
+	gitDir := filepath.Join(base, agency, repo, ".git")
 	if _, err := os.Stat(gitDir); err != nil {
 		t.Fatalf(".git directory does not exist: %v", err)
 	}
@@ -56,11 +57,12 @@ func TestInitRepo_HeadPointsToMain(t *testing.T) {
 	b, base, _ := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-head"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
-	headBytes, err := os.ReadFile(filepath.Join(base, agency, ".git", "HEAD"))
+	headBytes, err := os.ReadFile(filepath.Join(base, agency, repo, ".git", "HEAD"))
 	if err != nil {
 		t.Fatalf("read HEAD: %v", err)
 	}
@@ -77,11 +79,12 @@ func TestInitRepo_AlreadyExists(t *testing.T) {
 	b, _, _ := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-dup"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("first InitRepo: %v", err)
 	}
-	if err := b.InitRepo(ctx, agency); !errors.Is(err, codevaldgit.ErrRepoAlreadyExists) {
+	if err := b.InitRepo(ctx, agency, repo); !errors.Is(err, codevaldgit.ErrRepoAlreadyExists) {
 		t.Fatalf("second InitRepo: got %v, want ErrRepoAlreadyExists", err)
 	}
 }
@@ -93,11 +96,12 @@ func TestOpenRepo_Success(t *testing.T) {
 	b, _, _ := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-open"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
-	storer, wt, err := b.OpenStorer(ctx, agency)
+	storer, wt, err := b.OpenStorer(ctx, agency, repo)
 	if err != nil {
 		t.Fatalf("OpenStorer: %v", err)
 	}
@@ -116,21 +120,22 @@ func TestOpenRepo_NotFound(t *testing.T) {
 	b, _, _ := newTestBackend(t)
 	ctx := context.Background()
 
-	_, _, err := b.OpenStorer(ctx, "nonexistent-agency")
+	_, _, err := b.OpenStorer(ctx, "nonexistent-agency", "nonexistent-repo")
 	if !errors.Is(err, codevaldgit.ErrRepoNotFound) {
 		t.Fatalf("OpenStorer: got %v, want ErrRepoNotFound", err)
 	}
 }
 
 // TestDeleteRepo_Archives verifies that DeleteRepo moves the live repo to the
-// archive path (source gone, destination has .git).
+// archive path (source gone, destination has agency directory).
 func TestDeleteRepo_Archives(t *testing.T) {
 	t.Parallel()
 	b, base, archive := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-del"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 	if err := b.DeleteRepo(ctx, agency); err != nil {
@@ -140,9 +145,9 @@ func TestDeleteRepo_Archives(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(base, agency)); !os.IsNotExist(err) {
 		t.Fatal("source path still exists after DeleteRepo")
 	}
-	// Destination must contain a .git directory.
-	if _, err := os.Stat(filepath.Join(archive, agency, ".git")); err != nil {
-		t.Fatalf("archive .git not found: %v", err)
+	// Destination must contain the repo subdirectory with a .git directory.
+	if _, err := os.Stat(filepath.Join(archive, agency, repo, ".git")); err != nil {
+		t.Fatalf("archive repo .git not found: %v", err)
 	}
 }
 
@@ -153,12 +158,13 @@ func TestDeleteRepo_AlreadyArchived(t *testing.T) {
 	b, base, archive := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-collision"
+	const repo = "my-repo"
 
 	// Pre-create the archive destination to force a collision.
 	if err := os.MkdirAll(filepath.Join(archive, agency), 0o755); err != nil {
 		t.Fatalf("setup: pre-create archive: %v", err)
 	}
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 	if err := b.DeleteRepo(ctx, agency); err != nil {
@@ -205,8 +211,9 @@ func TestPurgeRepo_HardDeletes(t *testing.T) {
 	b, _, archive := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-purge"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 	if err := b.DeleteRepo(ctx, agency); err != nil {
@@ -239,8 +246,9 @@ func TestConcurrentOpen(t *testing.T) {
 	b, _, _ := newTestBackend(t)
 	ctx := context.Background()
 	const agency = "agency-concurrent"
+	const repo = "my-repo"
 
-	if err := b.InitRepo(ctx, agency); err != nil {
+	if err := b.InitRepo(ctx, agency, repo); err != nil {
 		t.Fatalf("InitRepo: %v", err)
 	}
 
@@ -251,7 +259,7 @@ func TestConcurrentOpen(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			_, _, err := b.OpenStorer(ctx, agency)
+			_, _, err := b.OpenStorer(ctx, agency, repo)
 			errs[i] = err
 		}(i)
 	}

@@ -733,7 +733,9 @@ func (s *arangoStorer) setRepositoryHeadRef(ctx context.Context, target string) 
 }
 
 // setBranchSHA updates the sha property on the Branch entity identified by
-// branchName for this agency.
+// branchName for this agency. If the Branch entity does not exist yet (e.g.
+// a git client is pushing a new branch that was never created via CreateBranch),
+// it is created and linked to the Repository entity automatically.
 func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string) error {
 	log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: looking up branch entity", s.agencyID, branchName, sha)
 	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
@@ -745,7 +747,48 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 		return fmt.Errorf("SetReference refs/heads/%s: list branches: %w", branchName, err)
 	}
 	if len(branches) == 0 {
-		return fmt.Errorf("SetReference refs/heads/%s: branch not found", branchName)
+		// Branch does not exist — create it so that a plain `git push` can
+		// introduce a new branch without requiring an explicit CreateBranch call.
+		log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s: not found, creating", s.agencyID, branchName)
+		repos, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID: s.agencyID,
+			TypeID:   "Repository",
+		})
+		if err != nil {
+			return fmt.Errorf("SetReference refs/heads/%s: list repositories: %w", branchName, err)
+		}
+		if len(repos) == 0 {
+			return fmt.Errorf("SetReference refs/heads/%s: no repository for agency %q", branchName, s.agencyID)
+		}
+		repoID := repos[0].ID
+		now := time.Now().UTC().Format(time.RFC3339)
+		branchEntity, err := s.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID: s.agencyID,
+			TypeID:   "Branch",
+			Properties: map[string]any{
+				"name":       branchName,
+				"is_default": false,
+				"sha":        sha,
+				"created_at": now,
+				"updated_at": now,
+			},
+			Relationships: []entitygraph.EntityRelationshipRequest{
+				{Name: "belongs_to_repository", ToID: repoID},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("SetReference refs/heads/%s: create branch: %w", branchName, err)
+		}
+		if _, relErr := s.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: s.agencyID,
+			Name:     "has_branch",
+			FromID:   repoID,
+			ToID:     branchEntity.ID,
+		}); relErr != nil {
+			return fmt.Errorf("SetReference refs/heads/%s: link branch to repo: %w", branchName, relErr)
+		}
+		log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: created OK", s.agencyID, branchName, sha)
+		return nil
 	}
 	_, err = s.dm.UpdateEntity(ctx, s.agencyID, branches[0].ID, entitygraph.UpdateEntityRequest{
 		Properties: map[string]any{"sha": sha},
