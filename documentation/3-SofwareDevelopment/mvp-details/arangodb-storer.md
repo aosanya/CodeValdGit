@@ -10,6 +10,7 @@
 | Branch | `feature/GIT-010_arangodb-git-storer` |
 | Depends On | GIT-010 ✅ |
 | Architecture ref | [architecture-arangodb-storer.md](../../2-SoftwareDesignAndArchitecture/architecture-arangodb-storer.md) |
+| Gap resolutions | [architecture-storer-gaps.md](../../2-SoftwareDesignAndArchitecture/architecture-storer-gaps.md) |
 
 ---
 
@@ -45,6 +46,15 @@ storage layer, removing the filesystem dependency entirely.
 - [ ] `git clone http://localhost:50053/{agencyID}` succeeds after `InitRepo` via gRPC
 - [ ] `git push` to a clone succeeds and is readable via gRPC `ReadFile`
 
+**Gap-specific acceptance criteria** (see [architecture-storer-gaps.md](../../2-SoftwareDesignAndArchitecture/architecture-storer-gaps.md)):
+
+- [ ] **Gap 1**: Tree entity has `entries` property (JSON array `[{name,mode,sha}]`) written by `WriteFile`; storer reconstructs binary tree in one `GetEntity` call
+- [ ] **Gap 2**: `advanceBranchHead` writes the real git commit SHA to `Branch.sha` after updating `head_commit_id`
+- [ ] **Gap 3**: `contentSHA()` / `commitSHA()` helpers removed; Blob/Tree/Commit SHAs computed via go-git plumbing `plumbing.MemoryObject` encode+hash
+- [ ] **Gap 4**: `Backend.InitRepo` is a no-op; `Backend.OpenStorer` only verifies the Repository entity exists
+- [ ] **Gap 5**: `arangoStorer` constructor takes `entitygraph.DataManager`; no `gitraw_*` collections; `ensureGitRawCollections` deleted
+- [ ] **Gap 6**: No separate fix; resolved by Gap 1 (`entries[].name` carries the basename)
+
 ---
 
 ## New Files
@@ -54,13 +64,17 @@ storage layer, removing the filesystem dependency entirely.
 ```go
 package arangodb
 
+// arangoStorer implements storage.Storer backed by the entitygraph DataManager.
+// The gitraw_* collections are not used; all git objects are stored in the
+// existing git_objects / git_entities / git_internal entitygraph collections.
+// See architecture-storer-gaps.md §Gap 5 for the full interface mapping.
 type arangoStorer struct {
-    db       driver.Database
+    dm       entitygraph.DataManager
     agencyID string
 }
 
-func newArangoStorer(db driver.Database, agencyID string) *arangoStorer {
-    return &arangoStorer{db: db, agencyID: agencyID}
+func newArangoStorer(dm entitygraph.DataManager, agencyID string) *arangoStorer {
+    return &arangoStorer{dm: dm, agencyID: agencyID}
 }
 ```
 
@@ -184,22 +198,35 @@ Add unique persistent indexes on `gitraw_objects[agencyID, sha]`.
 
 ## ArangoDB Schema Changes
 
-### New Collections (created in `storage/arangodb/arangodb.go` on startup)
+No new collections are introduced. All git objects are stored in the existing
+entitygraph collections. Changes are limited to the TypeDefinition schema and
+a new index.
 
-| Collection | Type |
-|---|---|
-| `gitraw_objects` | Document |
-| `gitraw_refs` | Document |
-| `gitraw_config` | Document |
-| `gitraw_index` | Document |
-| `gitraw_shallow` | Document |
+### TypeDefinition Change — Tree entity (`schema.go`)
 
-### Indexes
+Add `entries` property to the Tree `TypeDefinition` (see Gap 1):
+
+```go
+// entries is a JSON-encoded array of child entries used by the storage.Storer
+// to reconstruct the binary tree object without N+1 relationship reads.
+// Each element: {"name":"<basename>","mode":"<git-mode>","sha":"<40hex>"}.
+{Name: "entries", Type: types.PropertyTypeString},
+```
+
+### New Index — `git_objects` collection (`storage/arangodb/arangodb.go`)
 
 ```
-gitraw_objects: unique persistent index on [agencyID, sha]
-gitraw_refs:    persistent index on [agencyID, refName]
+git_objects: persistent index on [agencyID, sha]
 ```
+
+Required for O(1) `EncodedObject` lookups by SHA (Gap 5).
+
+### Removed
+
+`gitraw_objects`, `gitraw_refs`, `gitraw_config`, `gitraw_index`,
+`gitraw_shallow` collections and their bootstrap code
+(`ensureGitRawCollections`, `colObjects`, `colRefs`, `colConfig`, `colIndex`,
+`colShallow` constants) are **deleted** as part of this task.
 
 ---
 

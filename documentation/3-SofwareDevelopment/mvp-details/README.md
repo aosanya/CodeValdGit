@@ -11,33 +11,31 @@ CodeValdGit is a Go library that provides Git-based artifact versioning for **Co
 | Concern | Approach |
 |---|---|
 | Git engine | [go-git](https://github.com/go-git/go-git) pure-Go — no system `git` binary |
-| Repo granularity | 1 repo per Agency (mirrors CodeValdCortex's database-per-agency isolation) |
+| Repo granularity | 1 repo per Agency |
 | Agent write policy | Always on a `task/{task-id}` branch — never directly to `main` |
 | Merge strategy | Auto-merge on task completion; auto-rebase when `main` has advanced |
-| Storage | Pluggable via `storage.Storer` + `billy.Filesystem` — filesystem (default) and ArangoDB |
+| Storage (v2) | Single `entitygraph.DataManager` for both gRPC and Smart HTTP paths |
+| Storer gaps | Six structural gaps identified and resolved — see [architecture-storer-gaps.md](../../2-SoftwareDesignAndArchitecture/architecture-storer-gaps.md) |
 | Conflict model | Return structured `ErrMergeConflict` to caller; branch left clean for retry |
 
-### Key Interfaces
+### Key Interface (v2 flat `GitManager`)
 
 ```go
-// RepoManager — top-level entry point
-type RepoManager interface {
-    InitRepo(ctx context.Context, agencyID string) error
-    OpenRepo(ctx context.Context, agencyID string) (Repo, error)
-    DeleteRepo(ctx context.Context, agencyID string) error  // archive
-    PurgeRepo(ctx context.Context, agencyID string) error   // hard-delete
-}
-
-// Repo — single agency's Git repository
-type Repo interface {
-    CreateBranch(ctx context.Context, taskID string) error
-    MergeBranch(ctx context.Context, taskID string) error
-    DeleteBranch(ctx context.Context, taskID string) error
-    WriteFile(ctx context.Context, taskID, path, content, author, message string) error
-    ReadFile(ctx context.Context, ref, path string) (string, error)
-    DeleteFile(ctx context.Context, taskID, path, author, message string) error
-    ListDirectory(ctx context.Context, ref, path string) ([]FileEntry, error)
-    Log(ctx context.Context, ref, path string) ([]Commit, error)
+// GitManager — single flat interface; replaces v1 RepoManager + Repo
+type GitManager interface {
+    InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error)
+    GetRepository(ctx context.Context) (Repository, error)
+    DeleteRepo(ctx context.Context) error
+    CreateBranch(ctx context.Context, req CreateBranchRequest) (Branch, error)
+    GetBranch(ctx context.Context, branchID string) (Branch, error)
+    ListBranches(ctx context.Context) ([]Branch, error)
+    DeleteBranch(ctx context.Context, branchID string) error
+    MergeBranch(ctx context.Context, branchID string) (Branch, error)
+    WriteFile(ctx context.Context, req WriteFileRequest) (Commit, error)
+    ReadFile(ctx context.Context, branchID, path string) (Blob, error)
+    DeleteFile(ctx context.Context, req DeleteFileRequest) (Commit, error)
+    ListDirectory(ctx context.Context, branchID, path string) ([]Blob, error)
+    Log(ctx context.Context, branchID string, filter LogFilter) ([]CommitEntry, error)
     Diff(ctx context.Context, fromRef, toRef string) ([]FileDiff, error)
 }
 ```
@@ -46,55 +44,62 @@ type Repo interface {
 
 ## Task Index
 
-| Task ID | Title | Topic File | Status |
+### v1 — Filesystem Library (all complete)
+
+| Task ID | Title | Spec File | Status |
 |---|---|---|---|
-| [MVP-GIT-001](#) | Library Scaffolding | [repo-management.md](repo-management.md) | ✅ Complete |
-| [MVP-GIT-002](#) | Filesystem Repo Lifecycle | [repo-management.md](repo-management.md) | ✅ Complete |
-| [MVP-GIT-003](#) | Branch-Per-Task Workflow | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
-| [MVP-GIT-004](#) | File Operations & Commit Attribution | [file-operations.md](file-operations.md) | ✅ Complete |
-| [MVP-GIT-005](#) | Fast-Forward Merge | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
-| [MVP-GIT-006](#) | Auto-Rebase & Conflict Resolution | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
-| [MVP-GIT-007](#) | History & Diff (UI Read Access) | [history-and-diff.md](history-and-diff.md) | ✅ Complete |
-| [MVP-GIT-008](#) | ArangoDB Storage Backend | [storage-backends.md](storage-backends.md) | ✅ Complete |
-| [MVP-GIT-009](#) | gRPC Service Proto & Codegen | [grpc-service.md](grpc-service.md) | 📋 Not Started |
-| [MVP-GIT-010](#) | gRPC Server Implementation | [grpc-service.md](grpc-service.md) | 📋 Not Started |
+| MVP-GIT-001 | Library Scaffolding | [repo-management.md](repo-management.md) | ✅ Complete |
+| MVP-GIT-002 | Filesystem Repo Lifecycle | [repo-management.md](repo-management.md) | ✅ Complete |
+| MVP-GIT-003 | Branch-Per-Task Workflow | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| MVP-GIT-004 | File Operations & Commit Attribution | [file-operations.md](file-operations.md) | ✅ Complete |
+| MVP-GIT-005 | Fast-Forward Merge | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| MVP-GIT-006 | Auto-Rebase & Conflict Resolution | [branch-workflow.md](branch-workflow.md) | ✅ Complete |
+| MVP-GIT-007 | History & Diff (UI Read Access) | [history-and-diff.md](history-and-diff.md) | ✅ Complete |
+| MVP-GIT-008 | ArangoDB Storage Backend | [storage-backends.md](storage-backends.md) | ✅ Complete |
+| MVP-GIT-009 | gRPC Service Proto & Codegen | [grpc-service.md](grpc-service.md) | ✅ Complete |
+| MVP-GIT-010 | gRPC Server Implementation | [grpc-service.md](grpc-service.md) | ✅ Complete |
+| MVP-GIT-011 | Service-Driven Route Registration | [route-registrar.md](route-registrar.md) | ✅ Complete |
+| MVP-GIT-012 | SharedLib Migration | — | ✅ Complete |
 
----
+### v2 — entitygraph Redesign + gRPC Microservice (all complete)
 
-## Execution Order
+| Task ID | Title | Spec File | Status |
+|---|---|---|---|
+| GIT-001 | Pre-delivered schema & domain value types | — | ✅ Complete |
+| GIT-002 | Flat `GitManager` interface + request types + v2 errors | — | ✅ Complete |
+| GIT-003 | Proto (`service.proto`) — `GitService` RPCs; codegen | — | ✅ Complete |
+| GIT-004 | ArangoDB entitygraph backend | — | ✅ Complete |
+| GIT-008 | Config + Cross registrar routes | — | ✅ Complete |
+| GIT-009 | `cmd/main.go` — cmux wiring + schema seed | — | ✅ Complete |
+| GIT-010 | Unit & integration tests | — | ✅ Complete |
 
-```
-MVP-GIT-001  ← Foundation: scaffolding must come first
-     ↓
-MVP-GIT-002  ← Filesystem repo lifecycle (InitRepo, OpenRepo, DeleteRepo, PurgeRepo)
-     ↓
-MVP-GIT-003  ← Branch-per-task workflow (CreateBranch, DeleteBranch)
-     ↓
-MVP-GIT-004  ← File operations (WriteFile, ReadFile, DeleteFile, ListDirectory)
-     ↓
-MVP-GIT-005  ← Fast-forward merge (happy path)
-     ↓
-MVP-GIT-006  ← Auto-rebase + conflict resolution (builds on merge)
-     ↓
-MVP-GIT-007  ← History & diff (read-only; builds on file ops)
-     ↓
-MVP-GIT-008  ← ArangoDB backend (parallel track — depends on MVP-GIT-001 interfaces only)
-     ↓
-MVP-GIT-009  ← CodeValdCortex integration (depends on all above)
-```
+### Unified Backend — ArangoDB `storage.Storer` (active)
 
----
+| Task ID | Title | Spec File | Status |
+|---|---|---|---|
+| GIT-015 | ArangoDB `storage.Storer` + unified backend | [arangodb-storer.md](arangodb-storer.md) | 🚀 In Progress |
 
-## What Gets Removed from CodeValdCortex (after MVP-GIT-009)
+Six implementation gaps were identified and resolved during design. See
+[architecture-storer-gaps.md](../../2-SoftwareDesignAndArchitecture/architecture-storer-gaps.md)
+for the full analysis:
 
-| File / Package | Reason |
-|---|---|
-| `internal/git/ops/operations.go` | Custom SHA-1 object engine → replaced by go-git |
-| `internal/git/storage/repository.go` | ArangoDB Git object storage → replaced |
-| `internal/git/fileindex/service.go` | ArangoDB file index service → replaced |
-| `internal/git/fileindex/repository.go` | ArangoDB file index repository → replaced |
-| `internal/git/models/` | Custom GitObject, GitTree, GitCommit → replaced by go-git types |
-| ArangoDB: `git_objects`, `git_refs`, `repositories` | Collections dropped entirely |
+| Gap | Summary | Difficulty |
+|---|---|---|
+| 1 | Tree binary reconstruction — `entries` JSON property | Hard |
+| 2 | `advanceBranchHead` must write `Branch.sha` | Easy |
+| 3 | Real git binary SHA everywhere (removes `contentSHA()`) | Hard |
+| 4 | `Backend.InitRepo` is a no-op; `OpenStorer` verifies only | Easy |
+| 5 | `arangoStorer` rewritten to use `entitygraph.DataManager` | Medium |
+| 6 | Blob basename — resolved by Gap 1 `entries[].name` | Easy |
+
+### Production Safety (not started)
+
+| Task ID | Title | Spec File | Status |
+|---|---|---|---|
+| GIT-011 | Concurrency — `RefLocker` + CAS in `advanceBranchHead` | [critical-concurrency.md](critical-concurrency.md) | 📋 Not Started |
+| GIT-012 | Squash merge strategy | [critical-merge-strategy.md](critical-merge-strategy.md) | 📋 Not Started |
+| GIT-013 | Transaction boundaries + idempotency | [critical-transactions.md](critical-transactions.md) | 📋 Not Started |
+| GIT-014 | ArangoDB deduplication, docs, production gate | [critical-arangodb.md](critical-arangodb.md) | 📋 Not Started |
 
 ---
 
@@ -108,4 +113,10 @@ MVP-GIT-009  ← CodeValdCortex integration (depends on all above)
 | [history-and-diff.md](history-and-diff.md) | MVP-GIT-007 |
 | [storage-backends.md](storage-backends.md) | MVP-GIT-008 |
 | [grpc-service.md](grpc-service.md) | MVP-GIT-009, MVP-GIT-010 |
+| [route-registrar.md](route-registrar.md) | MVP-GIT-011 |
+| [arangodb-storer.md](arangodb-storer.md) | GIT-015 — unified `storage.Storer` |
+| [critical-concurrency.md](critical-concurrency.md) | GIT-011 — `RefLocker` + CAS |
+| [critical-merge-strategy.md](critical-merge-strategy.md) | GIT-012 — squash merge |
+| [critical-transactions.md](critical-transactions.md) | GIT-013 — idempotency |
+| [critical-arangodb.md](critical-arangodb.md) | GIT-014 — ArangoDB production gate |
 | [integration.md](integration.md) | ⚠️ Superseded — see grpc-service.md |

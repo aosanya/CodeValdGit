@@ -23,6 +23,7 @@
 // Storage:
 //   - Agency, Repository, Branch, Tag → "git_entities" document collection (mutable refs / live state)
 //   - Commit, Tree, Blob              → "git_objects" document collection (immutable, content-addressed by SHA)
+//   - GitInternalState                → "git_internal" document collection (go-git internal: config, index, shallow)
 //   - All edges                       → "git_relationships" edge collection
 //
 // Inverse relationships auto-created by [entitygraph.DataManager.CreateRelationship]:
@@ -89,6 +90,10 @@ func DefaultGitSchema() types.Schema {
 					{Name: "description", Type: types.PropertyTypeString},
 					// default_branch is the name of the primary branch (e.g. "main").
 					{Name: "default_branch", Type: types.PropertyTypeString, Required: true},
+					// head_ref is the symbolic HEAD target, e.g. "refs/heads/main".
+					// Written by the go-git storage.Storer on InitRepo and updated on
+					// symbolic-ref changes. Required for Smart HTTP (git clone/fetch).
+					{Name: "head_ref", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -140,6 +145,11 @@ func DefaultGitSchema() types.Schema {
 					{Name: "name", Type: types.PropertyTypeString, Required: true},
 					// is_default is true for the repository's default branch.
 					{Name: "is_default", Type: types.PropertyTypeBoolean},
+					// sha is the target commit hash for this branch head.
+					// Updated by the go-git storage.Storer on every SetReference call
+					// so that Smart HTTP (git clone/fetch) can resolve refs without
+					// traversing the points_to relationship.
+					{Name: "sha", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -334,6 +344,28 @@ func DefaultGitSchema() types.Schema {
 						Required:    true,
 						Inverse:     "has_blob",
 					},
+				},
+			},
+			{
+				Name:              "GitInternalState",
+				DisplayName:       "Git Internal State",
+				PathSegment:       "internal-state",
+				EntityIDParam:     "internalStateId",
+				StorageCollection: "git_internal",
+				// GitInternalState stores per-agency go-git internal data used exclusively
+				// by the storage.Storer implementation. One document per agency per
+				// state_type — enforced via UniqueKey so UpsertEntity is always safe.
+				// Not exposed via gRPC or HTTP routes.
+				UniqueKey: []string{"state_type"},
+				Properties: []types.PropertyDefinition{
+					// state_type is the discriminator: "config", "index", or "shallow".
+					{Name: "state_type", Type: types.PropertyTypeString, Required: true},
+					// data is the base64-encoded binary payload:
+					//   config  — git config ini format
+					//   index   — git index binary
+					//   shallow — newline-separated shallow commit SHAs
+					{Name: "data", Type: types.PropertyTypeString, Required: true},
+					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
 		},
