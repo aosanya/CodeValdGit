@@ -227,6 +227,26 @@ See: [mvp-details/critical-arangodb.md](mvp-details/critical-arangodb.md)
 
 ---
 
+## P1: Repository Import (IMPORTANT)
+
+### GIT-016 — Import External Repository
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-016a: `ImportJob` TypeDefinition + `git_importjobs` collection in `schema.go` | 📋 Not Started | ~~GIT-001~~ ✅ |
+| GIT-016b: Types (`ImportRepoRequest`, `ImportJob`) + errors + `GitManager` interface additions | 📋 Not Started | GIT-016a |
+| GIT-016c: Core implementation — background goroutine, go-git clone, all-branch entity walk, cancel map | 📋 Not Started | GIT-016b |
+| GIT-016d: Proto additions (3 RPCs) + `buf generate` | 📋 Not Started | GIT-016b |
+| GIT-016e: gRPC server handlers + error mapping for all 3 RPCs | 📋 Not Started | GIT-016c, GIT-016d |
+| GIT-016f: Unit tests — import manager, cancel, concurrency rejection | 📋 Not Started | GIT-016e |
+
+**Scope**: Full async import of a public HTTPS Git repository into the entity graph.
+Six sub-tasks cover the schema addition, interface contract, core ingestion goroutine,
+proto codegen, gRPC server wiring, and unit tests.
+See: [mvp-details/repo-import.md](mvp-details/repo-import.md)
+
+---
+
 ## Bugs and Issues
 
 ### Active Bugs

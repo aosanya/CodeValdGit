@@ -101,6 +101,17 @@ for the full analysis:
 | GIT-013 | Transaction boundaries + idempotency | [critical-transactions.md](critical-transactions.md) | 📋 Not Started |
 | GIT-014 | ArangoDB deduplication, docs, production gate | [critical-arangodb.md](critical-arangodb.md) | 📋 Not Started |
 
+### Repository Import (not started)
+
+| Task ID | Title | Spec File | Status |
+|---|---|---|---|
+| GIT-016a | `ImportJob` TypeDefinition + `git_importjobs` schema | [repo-import.md](repo-import.md) | 📋 Not Started |
+| GIT-016b | Types + errors + `GitManager` interface additions | [repo-import.md](repo-import.md) | 📋 Not Started |
+| GIT-016c | Core implementation: goroutine, go-git clone, entity walk, cancel | [repo-import.md](repo-import.md) | 📋 Not Started |
+| GIT-016d | Proto additions (3 RPCs) + `buf generate` | [repo-import.md](repo-import.md) | 📋 Not Started |
+| GIT-016e | gRPC server handlers + error mapping | [repo-import.md](repo-import.md) | 📋 Not Started |
+| GIT-016f | Unit tests — import manager, cancel, concurrency | [repo-import.md](repo-import.md) | 📋 Not Started |
+
 ---
 
 ## Topic Files
@@ -120,3 +131,4 @@ for the full analysis:
 | [critical-transactions.md](critical-transactions.md) | GIT-013 — idempotency |
 | [critical-arangodb.md](critical-arangodb.md) | GIT-014 — ArangoDB production gate |
 | [integration.md](integration.md) | ⚠️ Superseded — see grpc-service.md |
+| [repo-import.md](repo-import.md) | GIT-016 — async import of external public HTTPS repository |

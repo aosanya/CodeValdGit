@@ -713,57 +713,88 @@ func (s *arangoStorer) Module(name string) (storage.Storer, error) {
 
 // ── Blob metadata backfill (single commit point) ──────────────────────────────
 
-// backfillBlobsFromSHA looks up the Commit with the given SHA from the store
-// (at this point every packfile object is guaranteed to be present) and walks
-// its full tree, calling backfillBlobEntity for every blob entry found.
-// It is the single point where name/path/extension are resolved for blobs
-// written via the git-push path (SetEncodedObject).
+// backfillBlobsFromSHA walks the commit chain starting at commitSHA and
+// processes every commit's tree until it reaches a commit whose blobs are
+// already fully enriched (indicating it arrived in a prior push). This
+// handles pushes that contain multiple commits: every blob reachable from
+// every new commit gets name/path/extension set exactly once.
 func (s *arangoStorer) backfillBlobsFromSHA(ctx context.Context, commitSHA string) {
-	obj, err := s.EncodedObject(plumbing.CommitObject, plumbing.NewHash(commitSHA))
-	if err != nil {
-		log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: get commit: %v", s.agencyID, commitSHA, err)
-		return
+	visited := make(map[string]bool)
+	queue := []string{commitSHA}
+	for len(queue) > 0 {
+		sha := queue[0]
+		queue = queue[1:]
+		if visited[sha] || sha == "" || sha == plumbing.ZeroHash.String() {
+			continue
+		}
+		visited[sha] = true
+
+		obj, err := s.EncodedObject(plumbing.CommitObject, plumbing.NewHash(sha))
+		if err != nil {
+			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: get commit: %v", s.agencyID, sha, err)
+			continue
+		}
+		commit := &object.Commit{}
+		if err := commit.Decode(obj); err != nil {
+			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: decode commit: %v", s.agencyID, sha, err)
+			continue
+		}
+
+		// Walk this commit's tree; stop descending into this parent chain if
+		// all blobs were already enriched (they came from a prior push).
+		if s.backfillBlobsFromTree(ctx, "", commit.TreeHash) == 0 {
+			// Zero blobs enriched means every blob in this tree already had
+			// metadata — this commit was part of a previous push, so its
+			// ancestors are also already processed.
+			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: all blobs already enriched, stopping chain walk", s.agencyID, sha)
+			continue
+		}
+
+		// Enqueue parent commits so we enrich blobs from all new commits.
+		for _, p := range commit.ParentHashes {
+			queue = append(queue, p.String())
+		}
 	}
-	commit := &object.Commit{}
-	if err := commit.Decode(obj); err != nil {
-		log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: decode commit: %v", s.agencyID, commitSHA, err)
-		return
-	}
-	s.backfillBlobsFromTree(ctx, "", commit.TreeHash)
 }
 
 // backfillBlobsFromTree recursively walks a tree object. For each blob entry
 // it calls backfillBlobEntity with the fully-qualified path. For subtree
 // entries it recurses with the directory prefix extended.
-func (s *arangoStorer) backfillBlobsFromTree(ctx context.Context, prefix string, treeHash plumbing.Hash) {
+// Returns the number of blobs that were enriched (i.e. had no name before).
+func (s *arangoStorer) backfillBlobsFromTree(ctx context.Context, prefix string, treeHash plumbing.Hash) int {
 	treeObj, err := s.EncodedObject(plumbing.TreeObject, treeHash)
 	if err != nil {
 		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: get: %v", s.agencyID, treeHash, err)
-		return
+		return 0
 	}
 	tree := &object.Tree{}
 	if err := tree.Decode(treeObj); err != nil {
 		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: decode: %v", s.agencyID, treeHash, err)
-		return
+		return 0
 	}
+	enriched := 0
 	for _, entry := range tree.Entries {
 		entryPath := entry.Name
 		if prefix != "" {
 			entryPath = prefix + "/" + entry.Name
 		}
 		if entry.Mode == filemode.Dir || entry.Mode == filemode.Submodule {
-			s.backfillBlobsFromTree(ctx, entryPath, entry.Hash)
+			enriched += s.backfillBlobsFromTree(ctx, entryPath, entry.Hash)
 			continue
 		}
-		s.backfillBlobEntity(ctx, entry.Hash.String(), entry.Name, entryPath)
+		if s.backfillBlobEntity(ctx, entry.Hash.String(), entry.Name, entryPath) {
+			enriched++
+		}
 	}
+	return enriched
 }
 
 // backfillBlobEntity patches the name, path, and extension properties on the
 // Blob entity identified by sha, but only when name is not already set.
 // This makes the call idempotent: blobs written by WriteFile already carry
 // the fields and are left unchanged.
-func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path string) {
+// Returns true if the blob was enriched, false if it was already set or not found.
+func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path string) bool {
 	blobs, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID:   s.agencyID,
 		TypeID:     "Blob",
@@ -771,12 +802,12 @@ func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path s
 	})
 	if err != nil || len(blobs) == 0 {
 		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: not found", s.agencyID, sha)
-		return
+		return false
 	}
-	// Idempotent: skip if already enriched (written by the WriteFile path).
+	// Idempotent: skip if already enriched (e.g. written by the WriteFile path).
 	if existing, ok := blobs[0].Properties["name"].(string); ok && existing != "" {
 		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: already enriched, skip", s.agencyID, sha)
-		return
+		return false
 	}
 	ext := ""
 	if dot := strings.LastIndexByte(name, '.'); dot >= 0 {
@@ -790,8 +821,10 @@ func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path s
 		},
 	}); err != nil {
 		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: update failed: %v", s.agencyID, sha, err)
+		return false
 	}
 	log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s name=%s path=%s: enriched OK", s.agencyID, sha, name, path)
+	return true
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
