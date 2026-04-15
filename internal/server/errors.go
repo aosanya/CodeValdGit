@@ -44,6 +44,12 @@ func toGRPCError(err error) error {
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, codevaldgit.ErrDefaultBranchDeleteForbidden):
 		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, codevaldgit.ErrImportJobNotFound):
+		return status.Error(codes.NotFound, err.Error())
+	case errors.Is(err, codevaldgit.ErrImportInProgress):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, codevaldgit.ErrImportJobNotCancellable):
+		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Errorf(codes.Internal, "internal error: %v", err)
 	}
