@@ -16,6 +16,8 @@ This section captures the **how** — design decisions, data models, component a
 | [architecture-transactions.md](architecture-transactions.md) | Transaction boundaries — atomicity rules, `MergeRequest` idempotency key, retry-safety matrix (GIT-013) |
 | [architecture-arangodb.md](architecture-arangodb.md) | ArangoDB v2 entitygraph backend — design evolution, sub-gap analysis, deduplication, production criteria (GIT-014) |
 | [architecture-arangodb-storer.md](architecture-arangodb-storer.md) | ArangoDB v3 `storage.Storer` — unified single backend for gRPC + Smart HTTP; eliminates filesystem (GIT-015) |
+| [architecture-storer-gaps.md](architecture-storer-gaps.md) | Structural gaps in the storer implementation — Gaps 1–6 resolved (GIT-015); Gap 7 (gRPC-data) pending (GIT-017) |
+| [architecture-pull-flow.md](architecture-pull-flow.md) | Git pull / clone object-serving flow; how file versions are resolved; Gap 7 analysis |
 
 ---
 

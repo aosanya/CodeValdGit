@@ -1,6 +1,7 @@
 # GIT-015 — ArangoDB Storer: Gap Analysis and Resolved Solutions
 
-> **Status: ✅ All six gaps resolved and implemented (2026-04-14).**
+> **Status**: ✅ Six gaps resolved and implemented (2026-04-14). ⚠️ Gap 7 identified
+> (2026-04-15) — fix tracked as GIT-017.
 > GIT-015a through GIT-015e are complete; `go build ./...` and
 > `go test -race ./...` pass. See
 > [mvp-details/arangodb-storer.md](../../3-SofwareDevelopment/mvp-details/arangodb-storer.md)
@@ -29,6 +30,7 @@ interoperable.
 | 4 | `InitRepo` ownership | Easy | `storage/arangodb/backend.go` | ✅ |
 | 5 | `storer.go` full DataManager-backed rewrite | Medium | `storage/arangodb/storer.go`, `backend.go` | ✅ |
 | 6 | Blob name vs full path in tree entries | Easy | Resolved by Gap 1 | ✅ |
+| 7 | gRPC-written objects missing `data` property — invisible to `git pull` | Medium | `git_impl_fileops.go` | 🔴 GIT-017 |
 
 ---
 
@@ -268,6 +270,80 @@ explicitly stores `name` (basename), `mode`, and `sha` for every child. The
 storer reconstructs the binary tree object directly from `entries` — no
 basename derivation from `Blob.path` is required. `Blob.path` is unchanged and
 continues to serve the gRPC file-operations path (`ReadFile`, `ListDirectory`).
+
+---
+
+## Gap 7 — gRPC-Written Objects Missing `data` Property
+
+> **Identified**: 2026-04-15. **Fix**: GIT-017.
+> Full analysis in
+> [architecture-pull-flow.md](architecture-pull-flow.md).
+
+### Problem
+
+`WriteFile` creates Blob, Tree, and Commit entities via `dm.CreateEntity` with
+human-readable properties (`path`, `name`, `content`, `entries`, etc.) but
+**does not populate the `data` property** (the base64-encoded raw git object
+bytes) that `arangoStorer.EncodedObject` requires to reconstruct an object for
+the git wire protocol.
+
+When a client runs `git pull` / `git clone` after a gRPC `WriteFile` call:
+
+1. `IterReferences()` advertises the branch tip SHA correctly (from
+   `Branch.sha`, written by `advanceBranchHead` — Gap 2 fix).
+2. `EncodedObject(CommitObject, sha)` queries the Commit entity → reads
+   `Properties["data"]` → the key is absent → returns error.
+3. `IterEncodedObjects` silently skips entities without `data` (comment:
+   `// skip entities without raw data (e.g. created by GitManager layer)`).
+4. go-git cannot assemble the packfile → the client receives an incomplete or
+   empty pack → the files are missing from the working tree.
+
+### Root Cause
+
+The `WriteFile` code path already computes `plumbing.MemoryObject` instances
+for all three object types (blob, tree, commit) in order to derive their SHAs.
+It reads the bytes only to hash them, then discards them without storing them
+as `data`.
+
+### Solution (GIT-017)
+
+After computing each `plumbing.MemoryObject`, read the raw bytes and
+base64-encode them into a `"data"` property alongside the existing properties:
+
+```go
+// blob
+blobR, _ := blobObj.Reader()
+blobRaw, _ := io.ReadAll(blobR)
+blobR.Close()
+// pass "data": base64.StdEncoding.EncodeToString(blobRaw)
+// alongside sha, path, name, … to dm.CreateEntity(TypeID="Blob", …)
+
+// tree
+treeR, _ := treeMemObj.Reader()
+treeRaw, _ := io.ReadAll(treeR)
+treeR.Close()
+// pass "data": base64.StdEncoding.EncodeToString(treeRaw)
+
+// commit
+commitR, _ := commitMemObj.Reader()
+commitRaw, _ := io.ReadAll(commitR)
+commitR.Close()
+// pass "data": base64.StdEncoding.EncodeToString(commitRaw)
+```
+
+No schema change is required. `EncodedObject` and `IterEncodedObjects` already
+handle the `data` property; they will now find it on gRPC-written entities.
+
+### Acceptance Criteria (GIT-017)
+
+- [ ] `WriteFile` stores `"data"` (base64 raw bytes) on Blob, Tree, and Commit
+  entities
+- [ ] `git clone` after gRPC `WriteFile` produces the correct working tree
+- [ ] `git pull` on a branch that has only gRPC commits downloads all files
+- [ ] `go test -race ./...` passes (existing `file_operations_test.go`
+  must remain green)
+- [ ] `EncodedObject(BlobObject, sha)` succeeds for blobs written by `WriteFile`
+- [ ] `IterEncodedObjects(BlobObject)` includes blobs written by `WriteFile`
 
 ---
 

@@ -93,5 +93,6 @@ func gitRoutes() []types.RouteInfo {
 	all = append(all, fileRoutes()...)
 	all = append(all, historyRoutes()...)
 	all = append(all, smartHTTPRoutes()...)
+	all = append(all, importRoutes()...)
 	return all
 }

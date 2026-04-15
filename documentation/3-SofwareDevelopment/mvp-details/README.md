@@ -78,9 +78,13 @@ type GitManager interface {
 | Task ID | Title | Spec File | Status |
 |---|---|---|---|
 | GIT-015 | ArangoDB `storage.Storer` + unified backend | [arangodb-storer.md](arangodb-storer.md) | 🚀 In Progress |
+| GIT-017 | gRPC `WriteFile` must store `data` bytes for git pull | [arangodb-storer.md](arangodb-storer.md) | 📋 Not Started |
 
-Six implementation gaps were identified and resolved during design. See
+Six implementation gaps were identified and resolved during design; a seventh
+gap was found post-implementation. See
 [architecture-storer-gaps.md](../../2-SoftwareDesignAndArchitecture/architecture-storer-gaps.md)
+and
+[architecture-pull-flow.md](../../2-SoftwareDesignAndArchitecture/architecture-pull-flow.md)
 for the full analysis:
 
 | Gap | Summary | Difficulty |
@@ -91,6 +95,7 @@ for the full analysis:
 | 4 | `Backend.InitRepo` is a no-op; `OpenStorer` verifies only | Easy |
 | 5 | `arangoStorer` rewritten to use `entitygraph.DataManager` | Medium |
 | 6 | Blob basename — resolved by Gap 1 `entries[].name` | Easy |
+| 7 | ⚠️ gRPC-written objects missing `data` — invisible to `git pull` | Medium |
 
 ### Production Safety (not started)
 

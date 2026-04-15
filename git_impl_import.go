@@ -56,12 +56,23 @@ var importJobs = make(map[string]importCancelEntry)
 // Returns [ErrRepoAlreadyExists] if a Repository entity already exists.
 // Returns [ErrImportInProgress] if a pending or running import already exists.
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
-	// 1. Reject if a Repository entity already exists for this agency.
-	if _, err := m.GetRepository(ctx); err == nil {
+	log.Printf("[DEBUG] ImportRepo agencyID=%q sourceURL=%q name=%q defaultBranch=%q", m.agencyID, req.SourceURL, req.Name, req.DefaultBranch)
+
+	// 1. Reject if a Repository entity with the same name already exists.
+	existingRepos, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   m.agencyID,
+		TypeID:     "Repository",
+		Properties: map[string]any{"name": req.Name},
+	})
+	if err != nil {
+		return ImportJob{}, fmt.Errorf("ImportRepo %s: check existing repo: %w", m.agencyID, err)
+	}
+	if len(existingRepos) > 0 {
+		log.Printf("[DEBUG] ImportRepo %s: rejected — repository %q already exists", m.agencyID, req.Name)
 		return ImportJob{}, ErrRepoAlreadyExists
 	}
 
-	// 2. Reject if an active import job already exists.
+	// 2. Reject if an active import job for the same source URL already exists.
 	active, err := m.findActiveImportJob(ctx)
 	if err != nil {
 		return ImportJob{}, fmt.Errorf("ImportRepo %s: check active job: %w", m.agencyID, err)
@@ -100,6 +111,7 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 		defaultBranch = "main"
 	}
 
+	log.Printf("[DEBUG] ImportRepo %s: created job %s, starting background goroutine", m.agencyID, jobID)
 	go m.runImport(jobCtx, jobID, req, defaultBranch)
 
 	return importJobFromEntity(jobEntity), nil
@@ -177,16 +189,20 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		Tags:         gogit.AllTags,
 		SingleBranch: false,
 	}
+	log.Printf("[DEBUG] ImportJob %s: cloning %s into %s", jobID, req.SourceURL, tempDir)
 	repo, err := gogit.PlainCloneContext(ctx, tempDir, false, cloneOpts)
 	if err != nil {
 		if ctx.Err() != nil {
+			log.Printf("[DEBUG] ImportJob %s: clone cancelled", jobID)
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
 			_ = m.publishImportEvent(context.Background(), "cross.git.%s.repo.import.cancelled")
 			return
 		}
+		log.Printf("[DEBUG] ImportJob %s: clone failed: %v", jobID, err)
 		m.failImportJob(ctx, jobID, fmt.Sprintf("clone %s: %v", req.SourceURL, err))
 		return
 	}
+	log.Printf("[DEBUG] ImportJob %s: clone complete, walking refs", jobID)
 
 	// Walk all remote references (branches).
 	refs, err := repo.References()
@@ -214,6 +230,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// Create the Repository entity using the provided name and default branch.
+	log.Printf("[DEBUG] ImportJob %s: refs walked, creating Repository entity name=%q defaultBranch=%q", jobID, req.Name, defaultBranch)
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
@@ -231,10 +248,12 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// Publish success event and mark completed.
+	log.Printf("[DEBUG] ImportJob %s: import complete, publishing event and marking completed", jobID)
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusCompleted, ""); err != nil {
 		log.Printf("[ERROR] ImportJob %s: transition to completed: %v", jobID, err)
 	}
+	log.Printf("[DEBUG] ImportJob %s: done", jobID)
 }
 
 // walkBranchCommits upserts Branch, Commit, Tree, and Blob entities for every
