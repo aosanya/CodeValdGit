@@ -381,6 +381,28 @@ func DefaultGitSchema() types.Schema {
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
+			{
+				Name:              "ImportJob",
+				DisplayName:       "Import Job",
+				PathSegment:       "import-jobs",
+				EntityIDParam:     "importJobId",
+				StorageCollection: "git_importjobs",
+				// ImportJob tracks the lifecycle of an async repository import operation.
+				// One document per import request; keyed by a UUID assigned at call time.
+				// Status transitions: pending → running → completed | failed | cancelled.
+				Properties: []types.PropertyDefinition{
+					// agency_id scopes this job to the owning agency.
+					{Name: "agency_id", Type: types.PropertyTypeString, Required: true},
+					// source_url is the public HTTPS URL of the remote repository being imported.
+					{Name: "source_url", Type: types.PropertyTypeString, Required: true},
+					// status is one of: "pending", "running", "completed", "failed", "cancelled".
+					{Name: "status", Type: types.PropertyTypeString, Required: true},
+					// error_message is populated only when status == "failed".
+					{Name: "error_message", Type: types.PropertyTypeString},
+					{Name: "created_at", Type: types.PropertyTypeString},
+					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
+			},
 		},
 	}
 }

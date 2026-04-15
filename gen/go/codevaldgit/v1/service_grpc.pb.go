@@ -19,25 +19,28 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GitService_InitRepo_FullMethodName      = "/codevaldgit.v1.GitService/InitRepo"
-	GitService_GetRepository_FullMethodName = "/codevaldgit.v1.GitService/GetRepository"
-	GitService_DeleteRepo_FullMethodName    = "/codevaldgit.v1.GitService/DeleteRepo"
-	GitService_PurgeRepo_FullMethodName     = "/codevaldgit.v1.GitService/PurgeRepo"
-	GitService_CreateBranch_FullMethodName  = "/codevaldgit.v1.GitService/CreateBranch"
-	GitService_GetBranch_FullMethodName     = "/codevaldgit.v1.GitService/GetBranch"
-	GitService_ListBranches_FullMethodName  = "/codevaldgit.v1.GitService/ListBranches"
-	GitService_DeleteBranch_FullMethodName  = "/codevaldgit.v1.GitService/DeleteBranch"
-	GitService_MergeBranch_FullMethodName   = "/codevaldgit.v1.GitService/MergeBranch"
-	GitService_CreateTag_FullMethodName     = "/codevaldgit.v1.GitService/CreateTag"
-	GitService_GetTag_FullMethodName        = "/codevaldgit.v1.GitService/GetTag"
-	GitService_ListTags_FullMethodName      = "/codevaldgit.v1.GitService/ListTags"
-	GitService_DeleteTag_FullMethodName     = "/codevaldgit.v1.GitService/DeleteTag"
-	GitService_WriteFile_FullMethodName     = "/codevaldgit.v1.GitService/WriteFile"
-	GitService_ReadFile_FullMethodName      = "/codevaldgit.v1.GitService/ReadFile"
-	GitService_DeleteFile_FullMethodName    = "/codevaldgit.v1.GitService/DeleteFile"
-	GitService_ListDirectory_FullMethodName = "/codevaldgit.v1.GitService/ListDirectory"
-	GitService_Log_FullMethodName           = "/codevaldgit.v1.GitService/Log"
-	GitService_Diff_FullMethodName          = "/codevaldgit.v1.GitService/Diff"
+	GitService_InitRepo_FullMethodName        = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_GetRepository_FullMethodName   = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_DeleteRepo_FullMethodName      = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName       = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName    = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName       = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_ListBranches_FullMethodName    = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName    = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName     = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateTag_FullMethodName       = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName          = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName        = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName       = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName       = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName        = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName      = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName   = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName             = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName            = "/codevaldgit.v1.GitService/Diff"
+	GitService_ImportRepo_FullMethodName      = "/codevaldgit.v1.GitService/ImportRepo"
+	GitService_GetImportStatus_FullMethodName = "/codevaldgit.v1.GitService/GetImportStatus"
+	GitService_CancelImport_FullMethodName    = "/codevaldgit.v1.GitService/CancelImport"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -112,6 +115,18 @@ type GitServiceClient interface {
 	// Refs may be branch IDs or commit SHAs.
 	// Error: NOT_FOUND if either ref cannot be resolved.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
+	// ImportRepo begins an async import of a public Git repository.
+	// Returns immediately with a job ID; poll GetImportStatus for progress.
+	// Error: ALREADY_EXISTS if a repository already exists for the agency.
+	// Error: FAILED_PRECONDITION if an import is already in progress.
+	ImportRepo(ctx context.Context, in *ImportRepoRequest, opts ...grpc.CallOption) (*ImportRepoResponse, error)
+	// GetImportStatus returns the current state of an import job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	GetImportStatus(ctx context.Context, in *GetImportStatusRequest, opts ...grpc.CallOption) (*ImportJobResponse, error)
+	// CancelImport cancels a pending or running import job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
+	CancelImport(ctx context.Context, in *CancelImportRequest, opts ...grpc.CallOption) (*CancelImportResponse, error)
 }
 
 type gitServiceClient struct {
@@ -312,6 +327,36 @@ func (c *gitServiceClient) Diff(ctx context.Context, in *DiffRequest, opts ...gr
 	return out, nil
 }
 
+func (c *gitServiceClient) ImportRepo(ctx context.Context, in *ImportRepoRequest, opts ...grpc.CallOption) (*ImportRepoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportRepoResponse)
+	err := c.cc.Invoke(ctx, GitService_ImportRepo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetImportStatus(ctx context.Context, in *GetImportStatusRequest, opts ...grpc.CallOption) (*ImportJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportJobResponse)
+	err := c.cc.Invoke(ctx, GitService_GetImportStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) CancelImport(ctx context.Context, in *CancelImportRequest, opts ...grpc.CallOption) (*CancelImportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelImportResponse)
+	err := c.cc.Invoke(ctx, GitService_CancelImport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GitServiceServer is the server API for GitService service.
 // All implementations must embed UnimplementedGitServiceServer
 // for forward compatibility.
@@ -384,6 +429,18 @@ type GitServiceServer interface {
 	// Refs may be branch IDs or commit SHAs.
 	// Error: NOT_FOUND if either ref cannot be resolved.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
+	// ImportRepo begins an async import of a public Git repository.
+	// Returns immediately with a job ID; poll GetImportStatus for progress.
+	// Error: ALREADY_EXISTS if a repository already exists for the agency.
+	// Error: FAILED_PRECONDITION if an import is already in progress.
+	ImportRepo(context.Context, *ImportRepoRequest) (*ImportRepoResponse, error)
+	// GetImportStatus returns the current state of an import job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	GetImportStatus(context.Context, *GetImportStatusRequest) (*ImportJobResponse, error)
+	// CancelImport cancels a pending or running import job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
+	CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error)
 	mustEmbedUnimplementedGitServiceServer()
 }
 
@@ -450,6 +507,15 @@ func (UnimplementedGitServiceServer) Log(context.Context, *LogRequest) (*LogResp
 }
 func (UnimplementedGitServiceServer) Diff(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Diff not implemented")
+}
+func (UnimplementedGitServiceServer) ImportRepo(context.Context, *ImportRepoRequest) (*ImportRepoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportRepo not implemented")
+}
+func (UnimplementedGitServiceServer) GetImportStatus(context.Context, *GetImportStatusRequest) (*ImportJobResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetImportStatus not implemented")
+}
+func (UnimplementedGitServiceServer) CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelImport not implemented")
 }
 func (UnimplementedGitServiceServer) mustEmbedUnimplementedGitServiceServer() {}
 func (UnimplementedGitServiceServer) testEmbeddedByValue()                    {}
@@ -814,6 +880,60 @@ func _GitService_Diff_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitService_ImportRepo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportRepoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ImportRepo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ImportRepo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ImportRepo(ctx, req.(*ImportRepoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetImportStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetImportStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetImportStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetImportStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetImportStatus(ctx, req.(*GetImportStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CancelImport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelImportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CancelImport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CancelImport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CancelImport(ctx, req.(*CancelImportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GitService_ServiceDesc is the grpc.ServiceDesc for GitService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -896,6 +1016,18 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Diff",
 			Handler:    _GitService_Diff_Handler,
+		},
+		{
+			MethodName: "ImportRepo",
+			Handler:    _GitService_ImportRepo_Handler,
+		},
+		{
+			MethodName: "GetImportStatus",
+			Handler:    _GitService_GetImportStatus_Handler,
+		},
+		{
+			MethodName: "CancelImport",
+			Handler:    _GitService_CancelImport_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

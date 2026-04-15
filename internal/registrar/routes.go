@@ -188,3 +188,32 @@ func smartHTTPRoutes() []types.RouteInfo {
 		},
 	}
 }
+
+// importRoutes returns routes for async repository import operations.
+// ImportRepo starts a background clone; GetImportStatus polls the job;
+// CancelImport requests cancellation of a running job.
+func importRoutes() []types.RouteInfo {
+	jid := []types.PathBinding{{URLParam: "jobId", Field: "job_id"}}
+	return []types.RouteInfo{
+		{
+			Method:     "POST",
+			Pattern:    "/git/{agencyId}/import-jobs",
+			Capability: "import_repo",
+			GrpcMethod: "/codevaldgit.v1.GitService/ImportRepo",
+		},
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/import-jobs/{jobId}",
+			Capability:   "get_import_status",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetImportStatus",
+			PathBindings: jid,
+		},
+		{
+			Method:       "DELETE",
+			Pattern:      "/git/{agencyId}/import-jobs/{jobId}",
+			Capability:   "cancel_import",
+			GrpcMethod:   "/codevaldgit.v1.GitService/CancelImport",
+			PathBindings: jid,
+		},
+	}
+}

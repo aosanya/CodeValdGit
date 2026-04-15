@@ -44,3 +44,20 @@ var ErrTagNotFound = errors.New("tag not found")
 // ErrDefaultBranchDeleteForbidden is returned by [GitManager.DeleteBranch]
 // when the caller attempts to delete the repository's default branch.
 var ErrDefaultBranchDeleteForbidden = errors.New("cannot delete the default branch")
+
+// ── Import errors ─────────────────────────────────────────────────────────────
+
+// ErrImportJobNotFound is returned by [GitManager.GetImportStatus] and
+// [GitManager.CancelImport] when no import job with the given ID exists for
+// this agency.
+var ErrImportJobNotFound = errors.New("import job not found")
+
+// ErrImportInProgress is returned by [GitManager.ImportRepo] when an import
+// job with status "pending" or "running" already exists for this agency.
+// Each agency supports at most one concurrent import.
+var ErrImportInProgress = errors.New("import already in progress")
+
+// ErrImportJobNotCancellable is returned by [GitManager.CancelImport] when
+// the job has already reached a terminal state (completed, failed, or
+// cancelled).
+var ErrImportJobNotCancellable = errors.New("import job is not cancellable")
