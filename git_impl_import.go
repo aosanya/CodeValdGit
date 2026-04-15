@@ -58,21 +58,15 @@ var importJobs = make(map[string]importCancelEntry)
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
 	log.Printf("[DEBUG] ImportRepo agencyID=%q sourceURL=%q name=%q defaultBranch=%q", m.agencyID, req.SourceURL, req.Name, req.DefaultBranch)
 
-	// 1. Reject if a Repository entity with the same name already exists.
-	existingRepos, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
-		AgencyID:   m.agencyID,
-		TypeID:     "Repository",
-		Properties: map[string]any{"name": req.Name},
-	})
-	if err != nil {
-		return ImportJob{}, fmt.Errorf("ImportRepo %s: check existing repo: %w", m.agencyID, err)
-	}
-	if len(existingRepos) > 0 {
-		log.Printf("[DEBUG] ImportRepo %s: rejected — repository %q already exists", m.agencyID, req.Name)
+	// 1. Reject if any Repository entity already exists for this agency.
+	// Each agency has exactly one repository — a successful GetRepository means
+	// the agency is already initialised and cannot accept an import.
+	if _, err := m.GetRepository(ctx); err == nil {
+		log.Printf("[DEBUG] ImportRepo %s: rejected — repository already exists", m.agencyID)
 		return ImportJob{}, ErrRepoAlreadyExists
 	}
 
-	// 2. Reject if an active import job for the same source URL already exists.
+	// 2. Reject if an active import job already exists.
 	active, err := m.findActiveImportJob(ctx)
 	if err != nil {
 		return ImportJob{}, fmt.Errorf("ImportRepo %s: check active job: %w", m.agencyID, err)
@@ -100,7 +94,13 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 	}
 	jobID := jobEntity.ID
 
-	// 4. Start the background goroutine with its own cancellable context.
+	// 4. Snapshot the ImportJob from the entity BEFORE starting the goroutine.
+	// importJobFromEntity reads jobEntity.Properties; the goroutine may later
+	// call UpdateEntity which modifies the stored entity's property map.
+	// Capturing the snapshot here avoids a concurrent map read/write race.
+	job := importJobFromEntity(jobEntity)
+
+	// 5. Start the background goroutine with its own cancellable context.
 	jobCtx, cancel := context.WithCancel(context.Background())
 	importJobsMu.Lock()
 	importJobs[jobID] = importCancelEntry{cancel: cancel}
@@ -114,7 +114,7 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 	log.Printf("[DEBUG] ImportRepo %s: created job %s, starting background goroutine", m.agencyID, jobID)
 	go m.runImport(jobCtx, jobID, req, defaultBranch)
 
-	return importJobFromEntity(jobEntity), nil
+	return job, nil
 }
 
 // GetImportStatus returns the current state of an import job.
