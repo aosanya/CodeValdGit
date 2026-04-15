@@ -983,3 +983,111 @@ func TestGitManager_Publisher(t *testing.T) {
 		t.Errorf("event.agencyID = %q, want %q", events[0].agencyID, testAgencyID)
 	}
 }
+
+// ── Import Tests ──────────────────────────────────────────────────────────────
+
+// TestImportRepo_RejectsIfRepoExists verifies that ImportRepo returns
+// ErrRepoAlreadyExists when a Repository entity already exists for the agency.
+func TestImportRepo_RejectsIfRepoExists(t *testing.T) {
+	mgr, _, _ := newTestManager(t)
+	ctx := context.Background()
+
+	// Seed a repository so the agency is considered initialised.
+	mustInitRepo(t, mgr)
+
+	_, err := mgr.ImportRepo(ctx, codevaldgit.ImportRepoRequest{
+		Name:      "import-attempt",
+		SourceURL: "https://example.com/repo.git",
+	})
+	if !errors.Is(err, codevaldgit.ErrRepoAlreadyExists) {
+		t.Errorf("ImportRepo after InitRepo: got %v, want ErrRepoAlreadyExists", err)
+	}
+}
+
+// TestImportRepo_RejectsIfImportInProgress verifies that ImportRepo returns
+// ErrImportInProgress when a pending ImportJob entity already exists.
+func TestImportRepo_RejectsIfImportInProgress(t *testing.T) {
+	mgr, fdm, _ := newTestManager(t)
+	ctx := context.Background()
+
+	// Manually create a pending ImportJob entity in the fake store.
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := fdm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: testAgencyID,
+		TypeID:   "ImportJob",
+		Properties: map[string]any{
+			"agency_id":     testAgencyID,
+			"source_url":    "https://example.com/first.git",
+			"status":        "pending",
+			"error_message": "",
+			"created_at":    now,
+			"updated_at":    now,
+		},
+	})
+	if err != nil {
+		t.Fatalf("seed ImportJob: %v", err)
+	}
+
+	_, err = mgr.ImportRepo(ctx, codevaldgit.ImportRepoRequest{
+		Name:      "second-import",
+		SourceURL: "https://example.com/second.git",
+	})
+	if !errors.Is(err, codevaldgit.ErrImportInProgress) {
+		t.Errorf("ImportRepo with existing pending job: got %v, want ErrImportInProgress", err)
+	}
+}
+
+// TestGetImportStatus_NotFound verifies that GetImportStatus returns
+// ErrImportJobNotFound for an unknown job ID.
+func TestGetImportStatus_NotFound(t *testing.T) {
+	mgr, _, _ := newTestManager(t)
+
+	_, err := mgr.GetImportStatus(context.Background(), "does-not-exist")
+	if !errors.Is(err, codevaldgit.ErrImportJobNotFound) {
+		t.Errorf("GetImportStatus unknown ID: got %v, want ErrImportJobNotFound", err)
+	}
+}
+
+// TestCancelImport_NotFound verifies that CancelImport returns
+// ErrImportJobNotFound for an unknown job ID.
+func TestCancelImport_NotFound(t *testing.T) {
+	mgr, _, _ := newTestManager(t)
+
+	err := mgr.CancelImport(context.Background(), "does-not-exist")
+	if !errors.Is(err, codevaldgit.ErrImportJobNotFound) {
+		t.Errorf("CancelImport unknown ID: got %v, want ErrImportJobNotFound", err)
+	}
+}
+
+// TestCancelImport_TerminalState verifies that CancelImport returns
+// ErrImportJobNotCancellable when the job has already reached a terminal state.
+func TestCancelImport_TerminalState(t *testing.T) {
+	for _, terminalStatus := range []string{"completed", "failed", "cancelled"} {
+		t.Run("status="+terminalStatus, func(t *testing.T) {
+			mgr, fdm, _ := newTestManager(t)
+			ctx := context.Background()
+
+			now := time.Now().UTC().Format(time.RFC3339)
+			jobEntity, err := fdm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+				AgencyID: testAgencyID,
+				TypeID:   "ImportJob",
+				Properties: map[string]any{
+					"agency_id":     testAgencyID,
+					"source_url":    "https://example.com/repo.git",
+					"status":        terminalStatus,
+					"error_message": "",
+					"created_at":    now,
+					"updated_at":    now,
+				},
+			})
+			if err != nil {
+				t.Fatalf("seed ImportJob: %v", err)
+			}
+
+			err = mgr.CancelImport(ctx, jobEntity.ID)
+			if !errors.Is(err, codevaldgit.ErrImportJobNotCancellable) {
+				t.Errorf("CancelImport status=%s: got %v, want ErrImportJobNotCancellable", terminalStatus, err)
+			}
+		})
+	}
+}
