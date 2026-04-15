@@ -21,11 +21,13 @@
 package arangodb
 
 import (
+	"context"
 	"fmt"
 
 	driver "github.com/arangodb/go-driver"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
+	"github.com/aosanya/CodeValdSharedLib/arangoutil"
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	sharedadb "github.com/aosanya/CodeValdSharedLib/entitygraph/arangodb"
 	"github.com/aosanya/CodeValdSharedLib/types"
@@ -98,4 +100,66 @@ func NewBackendFromDB(db driver.Database, schema types.Schema) (*Backend, error)
 // without maintaining a separate driver.Database reference.
 func NewArangoStorerBackend(dm entitygraph.DataManager) codevaldgit.Backend {
 	return &arangoBackend{dm: dm}
+}
+
+// gitObjectCollections lists the ArangoDB collection names that hold
+// immutable, content-addressed git objects.  A persistent index on
+// [agency_id, properties.sha] is required on each so that
+// arangoStorer.EncodedObject can look up an object by SHA in O(1) time
+// instead of scanning the entire collection.
+var gitObjectCollections = []string{"git_blobs", "git_trees", "git_commits"}
+
+// EnsureGitObjectIndexes adds a persistent ArangoDB index on
+// [agency_id, properties.sha] to each git object collection
+// (git_blobs, git_trees, git_commits).  The call is idempotent — ArangoDB
+// returns the existing index when one with the same fields already exists.
+//
+// Call this once at startup after [NewBackend] succeeds.
+// cfg.Database is required; other fields default to their zero-value
+// equivalents (same as NewBackend).
+func EnsureGitObjectIndexes(ctx context.Context, cfg Config) error {
+	if cfg.Endpoint == "" {
+		cfg.Endpoint = "http://localhost:8529"
+	}
+	if cfg.Username == "" {
+		cfg.Username = "root"
+	}
+	db, err := arangoutil.Connect(ctx, arangoutil.Config{
+		Endpoint: cfg.Endpoint,
+		Username: cfg.Username,
+		Password: cfg.Password,
+		Database: cfg.Database,
+	})
+	if err != nil {
+		return fmt.Errorf("EnsureGitObjectIndexes: connect: %w", err)
+	}
+	for _, name := range gitObjectCollections {
+		exists, err := db.CollectionExists(ctx, name)
+		if err != nil {
+			return fmt.Errorf("EnsureGitObjectIndexes %s: check collection: %w", name, err)
+		}
+		if !exists {
+			// Collection not yet created (first-run before schema seed).
+			// Skip and let the index be added on the next startup.
+			continue
+		}
+		col, err := db.Collection(ctx, name)
+		if err != nil {
+			return fmt.Errorf("EnsureGitObjectIndexes %s: open collection: %w", name, err)
+		}
+		// Sparse index: documents without properties.sha (e.g. GitInternalState)
+		// are excluded, keeping the index small.
+		_, _, err = col.EnsurePersistentIndex(ctx,
+			[]string{"agency_id", "properties.sha"},
+			&driver.EnsurePersistentIndexOptions{
+				Name:         "idx_agency_sha",
+				Sparse:       true,
+				InBackground: true,
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("EnsureGitObjectIndexes %s: ensure index: %w", name, err)
+		}
+	}
+	return nil
 }

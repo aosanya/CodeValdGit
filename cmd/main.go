@@ -82,6 +82,19 @@ func main() {
 		log.Fatalf("codevaldgit: ArangoDB backend: %v", err)
 	}
 
+	// ── GIT-017b: Persistent [agency_id, properties.sha] indexes ─────────────
+	// Idempotent — ArangoDB skips the operation if the index already exists.
+	idxCtx, idxCancel := context.WithTimeout(ctx, 15*time.Second)
+	if idxErr := gitarangodb.EnsureGitObjectIndexes(idxCtx, gitarangodb.Config{
+		Endpoint: cfg.ArangoEndpoint,
+		Username: cfg.ArangoUser,
+		Password: cfg.ArangoPassword,
+		Database: cfg.ArangoDatabase,
+	}); idxErr != nil {
+		log.Printf("codevaldgit: EnsureGitObjectIndexes: %v (continuing)", idxErr)
+	}
+	idxCancel()
+
 	// ── Schema seed (idempotent on startup) ──────────────────────────────────
 	if cfg.AgencyID != "" {
 		seedCtx, seedCancel := context.WithTimeout(ctx, 10*time.Second)

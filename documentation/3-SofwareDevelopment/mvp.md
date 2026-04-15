@@ -247,8 +247,8 @@ See: [mvp-details/repo-import.md](mvp-details/repo-import.md)
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-017a: Add `"data"` (base64 raw git object bytes) to `WriteFile`-created Blob, Tree, and Commit entities in `git_impl_fileops.go` | 📋 Not Started | ~~GIT-005~~ ✅, ~~GIT-007~~ ✅ |
-| GIT-017b: Add persistent ArangoDB indexes on `[agency_id, sha]` for `git_objects`, `git_blobs`, `git_trees`, and `git_commits` | 📋 Not Started | ~~GIT-004~~ ✅ |
+| GIT-017a: Add `"data"` (base64 raw git object bytes) to `WriteFile`-created Blob, Tree, and Commit entities in `git_impl_fileops.go` | � In Progress | ~~GIT-005~~ ✅, ~~GIT-007~~ ✅ |
+| GIT-017b: Add persistent ArangoDB indexes on `[agency_id, sha]` for `git_objects`, `git_blobs`, `git_trees`, and `git_commits` | 🚀 In Progress | ~~GIT-004~~ ✅ |
 
 **Scope**: Resolves Gap 7 — files written via gRPC `WriteFile` are invisible to `git pull` / `git clone` because the Blob, Tree, and Commit entities created by `WriteFile` do not carry a `"data"` property (base64-encoded raw git object bytes). The Smart HTTP layer's `arangoStorer.EncodedObject` reads `e.Properties["data"]` and returns `plumbing.ErrObjectNotFound` when the property is absent. Fix (GIT-017a): the raw `plumbing.MemoryObject` bytes are already computed inside `WriteFile` — base64-encode and include them as `"data"` in each `CreateEntity` call for Blob, Tree, and Commit. No schema change required. GIT-017b adds persistent `[agency_id, sha]` composite indexes to eliminate O(n) per-object collection scans during `git clone`; a 1 000-file repo with 10 commits otherwise requires up to 11 000 collection scans. The original GIT-015 architecture doc listed these indexes (section 3.3) but the implementation did not add them.
 See: [architecture-pull-flow.md](../2-SoftwareDesignAndArchitecture/architecture-pull-flow.md) · [mvp-details/arangodb-storer.md](mvp-details/arangodb-storer.md)
