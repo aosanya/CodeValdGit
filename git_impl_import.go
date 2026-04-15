@@ -14,12 +14,17 @@ package codevaldgit
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	gogit "github.com/go-git/go-git/v5"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
@@ -56,13 +61,11 @@ var importJobs = make(map[string]importCancelEntry)
 // Returns [ErrRepoAlreadyExists] if a Repository entity already exists.
 // Returns [ErrImportInProgress] if a pending or running import already exists.
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
-	log.Printf("[DEBUG] ImportRepo agencyID=%q sourceURL=%q name=%q defaultBranch=%q", m.agencyID, req.SourceURL, req.Name, req.DefaultBranch)
 
 	// 1. Reject if any Repository entity already exists for this agency.
 	// Each agency has exactly one repository — a successful GetRepository means
 	// the agency is already initialised and cannot accept an import.
 	if _, err := m.GetRepository(ctx); err == nil {
-		log.Printf("[DEBUG] ImportRepo %s: rejected — repository already exists", m.agencyID)
 		return ImportJob{}, ErrRepoAlreadyExists
 	}
 
@@ -111,7 +114,6 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 		defaultBranch = "main"
 	}
 
-	log.Printf("[DEBUG] ImportRepo %s: created job %s, starting background goroutine", m.agencyID, jobID)
 	go m.runImport(jobCtx, jobID, req, defaultBranch)
 
 	return job, nil
@@ -189,20 +191,18 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		Tags:         gogit.AllTags,
 		SingleBranch: false,
 	}
-	log.Printf("[DEBUG] ImportJob %s: cloning %s into %s", jobID, req.SourceURL, tempDir)
+
 	repo, err := gogit.PlainCloneContext(ctx, tempDir, false, cloneOpts)
 	if err != nil {
 		if ctx.Err() != nil {
-			log.Printf("[DEBUG] ImportJob %s: clone cancelled", jobID)
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
 			_ = m.publishImportEvent(context.Background(), "cross.git.%s.repo.import.cancelled")
 			return
 		}
-		log.Printf("[DEBUG] ImportJob %s: clone failed: %v", jobID, err)
+
 		m.failImportJob(ctx, jobID, fmt.Sprintf("clone %s: %v", req.SourceURL, err))
 		return
 	}
-	log.Printf("[DEBUG] ImportJob %s: clone complete, walking refs", jobID)
 
 	// Walk all remote references (branches).
 	refs, err := repo.References()
@@ -230,7 +230,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// Create the Repository entity using the provided name and default branch.
-	log.Printf("[DEBUG] ImportJob %s: refs walked, creating Repository entity name=%q defaultBranch=%q", jobID, req.Name, defaultBranch)
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
@@ -248,12 +247,11 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// Publish success event and mark completed.
-	log.Printf("[DEBUG] ImportJob %s: import complete, publishing event and marking completed", jobID)
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusCompleted, ""); err != nil {
 		log.Printf("[ERROR] ImportJob %s: transition to completed: %v", jobID, err)
 	}
-	log.Printf("[DEBUG] ImportJob %s: done", jobID)
+
 }
 
 // walkBranchCommits upserts Branch, Commit, Tree, and Blob entities for every
@@ -306,12 +304,17 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 	}
 	defer commitIter.Close()
 
-	return commitIter.ForEach(func(c *gogitobject.Commit) error {
+	var commitCount int
+	if err := commitIter.ForEach(func(c *gogitobject.Commit) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		commitCount++
 		return m.upsertCommitAndTree(ctx, repo, c)
-	})
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // upsertCommitAndTree upserts Commit, Tree, and Blob entities for a single commit.
@@ -344,14 +347,15 @@ func (m *gitManager) upsertCommitAndTree(ctx context.Context, repo *gogit.Reposi
 	if err != nil {
 		return fmt.Errorf("tree for commit %s: %w", commitSHA, err)
 	}
-	return m.upsertTree(ctx, repo, tree, now)
+	return m.upsertTree(ctx, repo, tree, "", now)
 }
 
 // upsertTree upserts Tree and Blob entities for a go-git Tree.
+// pathPrefix is the directory path within the commit tree — empty string for the
+// root tree, e.g. "src/handlers" for a nested subtree.
 // Both Tree and Blob are treated as content-addressed (immutable by SHA);
 // ErrEntityAlreadyExists is skipped.
-func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, now string) error {
-	_ = repo // parameter reserved for future subtree recursive resolution
+func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) error {
 	treeSHA := tree.Hash.String()
 
 	// Create Tree entity; skip if SHA already ingested.
@@ -360,7 +364,7 @@ func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tre
 		TypeID:   "Tree",
 		Properties: map[string]any{
 			"sha":        treeSHA,
-			"path":       "",
+			"path":       pathPrefix,
 			"created_at": now,
 		},
 	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
@@ -371,21 +375,87 @@ func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tre
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
+		// Build the full relative path for this entry.
+		var entryPath string
+		if pathPrefix == "" {
+			entryPath = entry.Name
+		} else {
+			entryPath = pathPrefix + "/" + entry.Name
+		}
+
 		if entry.Mode.IsFile() {
-			blobSHA := entry.Hash.String()
-			if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
-				AgencyID: m.agencyID,
-				TypeID:   "Blob",
-				Properties: map[string]any{
-					"sha":        blobSHA,
-					"path":       entry.Name,
-					"name":       entry.Name,
-					"created_at": now,
-				},
-			}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
-				return fmt.Errorf("create blob %s: %w", blobSHA, err)
+			if err := m.upsertBlob(ctx, repo, entry, entryPath, now); err != nil {
+				return err
+			}
+		} else {
+			// Recurse into subdirectory trees.
+			subTree, err := repo.TreeObject(entry.Hash)
+			if err != nil {
+				return fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
+			}
+			if err := m.upsertTree(ctx, repo, subTree, entryPath, now); err != nil {
+				return err
 			}
 		}
+	}
+	return nil
+}
+
+// upsertBlob creates a Blob entity for a single tree entry.
+// It fetches the blob object from the repository to populate size, encoding,
+// content, and extension in addition to sha, path, and name.
+// ErrEntityAlreadyExists is skipped (blobs are content-addressed by SHA).
+func (m *gitManager) upsertBlob(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) error {
+	blobSHA := entry.Hash.String()
+
+	// Fetch the blob object so we can read its content and size.
+	blobObj, err := repo.BlobObject(entry.Hash)
+	if err != nil {
+		return fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
+	}
+
+	reader, err := blobObj.Reader()
+	if err != nil {
+		return fmt.Errorf("open blob reader %s path=%q: %w", blobSHA, fullPath, err)
+	}
+	rawBytes, err := io.ReadAll(reader)
+	_ = reader.Close()
+	if err != nil {
+		return fmt.Errorf("read blob content %s path=%q: %w", blobSHA, fullPath, err)
+	}
+
+	size := blobObj.Size
+
+	// Choose encoding: utf-8 for valid text, base64 for binary.
+	var encoding, content string
+	if utf8.Valid(rawBytes) {
+		encoding = "utf-8"
+		content = string(rawBytes)
+	} else {
+		encoding = "base64"
+		content = base64.StdEncoding.EncodeToString(rawBytes)
+	}
+
+	// Derive extension from the filename (without leading dot; empty if none).
+	ext := strings.TrimPrefix(filepath.Ext(entry.Name), ".")
+	name := filepath.Base(fullPath)
+
+	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: m.agencyID,
+		TypeID:   "Blob",
+		Properties: map[string]any{
+			"sha":        blobSHA,
+			"path":       fullPath,
+			"name":       name,
+			"extension":  ext,
+			"size":       size,
+			"encoding":   encoding,
+			"content":    content,
+			"created_at": now,
+		},
+	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
+		return fmt.Errorf("create blob %s path=%q: %w", blobSHA, fullPath, err)
 	}
 	return nil
 }
