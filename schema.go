@@ -403,3 +403,6 @@ func DefaultGitSchema() types.Schema {
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
+		},
+	}
+}

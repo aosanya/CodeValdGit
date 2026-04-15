@@ -78,3 +78,47 @@ type ErrMergeConflict struct {
 func (e *ErrMergeConflict) Error() string {
 	return fmt.Sprintf("merge conflict on task branch %q: conflicting files %v", e.TaskID, e.ConflictingFiles)
 }
+
+// ImportRepoRequest carries the parameters for an async repository import.
+// The caller provides a public HTTPS URL; credentials are not accepted in v1.
+type ImportRepoRequest struct {
+	// Name is the human-readable repository name stored on the Repository entity.
+	Name string
+
+	// Description is an optional description stored on the Repository entity.
+	Description string
+
+	// SourceURL is the public HTTPS URL of the remote Git repository to clone.
+	// Private repositories are not supported in v1 — no credentials are accepted.
+	// Example: "https://github.com/aosanya/CodeValdGit"
+	SourceURL string
+
+	// DefaultBranch is the name of the branch to mark as the repository default.
+	// If empty, defaults to "main".
+	DefaultBranch string
+}
+
+// ImportJob represents the state of an async repository import operation.
+// Call [GitManager.GetImportStatus] to poll for progress.
+type ImportJob struct {
+	// ID is the stable job identifier returned by ImportRepo.
+	ID string
+
+	// AgencyID scopes this job to the owning agency.
+	AgencyID string
+
+	// SourceURL is the remote URL being imported.
+	SourceURL string
+
+	// Status is one of: "pending", "running", "completed", "failed", "cancelled".
+	Status string
+
+	// ErrorMessage is populated when Status == "failed".
+	ErrorMessage string
+
+	// CreatedAt is the ISO 8601 timestamp at which ImportRepo was called.
+	CreatedAt string
+
+	// UpdatedAt is the ISO 8601 timestamp of the last status transition.
+	UpdatedAt string
+}

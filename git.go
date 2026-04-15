@@ -145,6 +145,30 @@ type GitManager interface {
 	// fromRef and toRef may be branch IDs or commit SHAs.
 	// Returns [ErrRefNotFound] if either ref cannot be resolved.
 	Diff(ctx context.Context, fromRef, toRef string) ([]FileDiff, error)
+
+	// ── Repository Import ───────────────────────────────────────────────
+
+	// ImportRepo begins an async import of a public Git repository into this
+	// agency's entity graph. It returns immediately with an ImportJob whose
+	// ID can be used to poll GetImportStatus.
+	//
+	// Returns [ErrRepoAlreadyExists] if a Repository entity already exists for
+	// this agency. Each agency supports exactly one repository.
+	// Returns [ErrImportInProgress] if a job with status "pending" or "running"
+	// already exists for this agency.
+	ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error)
+
+	// GetImportStatus returns the current state of an import job.
+	// Returns [ErrImportJobNotFound] if no job with the given ID exists for
+	// this agency.
+	GetImportStatus(ctx context.Context, jobID string) (ImportJob, error)
+
+	// CancelImport cancels a pending or running import job. The background
+	// goroutine's context is cancelled and the temp clone directory is removed.
+	// Returns [ErrImportJobNotFound] if the job does not exist.
+	// Returns [ErrImportJobNotCancellable] if the job has already reached a
+	// terminal state (completed, failed, or cancelled).
+	CancelImport(ctx context.Context, jobID string) error
 }
 
 // gitManager is the concrete implementation of [GitManager].

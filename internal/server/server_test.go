@@ -163,6 +163,18 @@ func (f *fakeGitManager) Diff(ctx context.Context, fromRef, toRef string) ([]cod
 	return []codevaldgit.FileDiff{{Path: "README.md", Operation: "added"}}, nil
 }
 
+func (f *fakeGitManager) ImportRepo(_ context.Context, _ codevaldgit.ImportRepoRequest) (codevaldgit.ImportJob, error) {
+	return codevaldgit.ImportJob{ID: "fake-job-id", Status: "pending"}, nil
+}
+
+func (f *fakeGitManager) GetImportStatus(_ context.Context, _ string) (codevaldgit.ImportJob, error) {
+	return codevaldgit.ImportJob{ID: "fake-job-id", Status: "pending"}, nil
+}
+
+func (f *fakeGitManager) CancelImport(_ context.Context, _ string) error {
+	return nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024
