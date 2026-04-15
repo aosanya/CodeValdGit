@@ -2089,6 +2089,358 @@ func (x *DiffResponse) GetDiffs() []*FileDiff {
 	return nil
 }
 
+type ImportRepoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgencyId      string                 `protobuf:"bytes,1,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	SourceUrl     string                 `protobuf:"bytes,4,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	DefaultBranch string                 `protobuf:"bytes,5,opt,name=default_branch,json=defaultBranch,proto3" json:"default_branch,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportRepoRequest) Reset() {
+	*x = ImportRepoRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportRepoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportRepoRequest) ProtoMessage() {}
+
+func (x *ImportRepoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportRepoRequest.ProtoReflect.Descriptor instead.
+func (*ImportRepoRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ImportRepoRequest) GetAgencyId() string {
+	if x != nil {
+		return x.AgencyId
+	}
+	return ""
+}
+
+func (x *ImportRepoRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ImportRepoRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ImportRepoRequest) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *ImportRepoRequest) GetDefaultBranch() string {
+	if x != nil {
+		return x.DefaultBranch
+	}
+	return ""
+}
+
+type ImportRepoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportRepoResponse) Reset() {
+	*x = ImportRepoResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportRepoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportRepoResponse) ProtoMessage() {}
+
+func (x *ImportRepoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportRepoResponse.ProtoReflect.Descriptor instead.
+func (*ImportRepoResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ImportRepoResponse) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+type GetImportStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgencyId      string                 `protobuf:"bytes,1,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	JobId         string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetImportStatusRequest) Reset() {
+	*x = GetImportStatusRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetImportStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetImportStatusRequest) ProtoMessage() {}
+
+func (x *GetImportStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetImportStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetImportStatusRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *GetImportStatusRequest) GetAgencyId() string {
+	if x != nil {
+		return x.AgencyId
+	}
+	return ""
+}
+
+func (x *GetImportStatusRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+type CancelImportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgencyId      string                 `protobuf:"bytes,1,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	JobId         string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelImportRequest) Reset() {
+	*x = CancelImportRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelImportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelImportRequest) ProtoMessage() {}
+
+func (x *CancelImportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelImportRequest.ProtoReflect.Descriptor instead.
+func (*CancelImportRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CancelImportRequest) GetAgencyId() string {
+	if x != nil {
+		return x.AgencyId
+	}
+	return ""
+}
+
+func (x *CancelImportRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+type CancelImportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelImportResponse) Reset() {
+	*x = CancelImportResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelImportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelImportResponse) ProtoMessage() {}
+
+func (x *CancelImportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelImportResponse.ProtoReflect.Descriptor instead.
+func (*CancelImportResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{40}
+}
+
+type ImportJobResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	AgencyId      string                 `protobuf:"bytes,2,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
+	SourceUrl     string                 `protobuf:"bytes,3,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportJobResponse) Reset() {
+	*x = ImportJobResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportJobResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportJobResponse) ProtoMessage() {}
+
+func (x *ImportJobResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportJobResponse.ProtoReflect.Descriptor instead.
+func (*ImportJobResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ImportJobResponse) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetAgencyId() string {
+	if x != nil {
+		return x.AgencyId
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
 var File_codevaldgit_v1_service_proto protoreflect.FileDescriptor
 
 const file_codevaldgit_v1_service_proto_rawDesc = "" +
@@ -2240,7 +2592,34 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\bfrom_ref\x18\x01 \x01(\tR\afromRef\x12\x15\n" +
 	"\x06to_ref\x18\x02 \x01(\tR\x05toRef\">\n" +
 	"\fDiffResponse\x12.\n" +
-	"\x05diffs\x18\x01 \x03(\v2\x18.codevaldgit.v1.FileDiffR\x05diffs2\xbb\v\n" +
+	"\x05diffs\x18\x01 \x03(\v2\x18.codevaldgit.v1.FileDiffR\x05diffs\"\xac\x01\n" +
+	"\x11ImportRepoRequest\x12\x1b\n" +
+	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\x04 \x01(\tR\tsourceUrl\x12%\n" +
+	"\x0edefault_branch\x18\x05 \x01(\tR\rdefaultBranch\"+\n" +
+	"\x12ImportRepoResponse\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"L\n" +
+	"\x16GetImportStatusRequest\x12\x1b\n" +
+	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x15\n" +
+	"\x06job_id\x18\x02 \x01(\tR\x05jobId\"I\n" +
+	"\x13CancelImportRequest\x12\x1b\n" +
+	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x15\n" +
+	"\x06job_id\x18\x02 \x01(\tR\x05jobId\"\x16\n" +
+	"\x14CancelImportResponse\"\xe1\x01\n" +
+	"\x11ImportJobResponse\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1b\n" +
+	"\tagency_id\x18\x02 \x01(\tR\bagencyId\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\x03 \x01(\tR\tsourceUrl\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12#\n" +
+	"\rerror_message\x18\x05 \x01(\tR\ferrorMessage\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt2\xc9\r\n" +
 	"\n" +
 	"GitService\x12G\n" +
 	"\bInitRepo\x12\x1f.codevaldgit.v1.InitRepoRequest\x1a\x1a.codevaldgit.v1.Repository\x12Q\n" +
@@ -2263,7 +2642,11 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"DeleteFile\x12!.codevaldgit.v1.DeleteFileRequest\x1a\x16.codevaldgit.v1.Commit\x12\\\n" +
 	"\rListDirectory\x12$.codevaldgit.v1.ListDirectoryRequest\x1a%.codevaldgit.v1.ListDirectoryResponse\x12>\n" +
 	"\x03Log\x12\x1a.codevaldgit.v1.LogRequest\x1a\x1b.codevaldgit.v1.LogResponse\x12A\n" +
-	"\x04Diff\x12\x1b.codevaldgit.v1.DiffRequest\x1a\x1c.codevaldgit.v1.DiffResponseBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
+	"\x04Diff\x12\x1b.codevaldgit.v1.DiffRequest\x1a\x1c.codevaldgit.v1.DiffResponse\x12S\n" +
+	"\n" +
+	"ImportRepo\x12!.codevaldgit.v1.ImportRepoRequest\x1a\".codevaldgit.v1.ImportRepoResponse\x12\\\n" +
+	"\x0fGetImportStatus\x12&.codevaldgit.v1.GetImportStatusRequest\x1a!.codevaldgit.v1.ImportJobResponse\x12Y\n" +
+	"\fCancelImport\x12#.codevaldgit.v1.CancelImportRequest\x1a$.codevaldgit.v1.CancelImportResponseBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
 
 var (
 	file_codevaldgit_v1_service_proto_rawDescOnce sync.Once
@@ -2277,58 +2660,64 @@ func file_codevaldgit_v1_service_proto_rawDescGZIP() []byte {
 	return file_codevaldgit_v1_service_proto_rawDescData
 }
 
-var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_codevaldgit_v1_service_proto_goTypes = []any{
-	(*Repository)(nil),            // 0: codevaldgit.v1.Repository
-	(*Branch)(nil),                // 1: codevaldgit.v1.Branch
-	(*Tag)(nil),                   // 2: codevaldgit.v1.Tag
-	(*Commit)(nil),                // 3: codevaldgit.v1.Commit
-	(*Blob)(nil),                  // 4: codevaldgit.v1.Blob
-	(*CommitEntry)(nil),           // 5: codevaldgit.v1.CommitEntry
-	(*FileEntry)(nil),             // 6: codevaldgit.v1.FileEntry
-	(*FileDiff)(nil),              // 7: codevaldgit.v1.FileDiff
-	(*InitRepoRequest)(nil),       // 8: codevaldgit.v1.InitRepoRequest
-	(*GetRepositoryRequest)(nil),  // 9: codevaldgit.v1.GetRepositoryRequest
-	(*DeleteRepoRequest)(nil),     // 10: codevaldgit.v1.DeleteRepoRequest
-	(*DeleteRepoResponse)(nil),    // 11: codevaldgit.v1.DeleteRepoResponse
-	(*PurgeRepoRequest)(nil),      // 12: codevaldgit.v1.PurgeRepoRequest
-	(*PurgeRepoResponse)(nil),     // 13: codevaldgit.v1.PurgeRepoResponse
-	(*CreateBranchRequest)(nil),   // 14: codevaldgit.v1.CreateBranchRequest
-	(*GetBranchRequest)(nil),      // 15: codevaldgit.v1.GetBranchRequest
-	(*ListBranchesRequest)(nil),   // 16: codevaldgit.v1.ListBranchesRequest
-	(*ListBranchesResponse)(nil),  // 17: codevaldgit.v1.ListBranchesResponse
-	(*DeleteBranchRequest)(nil),   // 18: codevaldgit.v1.DeleteBranchRequest
-	(*DeleteBranchResponse)(nil),  // 19: codevaldgit.v1.DeleteBranchResponse
-	(*MergeBranchRequest)(nil),    // 20: codevaldgit.v1.MergeBranchRequest
-	(*CreateTagRequest)(nil),      // 21: codevaldgit.v1.CreateTagRequest
-	(*GetTagRequest)(nil),         // 22: codevaldgit.v1.GetTagRequest
-	(*ListTagsRequest)(nil),       // 23: codevaldgit.v1.ListTagsRequest
-	(*ListTagsResponse)(nil),      // 24: codevaldgit.v1.ListTagsResponse
-	(*DeleteTagRequest)(nil),      // 25: codevaldgit.v1.DeleteTagRequest
-	(*DeleteTagResponse)(nil),     // 26: codevaldgit.v1.DeleteTagResponse
-	(*WriteFileRequest)(nil),      // 27: codevaldgit.v1.WriteFileRequest
-	(*ReadFileRequest)(nil),       // 28: codevaldgit.v1.ReadFileRequest
-	(*DeleteFileRequest)(nil),     // 29: codevaldgit.v1.DeleteFileRequest
-	(*ListDirectoryRequest)(nil),  // 30: codevaldgit.v1.ListDirectoryRequest
-	(*ListDirectoryResponse)(nil), // 31: codevaldgit.v1.ListDirectoryResponse
-	(*LogRequest)(nil),            // 32: codevaldgit.v1.LogRequest
-	(*LogResponse)(nil),           // 33: codevaldgit.v1.LogResponse
-	(*DiffRequest)(nil),           // 34: codevaldgit.v1.DiffRequest
-	(*DiffResponse)(nil),          // 35: codevaldgit.v1.DiffResponse
-	(*timestamppb.Timestamp)(nil), // 36: google.protobuf.Timestamp
+	(*Repository)(nil),             // 0: codevaldgit.v1.Repository
+	(*Branch)(nil),                 // 1: codevaldgit.v1.Branch
+	(*Tag)(nil),                    // 2: codevaldgit.v1.Tag
+	(*Commit)(nil),                 // 3: codevaldgit.v1.Commit
+	(*Blob)(nil),                   // 4: codevaldgit.v1.Blob
+	(*CommitEntry)(nil),            // 5: codevaldgit.v1.CommitEntry
+	(*FileEntry)(nil),              // 6: codevaldgit.v1.FileEntry
+	(*FileDiff)(nil),               // 7: codevaldgit.v1.FileDiff
+	(*InitRepoRequest)(nil),        // 8: codevaldgit.v1.InitRepoRequest
+	(*GetRepositoryRequest)(nil),   // 9: codevaldgit.v1.GetRepositoryRequest
+	(*DeleteRepoRequest)(nil),      // 10: codevaldgit.v1.DeleteRepoRequest
+	(*DeleteRepoResponse)(nil),     // 11: codevaldgit.v1.DeleteRepoResponse
+	(*PurgeRepoRequest)(nil),       // 12: codevaldgit.v1.PurgeRepoRequest
+	(*PurgeRepoResponse)(nil),      // 13: codevaldgit.v1.PurgeRepoResponse
+	(*CreateBranchRequest)(nil),    // 14: codevaldgit.v1.CreateBranchRequest
+	(*GetBranchRequest)(nil),       // 15: codevaldgit.v1.GetBranchRequest
+	(*ListBranchesRequest)(nil),    // 16: codevaldgit.v1.ListBranchesRequest
+	(*ListBranchesResponse)(nil),   // 17: codevaldgit.v1.ListBranchesResponse
+	(*DeleteBranchRequest)(nil),    // 18: codevaldgit.v1.DeleteBranchRequest
+	(*DeleteBranchResponse)(nil),   // 19: codevaldgit.v1.DeleteBranchResponse
+	(*MergeBranchRequest)(nil),     // 20: codevaldgit.v1.MergeBranchRequest
+	(*CreateTagRequest)(nil),       // 21: codevaldgit.v1.CreateTagRequest
+	(*GetTagRequest)(nil),          // 22: codevaldgit.v1.GetTagRequest
+	(*ListTagsRequest)(nil),        // 23: codevaldgit.v1.ListTagsRequest
+	(*ListTagsResponse)(nil),       // 24: codevaldgit.v1.ListTagsResponse
+	(*DeleteTagRequest)(nil),       // 25: codevaldgit.v1.DeleteTagRequest
+	(*DeleteTagResponse)(nil),      // 26: codevaldgit.v1.DeleteTagResponse
+	(*WriteFileRequest)(nil),       // 27: codevaldgit.v1.WriteFileRequest
+	(*ReadFileRequest)(nil),        // 28: codevaldgit.v1.ReadFileRequest
+	(*DeleteFileRequest)(nil),      // 29: codevaldgit.v1.DeleteFileRequest
+	(*ListDirectoryRequest)(nil),   // 30: codevaldgit.v1.ListDirectoryRequest
+	(*ListDirectoryResponse)(nil),  // 31: codevaldgit.v1.ListDirectoryResponse
+	(*LogRequest)(nil),             // 32: codevaldgit.v1.LogRequest
+	(*LogResponse)(nil),            // 33: codevaldgit.v1.LogResponse
+	(*DiffRequest)(nil),            // 34: codevaldgit.v1.DiffRequest
+	(*DiffResponse)(nil),           // 35: codevaldgit.v1.DiffResponse
+	(*ImportRepoRequest)(nil),      // 36: codevaldgit.v1.ImportRepoRequest
+	(*ImportRepoResponse)(nil),     // 37: codevaldgit.v1.ImportRepoResponse
+	(*GetImportStatusRequest)(nil), // 38: codevaldgit.v1.GetImportStatusRequest
+	(*CancelImportRequest)(nil),    // 39: codevaldgit.v1.CancelImportRequest
+	(*CancelImportResponse)(nil),   // 40: codevaldgit.v1.CancelImportResponse
+	(*ImportJobResponse)(nil),      // 41: codevaldgit.v1.ImportJobResponse
+	(*timestamppb.Timestamp)(nil),  // 42: google.protobuf.Timestamp
 }
 var file_codevaldgit_v1_service_proto_depIdxs = []int32{
-	36, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
-	36, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
-	36, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
-	36, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
-	36, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
-	36, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
-	36, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
-	36, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
-	36, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
-	36, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
-	36, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
+	42, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
+	42, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
+	42, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
+	42, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
+	42, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
+	42, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
+	42, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
+	42, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
+	42, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
+	42, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
+	42, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
 	1,  // 11: codevaldgit.v1.ListBranchesResponse.branches:type_name -> codevaldgit.v1.Branch
 	2,  // 12: codevaldgit.v1.ListTagsResponse.tags:type_name -> codevaldgit.v1.Tag
 	6,  // 13: codevaldgit.v1.ListDirectoryResponse.entries:type_name -> codevaldgit.v1.FileEntry
@@ -2353,27 +2742,33 @@ var file_codevaldgit_v1_service_proto_depIdxs = []int32{
 	30, // 32: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
 	32, // 33: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
 	34, // 34: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
-	0,  // 35: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
-	0,  // 36: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
-	11, // 37: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
-	13, // 38: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
-	1,  // 39: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
-	1,  // 40: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
-	17, // 41: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
-	19, // 42: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
-	1,  // 43: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
-	2,  // 44: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
-	2,  // 45: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
-	24, // 46: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
-	26, // 47: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
-	3,  // 48: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
-	4,  // 49: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
-	3,  // 50: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
-	31, // 51: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
-	33, // 52: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
-	35, // 53: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
-	35, // [35:54] is the sub-list for method output_type
-	16, // [16:35] is the sub-list for method input_type
+	36, // 35: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
+	38, // 36: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
+	39, // 37: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
+	0,  // 38: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
+	0,  // 39: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
+	11, // 40: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
+	13, // 41: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
+	1,  // 42: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 43: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
+	17, // 44: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
+	19, // 45: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
+	1,  // 46: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
+	2,  // 47: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
+	2,  // 48: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
+	24, // 49: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
+	26, // 50: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
+	3,  // 51: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
+	4,  // 52: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
+	3,  // 53: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
+	31, // 54: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
+	33, // 55: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
+	35, // 56: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
+	37, // 57: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
+	41, // 58: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
+	40, // 59: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
+	38, // [38:60] is the sub-list for method output_type
+	16, // [16:38] is the sub-list for method input_type
 	16, // [16:16] is the sub-list for extension type_name
 	16, // [16:16] is the sub-list for extension extendee
 	0,  // [0:16] is the sub-list for field type_name
@@ -2390,7 +2785,7 @@ func file_codevaldgit_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_codevaldgit_v1_service_proto_rawDesc), len(file_codevaldgit_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   36,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

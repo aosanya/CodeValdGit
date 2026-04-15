@@ -204,6 +204,21 @@ service GitService {
   // Refs may be branch IDs or commit SHAs.
   // Error: NOT_FOUND if either ref cannot be resolved.
   rpc Diff (DiffRequest) returns (DiffResponse);
+
+  // ImportRepo begins an async import of a public Git repository.
+  // Returns immediately with a job ID; poll GetImportStatus for progress.
+  // Error: ALREADY_EXISTS if a repository already exists for the agency.
+  // Error: FAILED_PRECONDITION if an import is already in progress.
+  rpc ImportRepo (ImportRepoRequest) returns (ImportRepoResponse);
+
+  // GetImportStatus returns the current state of an import job.
+  // Error: NOT_FOUND if no job with the given ID exists.
+  rpc GetImportStatus (GetImportStatusRequest) returns (ImportJobResponse);
+
+  // CancelImport cancels a pending or running import job.
+  // Error: NOT_FOUND if no job with the given ID exists.
+  // Error: FAILED_PRECONDITION if the job is already in a terminal state.
+  rpc CancelImport (CancelImportRequest) returns (CancelImportResponse);
 }
 
 // ── Request / Response Messages ───────────────────────────────────────────────
@@ -322,4 +337,37 @@ message DiffRequest {
 }
 message DiffResponse {
   repeated FileDiff diffs = 1;
+}
+// Import
+
+message ImportRepoRequest {
+  string agency_id      = 1;
+  string name           = 2;
+  string description    = 3;
+  string source_url     = 4;
+  string default_branch = 5;
+}
+message ImportRepoResponse {
+  string job_id = 1;
+}
+
+message GetImportStatusRequest {
+  string agency_id = 1;
+  string job_id    = 2;
+}
+
+message CancelImportRequest {
+  string agency_id = 1;
+  string job_id    = 2;
+}
+message CancelImportResponse {}
+
+message ImportJobResponse {
+  string job_id        = 1;
+  string agency_id     = 2;
+  string source_url    = 3;
+  string status        = 4;
+  string error_message = 5;
+  string created_at    = 6;
+  string updated_at    = 7;
 }
