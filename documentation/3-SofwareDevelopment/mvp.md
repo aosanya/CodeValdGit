@@ -257,6 +257,20 @@ See: [architecture-pull-flow.md](../2-SoftwareDesignAndArchitecture/architecture
 
 ## Bugs and Issues
 
+### GIT-018 — Repo-Scoped Sub-Resource Routes
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-018a: Update `branchRoutes()`, `tagRoutes()`, `fileRoutes()`, and `historyRoutes()` in `internal/registrar/routes.go` to nest all sub-resource patterns under `/git/{agencyId}/repositories/{repoName}/` | 🔲 Not Started | ~~GIT-011~~ ✅ |
+| GIT-018b: Update gRPC server HTTP handlers (`internal/server/server.go`) to extract `repoName` from the URL path and pass it to the corresponding `GitManager` calls (`ListBranches(repoID)`, `ListTags(repoID)`, etc.) | 🔲 Not Started | GIT-018a |
+| GIT-018c: Update integration tests in `CodeValdCross/integration/` to use the new repo-scoped URL structure | 🔲 Not Started | GIT-018b |
+
+**Scope**: The registered HTTP routes for branches, tags, files, tree, log, and diff (`/git/{agencyId}/branches`, `/git/{agencyId}/tags`, etc.) are not scoped to a repository. The `GitManager` methods (`ListBranches`, `ListTags`, `CreateBranch`, `CreateTag`, `WriteFile`, etc.) already require a `repoID` argument — there is no way to route these calls correctly without knowing which repository to target. The fix nests all sub-resource routes under `/git/{agencyId}/repositories/{repoName}/` (using `repoName` as the stable user-chosen identifier, consistent with how `RepoManager.OpenRepo(ctx, agencyID, repoName)` resolves repos). The Smart HTTP routes (`/{agencyId}/{repoId}/info/refs`, etc.) already use this convention and are unaffected.
+
+See: `internal/registrar/routes.go` · `internal/server/server.go`
+
+---
+
 ### Active Bugs
 
 _(None)_
