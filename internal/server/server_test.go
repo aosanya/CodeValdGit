@@ -221,6 +221,14 @@ func (f *fakeGitManager) DeleteEdge(_ context.Context, _ codevaldgit.DeleteEdgeR
 	return nil
 }
 
+func (f *fakeGitManager) GetNeighborhood(_ context.Context, _, _ string, _ int) (codevaldgit.GraphResult, error) {
+	return codevaldgit.GraphResult{}, nil
+}
+
+func (f *fakeGitManager) SearchByKeywords(_ context.Context, _ codevaldgit.SearchByKeywordsRequest) (codevaldgit.GraphResult, error) {
+	return codevaldgit.GraphResult{}, nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024

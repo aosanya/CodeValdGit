@@ -461,3 +461,82 @@ type DeleteEdgeRequest struct {
 	// ToEntityID is the entitygraph ID of the target entity. Required.
 	ToEntityID string `json:"to_entity_id"`
 }
+
+// ── Graph Query types (GIT-020) ───────────────────────────────────────────────
+
+// GraphNode is a vertex returned by [GitManager.GetNeighborhood] or
+// [GitManager.SearchByKeywords]. It carries the entity ID, type, and a
+// snapshot of its properties at query time.
+type GraphNode struct {
+	// ID is the unique entitygraph identifier for this entity.
+	ID string `json:"id"`
+
+	// TypeID is the entity's TypeDefinition name (e.g. "Blob", "Keyword").
+	TypeID string `json:"type_id"`
+
+	// Properties holds the current state values of the entity.
+	Properties map[string]any `json:"properties,omitempty"`
+}
+
+// GraphEdge is a directed edge returned in a graph query result.
+// It mirrors [entitygraph.Relationship] but uses only the fields needed by
+// the frontend graph explorer.
+type GraphEdge struct {
+	// ID is the unique entitygraph identifier for this relationship.
+	ID string `json:"id"`
+
+	// Name is the relationship type label (e.g. "tagged_with", "documents").
+	Name string `json:"name"`
+
+	// FromID is the entitygraph ID of the source vertex.
+	FromID string `json:"from_id"`
+
+	// ToID is the entitygraph ID of the target vertex.
+	ToID string `json:"to_id"`
+}
+
+// GraphResult is the generic graph response returned by neighborhood and
+// keyword search queries. Both Nodes and Edges are populated; the caller
+// can render the full subgraph from this data.
+type GraphResult struct {
+	// Nodes are the vertices reachable within the query scope.
+	// The starting entity is always included as the first node.
+	Nodes []GraphNode `json:"nodes"`
+
+	// Edges are the traversed relationships between Nodes.
+	Edges []GraphEdge `json:"edges"`
+}
+
+// KeywordMatchMode controls how multiple keyword IDs are combined when
+// searching with [GitManager.SearchByKeywords].
+type KeywordMatchMode string
+
+const (
+	// KeywordMatchModeAND requires a result entity to be tagged with ALL
+	// specified keywords (or their descendants when Cascade is true).
+	KeywordMatchModeAND KeywordMatchMode = "AND"
+
+	// KeywordMatchModeOR requires a result entity to be tagged with AT LEAST
+	// ONE of the specified keywords (or their descendants when Cascade is true).
+	KeywordMatchModeOR KeywordMatchMode = "OR"
+)
+
+// SearchByKeywordsRequest carries the parameters for [GitManager.SearchByKeywords].
+type SearchByKeywordsRequest struct {
+	// BranchID is the entitygraph ID of the branch to search within.
+	// Only entities reachable from this branch are considered.
+	BranchID string `json:"branch_id"`
+
+	// Keywords is the list of Keyword entity IDs to search for.
+	// At least one keyword ID is required.
+	Keywords []string `json:"keywords"`
+
+	// MatchMode controls whether ALL (AND) or ANY (OR) keywords must match.
+	// Defaults to [KeywordMatchModeOR] when zero-valued.
+	MatchMode KeywordMatchMode `json:"match_mode,omitempty"`
+
+	// Cascade when true expands each keyword to include all its descendants in
+	// the taxonomy tree before matching. When false only the exact keyword IDs
+	// are used.
+	Cascade bool `json:"cascade,omitempty"`
+}

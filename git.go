@@ -228,6 +228,32 @@ type GitManager interface {
 	// Returns [ErrEdgeNotFound] if no matching edge exists.
 	// Returns [ErrInvalidRelationship] if the relationship name is invalid.
 	DeleteEdge(ctx context.Context, req DeleteEdgeRequest) error
+
+	// ── Graph Queries (GIT-020) ───────────────────────────────────────────────
+
+	// GetNeighborhood returns all entities and edges reachable from entityID
+	// within the given depth, bounded by a 100-node hard cap. The starting
+	// entity is always included in the result.
+	//
+	// depth is clamped to the range [1, 3]. Values outside this range are
+	// silently corrected. When depth is 0 it is treated as 1.
+	//
+	// Returns [ErrBranchNotFound] if the branch does not exist.
+	// Returns [ErrEntityNotFound] if entityID does not exist in the graph.
+	GetNeighborhood(ctx context.Context, branchID, entityID string, depth int) (GraphResult, error)
+
+	// SearchByKeywords returns entities tagged (via "tagged_with" edges) with
+	// the specified keywords, optionally cascading down the keyword hierarchy.
+	//
+	// When req.Cascade is true, each keyword in req.Keywords is expanded to
+	// include all of its descendants before matching. When req.MatchMode is
+	// [KeywordMatchModeAND], a result entity must be tagged with every
+	// (expanded) keyword; when [KeywordMatchModeOR], a match on any keyword
+	// suffices. Defaults to [KeywordMatchModeOR] when MatchMode is empty.
+	//
+	// Returns [ErrBranchNotFound] if req.BranchID does not exist.
+	// Returns an empty [GraphResult] when no entities match (never nil).
+	SearchByKeywords(ctx context.Context, req SearchByKeywordsRequest) (GraphResult, error)
 }
 
 // gitManager is the concrete implementation of [GitManager].
