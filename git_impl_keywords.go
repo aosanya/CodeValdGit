@@ -21,8 +21,12 @@ import (
 )
 
 // validDocEdges is the set of allowed documentation relationship names.
+// "tagged_with" and "references" are the two branch-scoped types that follow
+// the DR-010 lifecycle (replicated on merge, deleted on branch delete).
 var validDocEdges = map[string]bool{
 	"tagged_with":   true,
+	"references":    true,
+	"referenced_by": true,
 	"documents":     true,
 	"documented_by": true,
 	"depends_on":    true,
@@ -281,9 +285,9 @@ func (m *gitManager) CreateEdge(ctx context.Context, req CreateEdgeRequest) erro
 		Name:     req.RelationshipName,
 		FromID:   req.FromEntityID,
 		ToID:     req.ToEntityID,
-		Properties: map[string]any{
+		Properties: mergeEdgeProps(req.Properties, map[string]any{
 			"branch_id": req.BranchID,
-		},
+		}),
 	}); err != nil {
 		return fmt.Errorf("CreateEdge %s (%s→%s): %w", req.RelationshipName, req.FromEntityID, req.ToEntityID, err)
 	}

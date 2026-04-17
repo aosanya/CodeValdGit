@@ -313,6 +313,12 @@ func (m *gitManager) DeleteBranch(ctx context.Context, branchID string) error {
 	if boolProp(e.Properties, "is_default") {
 		return fmt.Errorf("DeleteBranch: %w", ErrDefaultBranchDeleteForbidden)
 	}
+
+	// GIT-022b: Delete branch-scoped documentation edges before removing the
+	// branch entity so no dangling edges are left behind.
+	headCommitID := strProp(e.Properties, "head_commit_id")
+	m.deleteDocEdgesForBranch(ctx, branchID, headCommitID)
+
 	if err := m.dm.DeleteEntity(ctx, m.agencyID, branchID); err != nil {
 		return fmt.Errorf("DeleteBranch: %w", err)
 	}
@@ -353,6 +359,11 @@ func (m *gitManager) MergeBranch(ctx context.Context, branchID string) (Branch, 
 	if err != nil {
 		return Branch{}, fmt.Errorf("MergeBranch: advance default head: %w", err)
 	}
+
+	// GIT-022a: Replicate branch-scoped documentation edges (tagged_with,
+	// references) from source branch blobs to the default branch.
+	m.replicateDocEdges(ctx, sourceBranch.ID, defaultBranchEntity.ID, sourceBranch.HeadCommitID)
+
 	return updated, nil
 }
 

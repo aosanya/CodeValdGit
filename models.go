@@ -435,15 +435,20 @@ type CreateEdgeRequest struct {
 	FromEntityID string `json:"from_entity_id"`
 
 	// RelationshipName is the edge type to create. Must be one of:
-	// "tagged_with", "documents", "documented_by", "depends_on", "imported_by".
-	// Required.
+	// "tagged_with", "references", "documents", "documented_by", "depends_on",
+	// "imported_by". Required.
 	RelationshipName string `json:"relationship_name"`
 
 	// ToEntityID is the entitygraph ID of the target entity. Required.
 	// For "tagged_with": must be a Keyword.
-	// For "documents"/"documented_by": must be a Blob.
-	// For "depends_on"/"imported_by": must be a Blob.
+	// For "references": must be a Blob; requires a "descriptor" property.
+	// For other types: must be a Blob.
 	ToEntityID string `json:"to_entity_id"`
+
+	// Properties are optional metadata stored on the edge. For "references"
+	// edges the "descriptor" key is required and holds the semantic label
+	// (e.g. "documents", "depends_on", "contradicts").
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // DeleteEdgeRequest carries the parameters for [GitManager.DeleteEdge].
