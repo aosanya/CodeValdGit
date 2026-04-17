@@ -339,9 +339,9 @@ See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_docume
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-022a: Replicate `tagged_with` and `references` edges (with their `descriptor` property) from branch blobs to `main` blobs (by path) on `MergeBranch` | 📋 Not Started | GIT-019f, GIT-012 |
-| GIT-022b: Delete documentation edges when branch is deleted without merge | 📋 Not Started | GIT-022a |
-| GIT-022c: Migrate edges on file rename/move; remove edges on file delete | 📋 Not Started | GIT-022a |
+| GIT-022a: Replicate `tagged_with` and `references` edges (with their `descriptor` property) from branch blobs to `main` blobs (by path) on `MergeBranch` | � In Progress | GIT-019f, GIT-012 |
+| GIT-022b: Delete documentation edges when branch is deleted without merge | 🚀 In Progress | GIT-022a |
+| GIT-022c: Migrate edges on file rename/move; remove edges on file delete | 🚀 In Progress | GIT-022a |
 
 **Scope**: Implements the DR-010 edge lifecycle rules. `tagged_with` and `references` edges
 (including the `descriptor` property) are replicated to `main` on merge (matched by path),

@@ -280,10 +280,16 @@ func (m *gitManager) ReadFile(ctx context.Context, branchID, path string) (Blob,
 // Returns [ErrBranchNotFound] if the branch does not exist.
 // Returns [ErrFileNotFound] if the path does not exist on the branch.
 func (m *gitManager) DeleteFile(ctx context.Context, req DeleteFileRequest) (Commit, error) {
-	// Verify the file exists first.
-	if _, err := m.ReadFile(ctx, req.BranchID, req.Path); err != nil {
+	// Verify the file exists first and capture the current blob ID for edge cleanup.
+	existingBlob, err := m.ReadFile(ctx, req.BranchID, req.Path)
+	if err != nil {
 		return Commit{}, err
 	}
+
+	// GIT-022c: Remove branch-scoped documentation edges on the deleted blob
+	// before the deletion commit is written.
+	m.deleteDocEdgesForBlob(ctx, existingBlob.ID, req.BranchID)
+
 	message := req.Message
 	if message == "" {
 		message = "Delete " + req.Path
