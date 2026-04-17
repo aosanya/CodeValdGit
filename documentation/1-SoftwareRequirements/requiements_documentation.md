@@ -155,6 +155,46 @@ These edges follow the **same rules** as `documents`/`documented_by`:
 - **Git lifecycle**: deleted on branch delete, removed on revert,
   migrated on rename (DR-010 applies)
 
+### DR-023: Blob→Blob Edges — Collapsed to `references` / `referenced_by` with `descriptor` Property
+
+The original four named edge types (`documents`, `documented_by`, `depends_on`,
+`imported_by`) are **replaced** by a single generic Blob→Blob pair:
+
+| Edge name | Direction | Inverse |
+|---|---|---|
+| `references` | from → to | `referenced_by` |
+| `referenced_by` | to → from (auto) | `references` |
+
+Both edges carry a `descriptor` string property (required) that names the
+semantic role of the relationship. The vocabulary is **open** — agents may
+invent new descriptors — but should **reuse existing labels before coining
+new ones**. Well-known values:
+
+| Descriptor | Meaning |
+|---|---|
+| `documents` | This doc file describes the target code file |
+| `depends_on` | This file imports / depends on the target file |
+| `contradicts` | This file's content conflicts with the target |
+| `references` | General cross-reference without a stronger semantic |
+| `test_for` | This test file covers the target implementation file |
+| `obsoletes` | This file supersedes the target file |
+
+**Rationale**: The descriptor is data, not schema. Adding a new relationship
+type previously required a schema change; now agents simply pass a new string.
+The `RelationshipDefinition.Properties` field added to SharedLib carries this
+declaration so tooling can surface it.
+
+### DR-024: Inverse Edge Copies `descriptor` Property
+
+When `entitygraph.DataManager.CreateRelationship` auto-creates the inverse
+(`referenced_by`) edge, it **copies the full `Properties` map** from the
+originating `references` edge. This ensures that inbound graph traversal
+("who references this file, and how?") returns the same descriptor context
+as outbound traversal ("what does this file reference, and how?").
+
+The `referenced_by` `RelationshipDefinition` explicitly declares the same
+`descriptor` property so schema tooling documents it correctly.
+
 ---
 
 ## 3. Entity Types (New)
@@ -195,25 +235,21 @@ Any existing entity can be tagged with a Keyword for discovery.
 | Branch | `tagged_with` | Keyword | Tag a branch with a keyword |
 | Commit | `tagged_with` | Keyword | Tag a commit with a keyword |
 
-### `documents` / `documented_by` — Doc↔Code Mapping
+### `references` / `referenced_by` — Generic Blob→Blob Edges
 
-Direct edges between Blob entities **within the same repo** linking
-documentation files to the code files they describe.
+A single generic pair replaces the former `documents`/`documented_by` and
+`depends_on`/`imported_by` edge types (DR-023). Both edges carry a
+`descriptor` string property that names the semantic role.
 
-| From | Edge | To | Description |
-|---|---|---|---|
-| Blob (doc) | `documents` | Blob (code) | "This doc describes this code file" |
-| Blob (code) | `documented_by` | Blob (doc) | Inverse — auto-created |
+| From | Edge | To | Required property | Description |
+|---|---|---|---|---|
+| Blob | `references` | Blob | `descriptor` | Forward edge; caller supplies the descriptor |
+| Blob | `referenced_by` | Blob | `descriptor` | Inverse — auto-created; `descriptor` copied from the forward edge (DR-024) |
 
-### `depends_on` / `imported_by` — File Dependencies
+**Example descriptors**: `"documents"`, `"depends_on"`, `"contradicts"`,
+`"references"`, `"test_for"`, `"obsoletes"`.
 
-Direct edges between Blob entities **within the same repo** declaring
-that one file depends on (imports, references, or uses) another.
-
-| From | Edge | To | Description |
-|---|---|---|---|
-| Blob (source) | `depends_on` | Blob (dependency) | "This file depends on / imports this file" |
-| Blob (dependency) | `imported_by` | Blob (source) | Inverse — auto-created |
+Agents should query existing descriptors in use before creating new ones.
 
 ---
 

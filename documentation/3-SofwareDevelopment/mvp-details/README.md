@@ -137,3 +137,13 @@ for the full analysis:
 | [critical-arangodb.md](critical-arangodb.md) | GIT-014 — ArangoDB production gate |
 | [integration.md](integration.md) | ⚠️ Superseded — see grpc-service.md |
 | [repo-import.md](repo-import.md) | GIT-016 — async import of external public HTTPS repository |
+| [grpc-proto.md](grpc-proto.md) | GIT-021 — proto + gRPC handlers + route registration for documentation layer |
+
+> **DR-023 / DR-024 pivot** — The documentation layer no longer uses four named
+> Blob→Blob edge types (`documents`, `documented_by`, `depends_on`, `imported_by`).
+> They are replaced by a single `references` / `referenced_by` pair. Both directions
+> carry a required `descriptor` string property (open vocabulary; well-known values:
+> `"documents"`, `"depends_on"`, `"contradicts"`, `"test_for"`, `"obsoletes"`).
+> The inverse auto-copies the `descriptor` map (DR-024).
+> See [requiements_documentation.md](../../1-SoftwareRequirements/requiements_documentation.md)
+> §DR-023 and §DR-024.

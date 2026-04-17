@@ -288,26 +288,34 @@ _(None yet)_
 | Task | Status | Depends On |
 |------|--------|------------|
 | GIT-019a: Add `Keyword` TypeDefinition to `schema.go` (`git_keywords` collection) with `name`, `description`, `scope`, timestamps | ✅ Done | ~~GIT-001~~ ✅ |
-| GIT-019b: Add `tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`, `has_child`/`belongs_to_parent` relationship definitions to `schema.go` | ✅ Done | GIT-019a |
+| GIT-019b: Add `tagged_with`, `references`/`referenced_by` (with `descriptor` edge property), `has_child`/`belongs_to_parent` relationship definitions to `schema.go`; add `Properties []PropertyDefinition` to `RelationshipDefinition` in SharedLib | ✅ Done | GIT-019a |
 | GIT-019c: Add `GitManager` interface methods — `CreateKeyword`, `GetKeyword`, `ListKeywords`, `GetKeywordTree`, `UpdateKeyword`, `DeleteKeyword` | ✅ Done | GIT-019a |
 | GIT-019d: Concrete `GitManager` implementation for keyword CRUD in `internal/manager/` | ✅ Done | GIT-019c |
 | GIT-019e: Add `GitManager` interface methods — `CreateEdge`, `DeleteEdge` (branch-scoped, follows DR-010 lifecycle) | ✅ Done | GIT-019b |
 | GIT-019f: Concrete `GitManager` implementation for edge CRUD (with inverse auto-creation) | ✅ Done | GIT-019e |
 
 **Scope**: Foundation for the documentation layer. Adds the `Keyword` entity type and all new
-relationship types (`tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`,
-`has_child`/`belongs_to_parent`) to the existing `git-schema-v1`. Implements keyword CRUD and
-branch-scoped edge creation/deletion with automatic inverse edges.
+relationship types to the existing `git-schema-v1`:
+- `tagged_with` — Blob/Branch/Commit → Keyword
+- `references` / `referenced_by` — generic Blob→Blob edge with a `descriptor` string property
+  (open vocabulary; well-known values: `"documents"`, `"depends_on"`, `"contradicts"`,
+  `"test_for"`, `"obsoletes"`). The inverse auto-copies the `descriptor` so both traversal
+  directions carry full context (DR-023, DR-024).
+- `has_child` / `belongs_to_parent` — Keyword taxonomy
+
+Also adds `Properties []PropertyDefinition` to `RelationshipDefinition` in SharedLib so edge
+property schemas are declared alongside the relationship (not just stored at runtime).
+Implements keyword CRUD and branch-scoped edge creation/deletion with automatic inverse edges.
 See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_documentation.md)
 
 ### GIT-020 — Graph Query Endpoints
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-020a: Add `GitManager` interface methods — `GetNeighborhood(ctx, branchID, entityID, depth)` returning generic `{ nodes, edges }` graph response | � In Progress | GIT-019f |
-| GIT-020b: Add `GitManager` interface method — `SearchByKeywords(ctx, branchID, keywords, matchMode, cascade)` | 🚀 In Progress | GIT-019d, GIT-019f |
-| GIT-020c: Concrete implementation — AQL graph traversal for neighborhood query (depth 1-3, 100-node cap) | 🚀 In Progress | GIT-020a |
-| GIT-020d: Concrete implementation — AQL keyword search with cascading hierarchy + AND/OR match mode | 🚀 In Progress | GIT-020b |
+| GIT-020a: Add `GitManager` interface methods — `GetNeighborhood(ctx, branchID, entityID, depth)` returning generic `{ nodes, edges }` graph response | ✅ Done | GIT-019f |
+| GIT-020b: Add `GitManager` interface method — `SearchByKeywords(ctx, branchID, keywords, matchMode, cascade)` | ✅ Done | GIT-019d, GIT-019f |
+| GIT-020c: Concrete implementation — AQL graph traversal for neighborhood query (depth 1-3, 100-node cap) | ✅ Done | GIT-020a |
+| GIT-020d: Concrete implementation — AQL keyword search with cascading hierarchy + AND/OR match mode | ✅ Done | GIT-020b |
 
 **Scope**: Graph query layer. Neighborhood query returns a generic `{ nodes, edges }` response
 with configurable depth (1-3) and a 100-node hard cap. SearchByKeywords traverses the keyword
@@ -331,12 +339,13 @@ See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_docume
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-022a: Replicate `tagged_with`, `documents`, `depends_on` edges from branch blobs to `main` blobs (by path) on `MergeBranch` | 📋 Not Started | GIT-019f, GIT-012 |
+| GIT-022a: Replicate `tagged_with` and `references` edges (with their `descriptor` property) from branch blobs to `main` blobs (by path) on `MergeBranch` | 📋 Not Started | GIT-019f, GIT-012 |
 | GIT-022b: Delete documentation edges when branch is deleted without merge | 📋 Not Started | GIT-022a |
 | GIT-022c: Migrate edges on file rename/move; remove edges on file delete | 📋 Not Started | GIT-022a |
 
-**Scope**: Implements the DR-010 edge lifecycle rules. Edges are replicated to `main` on merge
-(matched by path), deleted on branch delete, migrated on rename, and removed on file delete.
+**Scope**: Implements the DR-010 edge lifecycle rules. `tagged_with` and `references` edges
+(including the `descriptor` property) are replicated to `main` on merge (matched by path),
+deleted on branch delete, migrated on rename, and removed on file delete.
 
 ---
 

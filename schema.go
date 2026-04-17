@@ -24,10 +24,8 @@
 // Documentation edges (branch-scoped, replicated to main on merge per DR-010):
 //
 //	Blob ──tagged_with──► Keyword ──has_child──► Keyword   (keyword taxonomy)
-//	Blob ──documents────► Blob                             (doc → code)
-//	Blob ──documented_by► Blob                             (code → doc, inverse)
-//	Blob ──depends_on───► Blob                             (code → dependency)
-//	Blob ──imported_by──► Blob                             (dependency → importer, inverse)
+//	Blob ──references───► Blob  {descriptor}               (generic blob→blob edge; e.g. "documents", "depends_on", "contradicts")
+//	Blob ──referenced_by► Blob  {descriptor}               (inverse; same descriptor copied by entitygraph)
 //
 // Storage:
 //   - Agency, Branch, Tag  → "git_entities" document collection (mutable refs / live state)
@@ -47,8 +45,7 @@
 //	Blob       ──belongs_to_tree────────► Tree
 //	Tree       ──belongs_to_tree────────► Tree   (subtree inverse)
 //	Keyword    ──belongs_to_parent──────► Keyword (taxonomy inverse)
-//	Blob       ──documented_by──────────► Blob   (documents inverse)
-//	Blob       ──imported_by────────────► Blob   (depends_on inverse)
+//	Blob       ──referenced_by──────────► Blob   (references inverse; descriptor copied)
 package codevaldgit
 
 import "github.com/aosanya/CodeValdSharedLib/types"
@@ -378,43 +375,43 @@ func DefaultGitSchema() types.Schema {
 						ToType:      "Keyword",
 						ToMany:      true,
 					},
-					// documents links a documentation Blob to the code Blobs it describes.
-					// Inverse: documented_by (auto-created by entitygraph.DataManager).
+					// references is a generic directed edge from one Blob to another within
+					// the same repo. The nature of the relationship is captured in the
+					// "descriptor" edge property — an open-vocabulary string. Agents should
+					// reuse existing descriptors where possible (e.g. "documents",
+					// "depends_on", "contradicts", "references") before coining new ones.
+					// Inverse: referenced_by (auto-created by entitygraph.DataManager,
+					// which copies the Properties map so the descriptor is readable from
+					// both traversal directions).
 					{
-						Name:        "documents",
-						Label:       "Documents",
-						PathSegment: "documents",
+						Name:        "references",
+						Label:       "References",
+						PathSegment: "references",
 						ToType:      "Blob",
 						ToMany:      true,
-						Inverse:     "documented_by",
+						Inverse:     "referenced_by",
+						Properties: []types.PropertyDefinition{
+							// descriptor is the semantic label for this edge.
+							// Open vocabulary; well-known values: "documents", "depends_on",
+							// "contradicts", "references", "test_for", "obsoletes".
+							{Name: "descriptor", Type: types.PropertyTypeString, Required: true},
+						},
 					},
-					// documented_by is the inverse of documents.
+					// referenced_by is the inverse of references.
+					// Carries the same "descriptor" property so that inbound traversal
+					// ("who references this file and how?") returns full context.
 					{
-						Name:        "documented_by",
-						Label:       "Documented By",
-						PathSegment: "documented-by",
+						Name:        "referenced_by",
+						Label:       "Referenced By",
+						PathSegment: "referenced-by",
 						ToType:      "Blob",
 						ToMany:      true,
-						Inverse:     "documents",
-					},
-					// depends_on links a code Blob to the Blobs it imports or depends on.
-					// Inverse: imported_by (auto-created by entitygraph.DataManager).
-					{
-						Name:        "depends_on",
-						Label:       "Depends On",
-						PathSegment: "depends-on",
-						ToType:      "Blob",
-						ToMany:      true,
-						Inverse:     "imported_by",
-					},
-					// imported_by is the inverse of depends_on.
-					{
-						Name:        "imported_by",
-						Label:       "Imported By",
-						PathSegment: "imported-by",
-						ToType:      "Blob",
-						ToMany:      true,
-						Inverse:     "depends_on",
+						Inverse:     "references",
+						Properties: []types.PropertyDefinition{
+							// descriptor mirrors the originating references edge so inbound
+							// traversal returns the same semantic context.
+							{Name: "descriptor", Type: types.PropertyTypeString, Required: true},
+						},
 					}},
 			},
 			{
