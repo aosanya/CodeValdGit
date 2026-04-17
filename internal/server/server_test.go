@@ -189,6 +189,38 @@ func (f *fakeGitManager) CancelImport(_ context.Context, _ string) error {
 	return nil
 }
 
+func (f *fakeGitManager) CreateKeyword(_ context.Context, _ codevaldgit.CreateKeywordRequest) (codevaldgit.Keyword, error) {
+	return codevaldgit.Keyword{}, nil
+}
+
+func (f *fakeGitManager) GetKeyword(_ context.Context, _ string) (codevaldgit.Keyword, error) {
+	return codevaldgit.Keyword{}, nil
+}
+
+func (f *fakeGitManager) ListKeywords(_ context.Context, _ codevaldgit.KeywordFilter) ([]codevaldgit.Keyword, error) {
+	return nil, nil
+}
+
+func (f *fakeGitManager) GetKeywordTree(_ context.Context, _ string) ([]codevaldgit.KeywordTreeNode, error) {
+	return nil, nil
+}
+
+func (f *fakeGitManager) UpdateKeyword(_ context.Context, _ string, _ codevaldgit.UpdateKeywordRequest) (codevaldgit.Keyword, error) {
+	return codevaldgit.Keyword{}, nil
+}
+
+func (f *fakeGitManager) DeleteKeyword(_ context.Context, _ string) error {
+	return nil
+}
+
+func (f *fakeGitManager) CreateEdge(_ context.Context, _ codevaldgit.CreateEdgeRequest) error {
+	return nil
+}
+
+func (f *fakeGitManager) DeleteEdge(_ context.Context, _ codevaldgit.DeleteEdgeRequest) error {
+	return nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024

@@ -61,3 +61,24 @@ var ErrImportInProgress = errors.New("import already in progress")
 // the job has already reached a terminal state (completed, failed, or
 // cancelled).
 var ErrImportJobNotCancellable = errors.New("import job is not cancellable")
+
+// ── Documentation layer errors (GIT-019) ─────────────────────────────────────
+
+// ErrKeywordNotFound is returned by [GitManager.GetKeyword],
+// [GitManager.UpdateKeyword], and [GitManager.DeleteKeyword] when no Keyword
+// entity with the given ID exists.
+var ErrKeywordNotFound = errors.New("keyword not found")
+
+// ErrKeywordAlreadyExists is returned by [GitManager.CreateKeyword] when a
+// Keyword entity with the same name already exists under the same parent (or
+// at the root level when no parent is specified).
+var ErrKeywordAlreadyExists = errors.New("keyword already exists")
+
+// ErrEdgeNotFound is returned by [GitManager.DeleteEdge] when no matching
+// edge exists between the specified entities.
+var ErrEdgeNotFound = errors.New("documentation edge not found")
+
+// ErrInvalidRelationship is returned by [GitManager.CreateEdge] or
+// [GitManager.DeleteEdge] when the relationship name is not a valid
+// documentation edge type.
+var ErrInvalidRelationship = errors.New("invalid documentation relationship name")

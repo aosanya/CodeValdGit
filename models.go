@@ -339,3 +339,125 @@ type LogFilter struct {
 	// Limit caps the number of commits returned. 0 means no limit.
 	Limit int `json:"limit,omitempty"`
 }
+
+// ── Documentation layer types (GIT-019) ──────────────────────────────────────
+
+// Keyword is a hierarchical discovery label used to tag Blobs, Branches, and
+// Commits. Keywords form a free-form taxonomy tree via has_child edges.
+// Querying a parent Keyword cascades to all descendant Keywords by default.
+type Keyword struct {
+	// ID is the unique entitygraph identifier for this keyword entity.
+	ID string `json:"id"`
+
+	// Name is the human-readable label, e.g. "authentication" or "grpc".
+	Name string `json:"name"`
+
+	// Description is an optional plain-text summary of the keyword.
+	Description string `json:"description,omitempty"`
+
+	// Scope is an optional grouping label (e.g. "domain", "layer", "technology").
+	Scope string `json:"scope,omitempty"`
+
+	// ParentID is the entitygraph ID of the parent Keyword, or empty if this is
+	// a root keyword.
+	ParentID string `json:"parent_id,omitempty"`
+
+	// ChildIDs are the entitygraph IDs of direct child Keywords.
+	ChildIDs []string `json:"child_ids,omitempty"`
+
+	// CreatedAt is the ISO 8601 timestamp when the keyword was created.
+	CreatedAt string `json:"created_at"`
+
+	// UpdatedAt is the ISO 8601 timestamp when the keyword was last modified.
+	UpdatedAt string `json:"updated_at"`
+}
+
+// CreateKeywordRequest carries the parameters for [GitManager.CreateKeyword].
+type CreateKeywordRequest struct {
+	// Name is the human-readable keyword label. Required.
+	Name string `json:"name"`
+
+	// Description is an optional plain-text summary.
+	Description string `json:"description,omitempty"`
+
+	// Scope is an optional grouping label.
+	Scope string `json:"scope,omitempty"`
+
+	// ParentID is the entitygraph ID of the parent Keyword. Empty for a root keyword.
+	ParentID string `json:"parent_id,omitempty"`
+}
+
+// UpdateKeywordRequest carries the mutable fields for [GitManager.UpdateKeyword].
+type UpdateKeywordRequest struct {
+	// Name is the updated human-readable label. Required.
+	Name string `json:"name"`
+
+	// Description is the updated plain-text summary.
+	Description string `json:"description,omitempty"`
+
+	// Scope is the updated grouping label.
+	Scope string `json:"scope,omitempty"`
+}
+
+// KeywordFilter constrains the result set returned by [GitManager.ListKeywords].
+type KeywordFilter struct {
+	// Scope filters to keywords with the given scope. Empty means all scopes.
+	Scope string `json:"scope,omitempty"`
+
+	// ParentID filters to direct children of the given keyword. Empty means
+	// return all root-level keywords (no parent).
+	ParentID string `json:"parent_id,omitempty"`
+
+	// Limit caps the number of keywords returned. 0 means no limit.
+	Limit int `json:"limit,omitempty"`
+}
+
+// KeywordTreeNode is a recursive node in the keyword taxonomy tree returned
+// by [GitManager.GetKeywordTree].
+type KeywordTreeNode struct {
+	// Keyword is the keyword entity for this node.
+	Keyword Keyword `json:"keyword"`
+
+	// Children are the direct child nodes in the taxonomy tree.
+	Children []KeywordTreeNode `json:"children,omitempty"`
+}
+
+// CreateEdgeRequest carries the parameters for [GitManager.CreateEdge].
+// Edges created via this method are branch-scoped and follow the DR-010
+// lifecycle (replicated to main on merge, deleted on branch delete).
+type CreateEdgeRequest struct {
+	// BranchID is the entitygraph ID of the branch that scopes this edge.
+	// The from entity must be a Blob that exists on this branch. Required.
+	BranchID string `json:"branch_id"`
+
+	// FromEntityID is the entitygraph ID of the source entity. Required.
+	// Must be a Blob that belongs to the specified branch.
+	FromEntityID string `json:"from_entity_id"`
+
+	// RelationshipName is the edge type to create. Must be one of:
+	// "tagged_with", "documents", "documented_by", "depends_on", "imported_by".
+	// Required.
+	RelationshipName string `json:"relationship_name"`
+
+	// ToEntityID is the entitygraph ID of the target entity. Required.
+	// For "tagged_with": must be a Keyword.
+	// For "documents"/"documented_by": must be a Blob.
+	// For "depends_on"/"imported_by": must be a Blob.
+	ToEntityID string `json:"to_entity_id"`
+}
+
+// DeleteEdgeRequest carries the parameters for [GitManager.DeleteEdge].
+type DeleteEdgeRequest struct {
+	// BranchID is the entitygraph ID of the branch that scopes this edge.
+	// Required.
+	BranchID string `json:"branch_id"`
+
+	// FromEntityID is the entitygraph ID of the source entity. Required.
+	FromEntityID string `json:"from_entity_id"`
+
+	// RelationshipName is the edge type to delete. Required.
+	RelationshipName string `json:"relationship_name"`
+
+	// ToEntityID is the entitygraph ID of the target entity. Required.
+	ToEntityID string `json:"to_entity_id"`
+}

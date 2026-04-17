@@ -287,12 +287,12 @@ _(None yet)_
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-019a: Add `Keyword` TypeDefinition to `schema.go` (`git_keywords` collection) with `name`, `description`, `scope`, timestamps | 📋 Not Started | ~~GIT-001~~ ✅ |
-| GIT-019b: Add `tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`, `has_child`/`belongs_to_parent` relationship definitions to `schema.go` | 📋 Not Started | GIT-019a |
-| GIT-019c: Add `GitManager` interface methods — `CreateKeyword`, `GetKeyword`, `ListKeywords`, `GetKeywordTree`, `UpdateKeyword`, `DeleteKeyword` | 📋 Not Started | GIT-019a |
-| GIT-019d: Concrete `GitManager` implementation for keyword CRUD in `internal/manager/` | 📋 Not Started | GIT-019c |
-| GIT-019e: Add `GitManager` interface methods — `CreateEdge`, `DeleteEdge` (branch-scoped, follows DR-010 lifecycle) | 📋 Not Started | GIT-019b |
-| GIT-019f: Concrete `GitManager` implementation for edge CRUD (with inverse auto-creation) | 📋 Not Started | GIT-019e |
+| GIT-019a: Add `Keyword` TypeDefinition to `schema.go` (`git_keywords` collection) with `name`, `description`, `scope`, timestamps | ✅ Done | ~~GIT-001~~ ✅ |
+| GIT-019b: Add `tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`, `has_child`/`belongs_to_parent` relationship definitions to `schema.go` | ✅ Done | GIT-019a |
+| GIT-019c: Add `GitManager` interface methods — `CreateKeyword`, `GetKeyword`, `ListKeywords`, `GetKeywordTree`, `UpdateKeyword`, `DeleteKeyword` | ✅ Done | GIT-019a |
+| GIT-019d: Concrete `GitManager` implementation for keyword CRUD in `internal/manager/` | ✅ Done | GIT-019c |
+| GIT-019e: Add `GitManager` interface methods — `CreateEdge`, `DeleteEdge` (branch-scoped, follows DR-010 lifecycle) | ✅ Done | GIT-019b |
+| GIT-019f: Concrete `GitManager` implementation for edge CRUD (with inverse auto-creation) | ✅ Done | GIT-019e |
 
 **Scope**: Foundation for the documentation layer. Adds the `Keyword` entity type and all new
 relationship types (`tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`,
