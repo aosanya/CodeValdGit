@@ -304,10 +304,10 @@ See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_docume
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-020a: Add `GitManager` interface methods — `GetNeighborhood(ctx, branchID, entityID, depth)` returning generic `{ nodes, edges }` graph response | 📋 Not Started | GIT-019f |
-| GIT-020b: Add `GitManager` interface method — `SearchByKeywords(ctx, branchID, keywords, matchMode, cascade)` | 📋 Not Started | GIT-019d, GIT-019f |
-| GIT-020c: Concrete implementation — AQL graph traversal for neighborhood query (depth 1-3, 100-node cap) | 📋 Not Started | GIT-020a |
-| GIT-020d: Concrete implementation — AQL keyword search with cascading hierarchy + AND/OR match mode | 📋 Not Started | GIT-020b |
+| GIT-020a: Add `GitManager` interface methods — `GetNeighborhood(ctx, branchID, entityID, depth)` returning generic `{ nodes, edges }` graph response | � In Progress | GIT-019f |
+| GIT-020b: Add `GitManager` interface method — `SearchByKeywords(ctx, branchID, keywords, matchMode, cascade)` | 🚀 In Progress | GIT-019d, GIT-019f |
+| GIT-020c: Concrete implementation — AQL graph traversal for neighborhood query (depth 1-3, 100-node cap) | 🚀 In Progress | GIT-020a |
+| GIT-020d: Concrete implementation — AQL keyword search with cascading hierarchy + AND/OR match mode | 🚀 In Progress | GIT-020b |
 
 **Scope**: Graph query layer. Neighborhood query returns a generic `{ nodes, edges }` response
 with configurable depth (1-3) and a 100-node hard cap. SearchByKeywords traverses the keyword
