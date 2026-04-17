@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -132,7 +131,6 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 	ctx := context.Background()
 	hash := obj.Hash()
 	typeID := typeIDForObject(obj.Type())
-	log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s", s.agencyID, typeID, hash)
 
 	// Idempotent: skip if already stored.
 	existing, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
@@ -141,11 +139,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		Properties: map[string]any{"sha": hash.String()},
 	})
 	if err == nil && len(existing) > 0 {
-		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: already exists (skip)", s.agencyID, typeID, hash)
 		return hash, nil
-	}
-	if err != nil {
-		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: idempotency check error: %v", s.agencyID, typeID, hash, err)
 	}
 	r, err := obj.Reader()
 	if err != nil {
@@ -167,10 +161,8 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		},
 	})
 	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
-		log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: create failed: %v", s.agencyID, typeID, hash, createErr)
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create %s: %w", typeID, createErr)
 	}
-	log.Printf("[DEBUG] SetEncodedObject agency=%s type=%s sha=%s: stored OK", s.agencyID, typeID, hash)
 
 	return hash, nil
 }
@@ -180,7 +172,6 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (plumbing.EncodedObject, error) {
 	ctx := context.Background()
 	sha := h.String()
-	log.Printf("[DEBUG] EncodedObject agency=%s type=%v sha=%s", s.agencyID, t, sha)
 
 	search := func(typeID string) (plumbing.EncodedObject, error) {
 		list, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
@@ -189,19 +180,15 @@ func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (pl
 			Properties: map[string]any{"sha": sha},
 		})
 		if err != nil {
-			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: ListEntities error: %v", s.agencyID, typeID, sha, err)
 			return nil, plumbing.ErrObjectNotFound
 		}
 		if len(list) == 0 {
-			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: not found in ArangoDB", s.agencyID, typeID, sha)
 			return nil, plumbing.ErrObjectNotFound
 		}
 		obj, decErr := decodeEntityToObject(list[0])
 		if decErr != nil {
-			log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: decode error: %v", s.agencyID, typeID, sha, decErr)
 			return nil, plumbing.ErrObjectNotFound
 		}
-		log.Printf("[DEBUG] EncodedObject agency=%s type=%s sha=%s: found OK", s.agencyID, typeID, sha)
 		return obj, nil
 	}
 
@@ -269,11 +256,9 @@ func (s *arangoStorer) HasEncodedObject(h plumbing.Hash) error {
 			Properties: map[string]any{"sha": sha},
 		})
 		if err == nil && len(list) > 0 {
-			log.Printf("[DEBUG] HasEncodedObject agency=%s sha=%s: found (type=%s)", s.agencyID, sha, typeID)
 			return nil
 		}
 	}
-	log.Printf("[DEBUG] HasEncodedObject agency=%s sha=%s: NOT FOUND", s.agencyID, sha)
 	return plumbing.ErrObjectNotFound
 }
 
@@ -731,12 +716,10 @@ func (s *arangoStorer) backfillBlobsFromSHA(ctx context.Context, commitSHA strin
 
 		obj, err := s.EncodedObject(plumbing.CommitObject, plumbing.NewHash(sha))
 		if err != nil {
-			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: get commit: %v", s.agencyID, sha, err)
 			continue
 		}
 		commit := &object.Commit{}
 		if err := commit.Decode(obj); err != nil {
-			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: decode commit: %v", s.agencyID, sha, err)
 			continue
 		}
 
@@ -746,7 +729,6 @@ func (s *arangoStorer) backfillBlobsFromSHA(ctx context.Context, commitSHA strin
 			// Zero blobs enriched means every blob in this tree already had
 			// metadata — this commit was part of a previous push, so its
 			// ancestors are also already processed.
-			log.Printf("[DEBUG] backfillBlobsFromSHA agency=%s sha=%s: all blobs already enriched, stopping chain walk", s.agencyID, sha)
 			continue
 		}
 
@@ -764,12 +746,10 @@ func (s *arangoStorer) backfillBlobsFromSHA(ctx context.Context, commitSHA strin
 func (s *arangoStorer) backfillBlobsFromTree(ctx context.Context, prefix string, treeHash plumbing.Hash) int {
 	treeObj, err := s.EncodedObject(plumbing.TreeObject, treeHash)
 	if err != nil {
-		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: get: %v", s.agencyID, treeHash, err)
 		return 0
 	}
 	tree := &object.Tree{}
 	if err := tree.Decode(treeObj); err != nil {
-		log.Printf("[DEBUG] backfillBlobsFromTree agency=%s tree=%s: decode: %v", s.agencyID, treeHash, err)
 		return 0
 	}
 	enriched := 0
@@ -801,12 +781,10 @@ func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path s
 		Properties: map[string]any{"sha": sha},
 	})
 	if err != nil || len(blobs) == 0 {
-		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: not found", s.agencyID, sha)
 		return false
 	}
 	// Idempotent: skip if already enriched (e.g. written by the WriteFile path).
 	if existing, ok := blobs[0].Properties["name"].(string); ok && existing != "" {
-		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: already enriched, skip", s.agencyID, sha)
 		return false
 	}
 	ext := ""
@@ -820,10 +798,8 @@ func (s *arangoStorer) backfillBlobEntity(ctx context.Context, sha, name, path s
 			"extension": ext,
 		},
 	}); err != nil {
-		log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s: update failed: %v", s.agencyID, sha, err)
 		return false
 	}
-	log.Printf("[DEBUG] backfillBlobEntity agency=%s sha=%s name=%s path=%s: enriched OK", s.agencyID, sha, name, path)
 	return true
 }
 
@@ -856,7 +832,6 @@ func (s *arangoStorer) setRepositoryHeadRef(ctx context.Context, target string) 
 // a git client is pushing a new branch that was never created via CreateBranch),
 // it is created and linked to the Repository entity automatically.
 func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string) error {
-	log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: looking up branch entity", s.agencyID, branchName, sha)
 	branches, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID:   s.agencyID,
 		TypeID:     "Branch",
@@ -868,7 +843,6 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 	if len(branches) == 0 {
 		// Branch does not exist — create it so that a plain `git push` can
 		// introduce a new branch without requiring an explicit CreateBranch call.
-		log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s: not found, creating", s.agencyID, branchName)
 		repos, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
 			AgencyID: s.agencyID,
 			TypeID:   "Repository",
@@ -906,7 +880,6 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 		}); relErr != nil {
 			return fmt.Errorf("SetReference refs/heads/%s: link branch to repo: %w", branchName, relErr)
 		}
-		log.Printf("[DEBUG] setBranchSHA agency=%s branch=%s sha=%s: created OK", s.agencyID, branchName, sha)
 
 		// All packfile objects are now stored — backfill blob metadata.
 		s.backfillBlobsFromSHA(ctx, sha)

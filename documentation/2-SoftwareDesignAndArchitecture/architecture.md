@@ -5,7 +5,7 @@
 | Decision | Choice | Rationale |
 |---|---|---|
 | Git engine | [go-git](https://github.com/go-git/go-git) pure-Go | No system `git` binary dependency; embeddable in Go services |
-| Repo granularity | 1 repo per Agency | Mirrors the database-per-agency isolation used across the platform |
+| Repo granularity | Multiple repos per Agency | An agency may own any number of named repositories; each is addressed by its entitygraph ID |
 | Agent write policy | Always on a branch, never `main` | Prevents concurrent agent writes from corrupting shared history |
 | Branch naming | `task/{task-id}` (convention) | Short-lived, traceable back to CodeValdWork task records |
 | Merge strategy | Auto-merge on task completion | No human approval gate in v1; policy layer can extend later |
@@ -178,20 +178,25 @@ type GitManager interface {
 
     // ── Repository Lifecycle ──────────────────────────────────────────────
 
-    // InitRepo creates the single Repository entity for this agency.
-    // Returns ErrRepoAlreadyExists if a repository entity already exists.
+    // InitRepo creates a new Repository entity with the given name.
+    // Returns ErrRepoAlreadyExists if a repository with the same name exists.
     // Publishes "cross.git.{agencyID}.repo.created" after a successful write.
     InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error)
 
-    // GetRepository retrieves the single Repository entity for this agency.
-    // Returns ErrRepoNotInitialised if no repository has been created yet.
-    GetRepository(ctx context.Context) (Repository, error)
+    // ListRepositories returns all Repository entities owned by this agency.
+    ListRepositories(ctx context.Context) ([]Repository, error)
 
-    // DeleteRepo marks the repository entity as archived (soft delete).
-    DeleteRepo(ctx context.Context) error
+    // GetRepository retrieves a Repository entity by its entitygraph ID.
+    // Returns ErrRepoNotInitialised if no repository with that ID exists.
+    GetRepository(ctx context.Context, repoID string) (Repository, error)
 
-    // PurgeRepo permanently removes all repository data for this agency.
-    PurgeRepo(ctx context.Context) error
+    // DeleteRepo soft-deletes the specified repository entity.
+    // Returns ErrRepoNotInitialised if no repository with that ID exists.
+    DeleteRepo(ctx context.Context, repoID string) error
+
+    // PurgeRepo permanently removes the specified repository entity.
+    // Returns ErrRepoNotInitialised if no repository with that ID exists.
+    PurgeRepo(ctx context.Context, repoID string) error
 
     // ── Branch Management ─────────────────────────────────────────────────
 

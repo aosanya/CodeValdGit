@@ -26,7 +26,7 @@ This section captures the **how** — design decisions, data models, component a
 | Decision | Choice | Rationale |
 |---|---|---|
 | Git engine | go-git (pure Go) | No system `git` binary dependency; embeddable in Go services |
-| Repo granularity | 1 repo per Agency | Mirrors the platform's database-per-agency isolation |
+| Repo granularity | Multiple repos per Agency | An agency may own any number of named repositories |
 | Agent write policy | Always on a branch, never `main` | Prevents concurrent agent writes from corrupting shared history |
 | Branch naming | `task/{task-id}` | Short-lived, traceable back to CodeValdWork task records |
 | Merge strategy | Squash merge (V1) — tree-diff apply onto default HEAD | Simpler than cherry-pick rebase; atomic apply; preserves task branch history for audit |

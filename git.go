@@ -45,28 +45,31 @@ type CrossPublisher interface {
 type GitManager interface {
 	// ── Repository Lifecycle ──────────────────────────────────────────────────
 
-	// InitRepo creates the single Repository entity for this agency.
-	// Returns [ErrRepoAlreadyExists] if a repository entity already exists.
+	// InitRepo creates a new Repository entity for this agency.
+	// Returns [ErrRepoAlreadyExists] if a repository with the same name already exists.
 	// Publishes "cross.git.{agencyID}.repo.created" after a successful write.
 	InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error)
 
-	// GetRepository retrieves the single Repository entity for this agency.
-	// Returns [ErrRepoNotInitialised] if no repository has been created yet.
-	GetRepository(ctx context.Context) (Repository, error)
+	// ListRepositories returns all Repository entities for this agency.
+	ListRepositories(ctx context.Context) ([]Repository, error)
 
-	// DeleteRepo marks the repository entity as archived (soft delete).
-	// Returns [ErrRepoNotInitialised] if no repository entity exists.
-	DeleteRepo(ctx context.Context) error
+	// GetRepository retrieves a Repository entity by its ID.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	GetRepository(ctx context.Context, repoID string) (Repository, error)
 
-	// PurgeRepo permanently removes all repository data for this agency.
-	// Returns [ErrRepoNotInitialised] if no repository entity exists.
-	PurgeRepo(ctx context.Context) error
+	// DeleteRepo marks the specified repository entity as archived (soft delete).
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	DeleteRepo(ctx context.Context, repoID string) error
+
+	// PurgeRepo permanently removes all data for the specified repository.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	PurgeRepo(ctx context.Context, repoID string) error
 
 	// ── Branch Management ─────────────────────────────────────────────────────
 
 	// CreateBranch creates a new Branch entity from the specified source.
 	// If req.FromBranchID is empty, the repository default branch is used.
-	// Returns [ErrRepoNotInitialised] if no repository entity exists.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 	// Returns [ErrBranchExists] if a branch with the given name already exists.
 	CreateBranch(ctx context.Context, req CreateBranchRequest) (Branch, error)
 
@@ -74,9 +77,9 @@ type GitManager interface {
 	// Returns [ErrBranchNotFound] if no branch with that ID exists.
 	GetBranch(ctx context.Context, branchID string) (Branch, error)
 
-	// ListBranches returns all Branch entities for this agency's repository.
-	// Returns [ErrRepoNotInitialised] if no repository entity exists.
-	ListBranches(ctx context.Context) ([]Branch, error)
+	// ListBranches returns all Branch entities for the specified repository.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	ListBranches(ctx context.Context, repoID string) ([]Branch, error)
 
 	// DeleteBranch removes a Branch entity.
 	// Returns [ErrBranchNotFound] if no branch with that ID exists.
@@ -102,9 +105,9 @@ type GitManager interface {
 	// Returns [ErrTagNotFound] if no tag with that ID exists.
 	GetTag(ctx context.Context, tagID string) (Tag, error)
 
-	// ListTags returns all Tag entities for this agency's repository.
-	// Returns [ErrRepoNotInitialised] if no repository entity exists.
-	ListTags(ctx context.Context) ([]Tag, error)
+	// ListTags returns all Tag entities for the specified repository.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	ListTags(ctx context.Context, repoID string) ([]Tag, error)
 
 	// DeleteTag removes a Tag entity.
 	// Returns [ErrTagNotFound] if no tag with that ID exists.
@@ -152,8 +155,8 @@ type GitManager interface {
 	// agency's entity graph. It returns immediately with an ImportJob whose
 	// ID can be used to poll GetImportStatus.
 	//
-	// Returns [ErrRepoAlreadyExists] if a Repository entity already exists for
-	// this agency. Each agency supports exactly one repository.
+	// Returns [ErrRepoAlreadyExists] if a Repository entity with the same name
+	// already exists for this agency.
 	// Returns [ErrImportInProgress] if a job with status "pending" or "running"
 	// already exists for this agency.
 	ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error)

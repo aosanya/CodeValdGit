@@ -27,25 +27,26 @@ import (
 // Each field is a function so individual tests can inject specific behaviour
 // (errors, return values) without resetting global state.
 type fakeGitManager struct {
-	initRepo      func(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error)
-	getRepository func(ctx context.Context) (codevaldgit.Repository, error)
-	deleteRepo    func(ctx context.Context) error
-	purgeRepo     func(ctx context.Context) error
-	createBranch  func(ctx context.Context, req codevaldgit.CreateBranchRequest) (codevaldgit.Branch, error)
-	getBranch     func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
-	listBranches  func(ctx context.Context) ([]codevaldgit.Branch, error)
-	deleteBranch  func(ctx context.Context, branchID string) error
-	mergeBranch   func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
-	createTag     func(ctx context.Context, req codevaldgit.CreateTagRequest) (codevaldgit.Tag, error)
-	getTag        func(ctx context.Context, tagID string) (codevaldgit.Tag, error)
-	listTags      func(ctx context.Context) ([]codevaldgit.Tag, error)
-	deleteTag     func(ctx context.Context, tagID string) error
-	writeFile     func(ctx context.Context, req codevaldgit.WriteFileRequest) (codevaldgit.Commit, error)
-	readFile      func(ctx context.Context, branchID, path string) (codevaldgit.Blob, error)
-	deleteFile    func(ctx context.Context, req codevaldgit.DeleteFileRequest) (codevaldgit.Commit, error)
-	listDirectory func(ctx context.Context, branchID, path string) ([]codevaldgit.FileEntry, error)
-	log           func(ctx context.Context, branchID string, filter codevaldgit.LogFilter) ([]codevaldgit.CommitEntry, error)
-	diffFunc      func(ctx context.Context, fromRef, toRef string) ([]codevaldgit.FileDiff, error)
+	initRepo         func(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error)
+	listRepositories func(ctx context.Context) ([]codevaldgit.Repository, error)
+	getRepository    func(ctx context.Context, repoID string) (codevaldgit.Repository, error)
+	deleteRepo       func(ctx context.Context, repoID string) error
+	purgeRepo        func(ctx context.Context, repoID string) error
+	createTag        func(ctx context.Context, req codevaldgit.CreateTagRequest) (codevaldgit.Tag, error)
+	createBranch     func(ctx context.Context, req codevaldgit.CreateBranchRequest) (codevaldgit.Branch, error)
+	getBranch        func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
+	listBranches     func(ctx context.Context, repoID string) ([]codevaldgit.Branch, error)
+	deleteBranch     func(ctx context.Context, branchID string) error
+	mergeBranch      func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
+	getTag           func(ctx context.Context, tagID string) (codevaldgit.Tag, error)
+	listTags         func(ctx context.Context, repoID string) ([]codevaldgit.Tag, error)
+	deleteTag        func(ctx context.Context, tagID string) error
+	writeFile        func(ctx context.Context, req codevaldgit.WriteFileRequest) (codevaldgit.Commit, error)
+	readFile         func(ctx context.Context, branchID, path string) (codevaldgit.Blob, error)
+	deleteFile       func(ctx context.Context, req codevaldgit.DeleteFileRequest) (codevaldgit.Commit, error)
+	listDirectory    func(ctx context.Context, branchID, path string) ([]codevaldgit.FileEntry, error)
+	log              func(ctx context.Context, branchID string, filter codevaldgit.LogFilter) ([]codevaldgit.CommitEntry, error)
+	diffFunc         func(ctx context.Context, fromRef, toRef string) ([]codevaldgit.FileDiff, error)
 }
 
 func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error) {
@@ -54,21 +55,27 @@ func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRep
 	}
 	return codevaldgit.Repository{ID: "repo-1", Name: req.Name, DefaultBranch: "main"}, nil
 }
-func (f *fakeGitManager) GetRepository(ctx context.Context) (codevaldgit.Repository, error) {
+func (f *fakeGitManager) GetRepository(ctx context.Context, repoID string) (codevaldgit.Repository, error) {
 	if f.getRepository != nil {
-		return f.getRepository(ctx)
+		return f.getRepository(ctx, repoID)
 	}
-	return codevaldgit.Repository{ID: "repo-1", Name: "test-repo", DefaultBranch: "main"}, nil
+	return codevaldgit.Repository{ID: repoID, Name: "test-repo", DefaultBranch: "main"}, nil
 }
-func (f *fakeGitManager) DeleteRepo(ctx context.Context) error {
+func (f *fakeGitManager) ListRepositories(ctx context.Context) ([]codevaldgit.Repository, error) {
+	if f.listRepositories != nil {
+		return f.listRepositories(ctx)
+	}
+	return []codevaldgit.Repository{{ID: "repo-1", Name: "test-repo", DefaultBranch: "main"}}, nil
+}
+func (f *fakeGitManager) DeleteRepo(ctx context.Context, repoID string) error {
 	if f.deleteRepo != nil {
-		return f.deleteRepo(ctx)
+		return f.deleteRepo(ctx, repoID)
 	}
 	return nil
 }
-func (f *fakeGitManager) PurgeRepo(ctx context.Context) error {
+func (f *fakeGitManager) PurgeRepo(ctx context.Context, repoID string) error {
 	if f.purgeRepo != nil {
-		return f.purgeRepo(ctx)
+		return f.purgeRepo(ctx, repoID)
 	}
 	return nil
 }
@@ -84,9 +91,9 @@ func (f *fakeGitManager) GetBranch(ctx context.Context, branchID string) (codeva
 	}
 	return codevaldgit.Branch{ID: branchID, Name: "main", IsDefault: true}, nil
 }
-func (f *fakeGitManager) ListBranches(ctx context.Context) ([]codevaldgit.Branch, error) {
+func (f *fakeGitManager) ListBranches(ctx context.Context, repoID string) ([]codevaldgit.Branch, error) {
 	if f.listBranches != nil {
-		return f.listBranches(ctx)
+		return f.listBranches(ctx, repoID)
 	}
 	return []codevaldgit.Branch{{ID: "branch-1", Name: "main", IsDefault: true}}, nil
 }
@@ -114,9 +121,9 @@ func (f *fakeGitManager) GetTag(ctx context.Context, tagID string) (codevaldgit.
 	}
 	return codevaldgit.Tag{ID: tagID, Name: "v1.0.0"}, nil
 }
-func (f *fakeGitManager) ListTags(ctx context.Context) ([]codevaldgit.Tag, error) {
+func (f *fakeGitManager) ListTags(ctx context.Context, repoID string) ([]codevaldgit.Tag, error) {
 	if f.listTags != nil {
-		return f.listTags(ctx)
+		return f.listTags(ctx, repoID)
 	}
 	return []codevaldgit.Tag{{ID: "tag-1", Name: "v1.0.0"}}, nil
 }
@@ -260,7 +267,7 @@ func TestServer_InitRepo_AlreadyExists(t *testing.T) {
 
 func TestServer_GetRepository_NotInitialised(t *testing.T) {
 	client := newTestServer(t, &fakeGitManager{
-		getRepository: func(_ context.Context) (codevaldgit.Repository, error) {
+		getRepository: func(_ context.Context, _ string) (codevaldgit.Repository, error) {
 			return codevaldgit.Repository{}, codevaldgit.ErrRepoNotInitialised
 		},
 	})
@@ -275,7 +282,7 @@ func TestServer_GetRepository_NotInitialised(t *testing.T) {
 func TestServer_DeleteRepo_Success(t *testing.T) {
 	called := false
 	client := newTestServer(t, &fakeGitManager{
-		deleteRepo: func(_ context.Context) error {
+		deleteRepo: func(_ context.Context, _ string) error {
 			called = true
 			return nil
 		},
@@ -588,7 +595,7 @@ func TestServer_ErrorMapping(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			client := newTestServer(t, &fakeGitManager{
-				getRepository: func(_ context.Context) (codevaldgit.Repository, error) {
+				getRepository: func(_ context.Context, _ string) (codevaldgit.Repository, error) {
 					return codevaldgit.Repository{}, tc.err
 				},
 			})

@@ -6,32 +6,43 @@ package registrar
 import "github.com/aosanya/CodeValdSharedLib/types"
 
 // repoRoutes returns routes for repository lifecycle operations.
-// The repository is scoped per-agency — no repository ID in the path.
+// A repository ID is required in the path for all single-repo operations;
+// POST /repositories creates a new repo and GET /repositories lists them all.
 func repoRoutes() []types.RouteInfo {
+	rid := []types.PathBinding{{URLParam: "repoId", Field: "repository_id"}}
 	return []types.RouteInfo{
 		{
 			Method:     "POST",
-			Pattern:    "/git/{agencyId}/repository",
+			Pattern:    "/git/{agencyId}/repositories",
 			Capability: "init_repo",
 			GrpcMethod: "/codevaldgit.v1.GitService/InitRepo",
 		},
 		{
 			Method:     "GET",
-			Pattern:    "/git/{agencyId}/repository",
-			Capability: "get_repository",
-			GrpcMethod: "/codevaldgit.v1.GitService/GetRepository",
+			Pattern:    "/git/{agencyId}/repositories",
+			Capability: "list_repositories",
+			GrpcMethod: "/codevaldgit.v1.GitService/ListRepositories",
 		},
 		{
-			Method:     "DELETE",
-			Pattern:    "/git/{agencyId}/repository",
-			Capability: "delete_repo",
-			GrpcMethod: "/codevaldgit.v1.GitService/DeleteRepo",
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}",
+			Capability:   "get_repository",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetRepository",
+			PathBindings: rid,
 		},
 		{
-			Method:     "POST",
-			Pattern:    "/git/{agencyId}/repository/purge",
-			Capability: "purge_repo",
-			GrpcMethod: "/codevaldgit.v1.GitService/PurgeRepo",
+			Method:       "DELETE",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}",
+			Capability:   "delete_repo",
+			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteRepo",
+			PathBindings: rid,
+		},
+		{
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/purge",
+			Capability:   "purge_repo",
+			GrpcMethod:   "/codevaldgit.v1.GitService/PurgeRepo",
+			PathBindings: rid,
 		},
 	}
 }

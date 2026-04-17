@@ -8,8 +8,10 @@ package codevaldgit
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -31,7 +33,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}
-	repo, err := m.GetRepository(ctx)
+	repo, err := m.GetRepository(ctx, branch.RepositoryID)
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}
@@ -53,6 +55,12 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	blobW, _ := blobObj.Writer() // MemoryObject.Writer never returns an error.
 	_, _ = blobW.Write([]byte(req.Content))
 	_ = blobW.Close()
+	// GIT-017a: read the raw MemoryObject bytes so that EncodedObject (used by
+	// the Smart HTTP storer) can decode them during git pull / git clone.
+	blobR, _ := blobObj.Reader()
+	blobRaw, _ := io.ReadAll(blobR)
+	_ = blobR.Close()
+	blobDataB64 := base64.StdEncoding.EncodeToString(blobRaw)
 	blobHash := blobObj.Hash()
 	blobSHA := blobHash.String()
 
@@ -67,6 +75,11 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	if err := treeGitObj.Encode(treeMemObj); err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: encode tree: %w", err)
 	}
+	// GIT-017a: read the raw MemoryObject bytes for Smart HTTP storer.
+	treeR, _ := treeMemObj.Reader()
+	treeRaw, _ := io.ReadAll(treeR)
+	_ = treeR.Close()
+	treeDataB64 := base64.StdEncoding.EncodeToString(treeRaw)
 	treeHash := treeMemObj.Hash()
 	treeSHA := treeHash.String()
 
@@ -109,6 +122,11 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	if err := gitCommitObj.Encode(commitMemObj); err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: encode commit: %w", err)
 	}
+	// GIT-017a: read the raw MemoryObject bytes for Smart HTTP storer.
+	commitR, _ := commitMemObj.Reader()
+	commitRaw, _ := io.ReadAll(commitR)
+	_ = commitR.Close()
+	commitDataB64 := base64.StdEncoding.EncodeToString(commitRaw)
 	commitSHA := commitMemObj.Hash().String()
 
 	// 1. Create the Blob entity.
@@ -116,13 +134,15 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		AgencyID: m.agencyID,
 		TypeID:   "Blob",
 		Properties: map[string]any{
-			"sha":        blobSHA,
-			"path":       req.Path,
-			"name":       fileName(req.Path),
-			"extension":  fileExtension(req.Path),
-			"size":       int64(len(req.Content)),
-			"encoding":   encoding,
-			"content":    req.Content,
+			"sha":       blobSHA,
+			"path":      req.Path,
+			"name":      fileName(req.Path),
+			"extension": fileExtension(req.Path),
+			"size":      int64(len(req.Content)),
+			"encoding":  encoding,
+			"content":   req.Content,
+			// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
+			"data":       blobDataB64,
 			"created_at": now,
 		},
 	})
@@ -135,9 +155,12 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		AgencyID: m.agencyID,
 		TypeID:   "Tree",
 		Properties: map[string]any{
-			"sha":        treeSHA,
-			"path":       treeDir,
-			"entries":    string(entriesJSON),
+			"sha":     treeSHA,
+			"path":    treeDir,
+			"entries": string(entriesJSON),
+			// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
+			"data":       treeDataB64,
+			"size":       treeMemObj.Size(),
 			"created_at": now,
 		},
 	})
@@ -166,6 +189,9 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		"committer_email": req.AuthorEmail,
 		"committed_at":    now,
 		"created_at":      now,
+		// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
+		"data": commitDataB64,
+		"size": commitMemObj.Size(),
 	}
 
 	commitRels := []entitygraph.EntityRelationshipRequest{

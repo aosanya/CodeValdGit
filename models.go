@@ -253,6 +253,10 @@ type CreateRepoRequest struct {
 
 // CreateBranchRequest carries the parameters for [GitManager.CreateBranch].
 type CreateBranchRequest struct {
+	// RepositoryID is the entitygraph ID of the [Repository] that will own this
+	// branch. Required.
+	RepositoryID string `json:"repository_id"`
+
 	// Name is the full branch name (e.g. "task/abc-001"). Required.
 	Name string `json:"name"`
 
@@ -263,6 +267,10 @@ type CreateBranchRequest struct {
 
 // CreateTagRequest carries the parameters for [GitManager.CreateTag].
 type CreateTagRequest struct {
+	// RepositoryID is the entitygraph ID of the [Repository] that will own this
+	// tag. Required.
+	RepositoryID string `json:"repository_id"`
+
 	// Name is the human-readable tag label (e.g. "v1.0.0"). Required.
 	Name string `json:"name"`
 
