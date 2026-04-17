@@ -27,27 +27,27 @@ import (
 // Each field is a function so individual tests can inject specific behaviour
 // (errors, return values) without resetting global state.
 type fakeGitManager struct {
-	initRepo         func(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error)
-	listRepositories func(ctx context.Context) ([]codevaldgit.Repository, error)
-	getRepository    func(ctx context.Context, repoID string) (codevaldgit.Repository, error)
+	initRepo            func(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error)
+	listRepositories    func(ctx context.Context) ([]codevaldgit.Repository, error)
+	getRepository       func(ctx context.Context, repoID string) (codevaldgit.Repository, error)
 	getRepositoryByName func(ctx context.Context, repoName string) (codevaldgit.Repository, error)
-	deleteRepo       func(ctx context.Context, repoID string) error
-	purgeRepo        func(ctx context.Context, repoID string) error
-	createTag        func(ctx context.Context, req codevaldgit.CreateTagRequest) (codevaldgit.Tag, error)
-	createBranch     func(ctx context.Context, req codevaldgit.CreateBranchRequest) (codevaldgit.Branch, error)
-	getBranch        func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
-	listBranches     func(ctx context.Context, repoID string) ([]codevaldgit.Branch, error)
-	deleteBranch     func(ctx context.Context, branchID string) error
-	mergeBranch      func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
-	getTag           func(ctx context.Context, tagID string) (codevaldgit.Tag, error)
-	listTags         func(ctx context.Context, repoID string) ([]codevaldgit.Tag, error)
-	deleteTag        func(ctx context.Context, tagID string) error
-	writeFile        func(ctx context.Context, req codevaldgit.WriteFileRequest) (codevaldgit.Commit, error)
-	readFile         func(ctx context.Context, branchID, path string) (codevaldgit.Blob, error)
-	deleteFile       func(ctx context.Context, req codevaldgit.DeleteFileRequest) (codevaldgit.Commit, error)
-	listDirectory    func(ctx context.Context, branchID, path string) ([]codevaldgit.FileEntry, error)
-	log              func(ctx context.Context, branchID string, filter codevaldgit.LogFilter) ([]codevaldgit.CommitEntry, error)
-	diffFunc         func(ctx context.Context, fromRef, toRef string) ([]codevaldgit.FileDiff, error)
+	deleteRepo          func(ctx context.Context, repoID string) error
+	purgeRepo           func(ctx context.Context, repoID string) error
+	createTag           func(ctx context.Context, req codevaldgit.CreateTagRequest) (codevaldgit.Tag, error)
+	createBranch        func(ctx context.Context, req codevaldgit.CreateBranchRequest) (codevaldgit.Branch, error)
+	getBranch           func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
+	listBranches        func(ctx context.Context, repoID string) ([]codevaldgit.Branch, error)
+	deleteBranch        func(ctx context.Context, branchID string) error
+	mergeBranch         func(ctx context.Context, branchID string) (codevaldgit.Branch, error)
+	getTag              func(ctx context.Context, tagID string) (codevaldgit.Tag, error)
+	listTags            func(ctx context.Context, repoID string) ([]codevaldgit.Tag, error)
+	deleteTag           func(ctx context.Context, tagID string) error
+	writeFile           func(ctx context.Context, req codevaldgit.WriteFileRequest) (codevaldgit.Commit, error)
+	readFile            func(ctx context.Context, branchID, path string) (codevaldgit.Blob, error)
+	deleteFile          func(ctx context.Context, req codevaldgit.DeleteFileRequest) (codevaldgit.Commit, error)
+	listDirectory       func(ctx context.Context, branchID, path string) ([]codevaldgit.FileEntry, error)
+	log                 func(ctx context.Context, branchID string, filter codevaldgit.LogFilter) ([]codevaldgit.CommitEntry, error)
+	diffFunc            func(ctx context.Context, fromRef, toRef string) ([]codevaldgit.FileDiff, error)
 }
 
 func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error) {

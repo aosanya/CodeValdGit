@@ -50,22 +50,35 @@ func (s *Server) GetRepository(ctx context.Context, req *pb.GetRepositoryRequest
 }
 
 // GetRepositoryByName implements pb.GitServiceServer.
+// It tries a name-based lookup first. If that fails it falls back to an
+// ID-based lookup so that callers still using UUIDs (pre-GITFE-013) continue
+// to work.
 func (s *Server) GetRepositoryByName(ctx context.Context, req *pb.GetRepositoryByNameRequest) (*pb.Repository, error) {
 	repo, err := s.mgr.GetRepositoryByName(ctx, req.GetRepositoryName())
 	if err != nil {
-		return nil, toGRPCError(err)
+		// Fallback: the value might be a UUID from a pre-migration caller.
+		repo, err = s.mgr.GetRepository(ctx, req.GetRepositoryName())
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
 	}
 	return repoToProto(repo), nil
 }
 
 // resolveRepoID resolves a repository entity ID from either a direct ID or a
-// human-readable name. When repoName is non-empty it takes precedence over
-// repoID, allowing URL-based name lookups to work transparently.
+// human-readable name. When repoName is non-empty it tries a name-based lookup
+// first, then falls back to treating the value as a UUID for backward
+// compatibility with callers that have not yet migrated to name-based URLs.
 func (s *Server) resolveRepoID(ctx context.Context, repoID, repoName string) (string, error) {
 	if repoName != "" {
 		repo, err := s.mgr.GetRepositoryByName(ctx, repoName)
 		if err != nil {
-			return "", err
+			// Fallback: the value might be a UUID from a pre-migration caller.
+			repo, err = s.mgr.GetRepository(ctx, repoName)
+			if err != nil {
+				return "", err
+			}
+			return repo.ID, nil
 		}
 		return repo.ID, nil
 	}
