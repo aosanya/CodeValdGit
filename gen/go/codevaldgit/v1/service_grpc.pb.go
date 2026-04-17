@@ -43,6 +43,16 @@ const (
 	GitService_ImportRepo_FullMethodName          = "/codevaldgit.v1.GitService/ImportRepo"
 	GitService_GetImportStatus_FullMethodName     = "/codevaldgit.v1.GitService/GetImportStatus"
 	GitService_CancelImport_FullMethodName        = "/codevaldgit.v1.GitService/CancelImport"
+	GitService_CreateKeyword_FullMethodName       = "/codevaldgit.v1.GitService/CreateKeyword"
+	GitService_GetKeyword_FullMethodName          = "/codevaldgit.v1.GitService/GetKeyword"
+	GitService_ListKeywords_FullMethodName        = "/codevaldgit.v1.GitService/ListKeywords"
+	GitService_GetKeywordTree_FullMethodName      = "/codevaldgit.v1.GitService/GetKeywordTree"
+	GitService_UpdateKeyword_FullMethodName       = "/codevaldgit.v1.GitService/UpdateKeyword"
+	GitService_DeleteKeyword_FullMethodName       = "/codevaldgit.v1.GitService/DeleteKeyword"
+	GitService_CreateEdge_FullMethodName          = "/codevaldgit.v1.GitService/CreateEdge"
+	GitService_DeleteEdge_FullMethodName          = "/codevaldgit.v1.GitService/DeleteEdge"
+	GitService_GetNeighborhood_FullMethodName     = "/codevaldgit.v1.GitService/GetNeighborhood"
+	GitService_SearchByKeywords_FullMethodName    = "/codevaldgit.v1.GitService/SearchByKeywords"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -134,6 +144,41 @@ type GitServiceClient interface {
 	// Error: NOT_FOUND if no job with the given ID exists.
 	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
 	CancelImport(ctx context.Context, in *CancelImportRequest, opts ...grpc.CallOption) (*CancelImportResponse, error)
+	// CreateKeyword creates a new Keyword entity in the taxonomy.
+	// Error: ALREADY_EXISTS if a keyword with the same name exists under the same parent.
+	// Error: NOT_FOUND if parent_id is set and does not exist.
+	CreateKeyword(ctx context.Context, in *CreateKeywordRequest, opts ...grpc.CallOption) (*Keyword, error)
+	// GetKeyword retrieves a Keyword entity by its ID.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	GetKeyword(ctx context.Context, in *GetKeywordRequest, opts ...grpc.CallOption) (*Keyword, error)
+	// ListKeywords returns Keyword entities matching the given filter.
+	// When parent_id is empty, root keywords are returned.
+	ListKeywords(ctx context.Context, in *ListKeywordsRequest, opts ...grpc.CallOption) (*ListKeywordsResponse, error)
+	// GetKeywordTree returns the full taxonomy subtree rooted at keyword_id,
+	// or the full forest of root keywords when keyword_id is empty.
+	GetKeywordTree(ctx context.Context, in *GetKeywordTreeRequest, opts ...grpc.CallOption) (*GetKeywordTreeResponse, error)
+	// UpdateKeyword updates mutable fields of a Keyword entity.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	UpdateKeyword(ctx context.Context, in *UpdateKeywordRequest, opts ...grpc.CallOption) (*Keyword, error)
+	// DeleteKeyword removes a Keyword entity and re-roots its children.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	DeleteKeyword(ctx context.Context, in *DeleteKeywordRequest, opts ...grpc.CallOption) (*DeleteKeywordResponse, error)
+	// CreateEdge creates a documentation edge between two entities on a branch.
+	// Error: NOT_FOUND if the branch does not exist.
+	// Error: INVALID_ARGUMENT if the relationship name is not a valid edge type.
+	CreateEdge(ctx context.Context, in *CreateEdgeRequest, opts ...grpc.CallOption) (*CreateEdgeResponse, error)
+	// DeleteEdge removes a documentation edge between two entities on a branch.
+	// Error: NOT_FOUND if the branch or edge does not exist.
+	// Error: INVALID_ARGUMENT if the relationship name is invalid.
+	DeleteEdge(ctx context.Context, in *DeleteEdgeRequest, opts ...grpc.CallOption) (*DeleteEdgeResponse, error)
+	// GetNeighborhood returns all entities and edges reachable from entity_id
+	// within the given depth (1-3), bounded by a 100-node hard cap.
+	// Error: NOT_FOUND if the branch or entity does not exist.
+	GetNeighborhood(ctx context.Context, in *GetNeighborhoodRequest, opts ...grpc.CallOption) (*GraphResult, error)
+	// SearchByKeywords returns entities tagged with the specified keywords,
+	// optionally cascading down the keyword hierarchy.
+	// Error: NOT_FOUND if the branch does not exist.
+	SearchByKeywords(ctx context.Context, in *SearchByKeywordsRequest, opts ...grpc.CallOption) (*GraphResult, error)
 }
 
 type gitServiceClient struct {
@@ -384,6 +429,106 @@ func (c *gitServiceClient) CancelImport(ctx context.Context, in *CancelImportReq
 	return out, nil
 }
 
+func (c *gitServiceClient) CreateKeyword(ctx context.Context, in *CreateKeywordRequest, opts ...grpc.CallOption) (*Keyword, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Keyword)
+	err := c.cc.Invoke(ctx, GitService_CreateKeyword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetKeyword(ctx context.Context, in *GetKeywordRequest, opts ...grpc.CallOption) (*Keyword, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Keyword)
+	err := c.cc.Invoke(ctx, GitService_GetKeyword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) ListKeywords(ctx context.Context, in *ListKeywordsRequest, opts ...grpc.CallOption) (*ListKeywordsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListKeywordsResponse)
+	err := c.cc.Invoke(ctx, GitService_ListKeywords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetKeywordTree(ctx context.Context, in *GetKeywordTreeRequest, opts ...grpc.CallOption) (*GetKeywordTreeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetKeywordTreeResponse)
+	err := c.cc.Invoke(ctx, GitService_GetKeywordTree_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) UpdateKeyword(ctx context.Context, in *UpdateKeywordRequest, opts ...grpc.CallOption) (*Keyword, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Keyword)
+	err := c.cc.Invoke(ctx, GitService_UpdateKeyword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteKeyword(ctx context.Context, in *DeleteKeywordRequest, opts ...grpc.CallOption) (*DeleteKeywordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteKeywordResponse)
+	err := c.cc.Invoke(ctx, GitService_DeleteKeyword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) CreateEdge(ctx context.Context, in *CreateEdgeRequest, opts ...grpc.CallOption) (*CreateEdgeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateEdgeResponse)
+	err := c.cc.Invoke(ctx, GitService_CreateEdge_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) DeleteEdge(ctx context.Context, in *DeleteEdgeRequest, opts ...grpc.CallOption) (*DeleteEdgeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteEdgeResponse)
+	err := c.cc.Invoke(ctx, GitService_DeleteEdge_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetNeighborhood(ctx context.Context, in *GetNeighborhoodRequest, opts ...grpc.CallOption) (*GraphResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GraphResult)
+	err := c.cc.Invoke(ctx, GitService_GetNeighborhood_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) SearchByKeywords(ctx context.Context, in *SearchByKeywordsRequest, opts ...grpc.CallOption) (*GraphResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GraphResult)
+	err := c.cc.Invoke(ctx, GitService_SearchByKeywords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GitServiceServer is the server API for GitService service.
 // All implementations must embed UnimplementedGitServiceServer
 // for forward compatibility.
@@ -473,6 +618,41 @@ type GitServiceServer interface {
 	// Error: NOT_FOUND if no job with the given ID exists.
 	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
 	CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error)
+	// CreateKeyword creates a new Keyword entity in the taxonomy.
+	// Error: ALREADY_EXISTS if a keyword with the same name exists under the same parent.
+	// Error: NOT_FOUND if parent_id is set and does not exist.
+	CreateKeyword(context.Context, *CreateKeywordRequest) (*Keyword, error)
+	// GetKeyword retrieves a Keyword entity by its ID.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	GetKeyword(context.Context, *GetKeywordRequest) (*Keyword, error)
+	// ListKeywords returns Keyword entities matching the given filter.
+	// When parent_id is empty, root keywords are returned.
+	ListKeywords(context.Context, *ListKeywordsRequest) (*ListKeywordsResponse, error)
+	// GetKeywordTree returns the full taxonomy subtree rooted at keyword_id,
+	// or the full forest of root keywords when keyword_id is empty.
+	GetKeywordTree(context.Context, *GetKeywordTreeRequest) (*GetKeywordTreeResponse, error)
+	// UpdateKeyword updates mutable fields of a Keyword entity.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	UpdateKeyword(context.Context, *UpdateKeywordRequest) (*Keyword, error)
+	// DeleteKeyword removes a Keyword entity and re-roots its children.
+	// Error: NOT_FOUND if no keyword with that ID exists.
+	DeleteKeyword(context.Context, *DeleteKeywordRequest) (*DeleteKeywordResponse, error)
+	// CreateEdge creates a documentation edge between two entities on a branch.
+	// Error: NOT_FOUND if the branch does not exist.
+	// Error: INVALID_ARGUMENT if the relationship name is not a valid edge type.
+	CreateEdge(context.Context, *CreateEdgeRequest) (*CreateEdgeResponse, error)
+	// DeleteEdge removes a documentation edge between two entities on a branch.
+	// Error: NOT_FOUND if the branch or edge does not exist.
+	// Error: INVALID_ARGUMENT if the relationship name is invalid.
+	DeleteEdge(context.Context, *DeleteEdgeRequest) (*DeleteEdgeResponse, error)
+	// GetNeighborhood returns all entities and edges reachable from entity_id
+	// within the given depth (1-3), bounded by a 100-node hard cap.
+	// Error: NOT_FOUND if the branch or entity does not exist.
+	GetNeighborhood(context.Context, *GetNeighborhoodRequest) (*GraphResult, error)
+	// SearchByKeywords returns entities tagged with the specified keywords,
+	// optionally cascading down the keyword hierarchy.
+	// Error: NOT_FOUND if the branch does not exist.
+	SearchByKeywords(context.Context, *SearchByKeywordsRequest) (*GraphResult, error)
 	mustEmbedUnimplementedGitServiceServer()
 }
 
@@ -554,6 +734,36 @@ func (UnimplementedGitServiceServer) GetImportStatus(context.Context, *GetImport
 }
 func (UnimplementedGitServiceServer) CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelImport not implemented")
+}
+func (UnimplementedGitServiceServer) CreateKeyword(context.Context, *CreateKeywordRequest) (*Keyword, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateKeyword not implemented")
+}
+func (UnimplementedGitServiceServer) GetKeyword(context.Context, *GetKeywordRequest) (*Keyword, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetKeyword not implemented")
+}
+func (UnimplementedGitServiceServer) ListKeywords(context.Context, *ListKeywordsRequest) (*ListKeywordsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListKeywords not implemented")
+}
+func (UnimplementedGitServiceServer) GetKeywordTree(context.Context, *GetKeywordTreeRequest) (*GetKeywordTreeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetKeywordTree not implemented")
+}
+func (UnimplementedGitServiceServer) UpdateKeyword(context.Context, *UpdateKeywordRequest) (*Keyword, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateKeyword not implemented")
+}
+func (UnimplementedGitServiceServer) DeleteKeyword(context.Context, *DeleteKeywordRequest) (*DeleteKeywordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteKeyword not implemented")
+}
+func (UnimplementedGitServiceServer) CreateEdge(context.Context, *CreateEdgeRequest) (*CreateEdgeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateEdge not implemented")
+}
+func (UnimplementedGitServiceServer) DeleteEdge(context.Context, *DeleteEdgeRequest) (*DeleteEdgeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteEdge not implemented")
+}
+func (UnimplementedGitServiceServer) GetNeighborhood(context.Context, *GetNeighborhoodRequest) (*GraphResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetNeighborhood not implemented")
+}
+func (UnimplementedGitServiceServer) SearchByKeywords(context.Context, *SearchByKeywordsRequest) (*GraphResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchByKeywords not implemented")
 }
 func (UnimplementedGitServiceServer) mustEmbedUnimplementedGitServiceServer() {}
 func (UnimplementedGitServiceServer) testEmbeddedByValue()                    {}
@@ -1008,6 +1218,186 @@ func _GitService_CancelImport_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitService_CreateKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeywordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CreateKeyword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CreateKeyword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CreateKeyword(ctx, req.(*CreateKeywordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeywordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetKeyword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetKeyword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetKeyword(ctx, req.(*GetKeywordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_ListKeywords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeywordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ListKeywords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ListKeywords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ListKeywords(ctx, req.(*ListKeywordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetKeywordTree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeywordTreeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetKeywordTree(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetKeywordTree_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetKeywordTree(ctx, req.(*GetKeywordTreeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_UpdateKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateKeywordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).UpdateKeyword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_UpdateKeyword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).UpdateKeyword(ctx, req.(*UpdateKeywordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_DeleteKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteKeywordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).DeleteKeyword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_DeleteKeyword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).DeleteKeyword(ctx, req.(*DeleteKeywordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CreateEdge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateEdgeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CreateEdge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CreateEdge_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CreateEdge(ctx, req.(*CreateEdgeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_DeleteEdge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteEdgeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).DeleteEdge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_DeleteEdge_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).DeleteEdge(ctx, req.(*DeleteEdgeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetNeighborhood_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNeighborhoodRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetNeighborhood(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetNeighborhood_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetNeighborhood(ctx, req.(*GetNeighborhoodRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_SearchByKeywords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchByKeywordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).SearchByKeywords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_SearchByKeywords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).SearchByKeywords(ctx, req.(*SearchByKeywordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GitService_ServiceDesc is the grpc.ServiceDesc for GitService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1110,6 +1500,46 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelImport",
 			Handler:    _GitService_CancelImport_Handler,
+		},
+		{
+			MethodName: "CreateKeyword",
+			Handler:    _GitService_CreateKeyword_Handler,
+		},
+		{
+			MethodName: "GetKeyword",
+			Handler:    _GitService_GetKeyword_Handler,
+		},
+		{
+			MethodName: "ListKeywords",
+			Handler:    _GitService_ListKeywords_Handler,
+		},
+		{
+			MethodName: "GetKeywordTree",
+			Handler:    _GitService_GetKeywordTree_Handler,
+		},
+		{
+			MethodName: "UpdateKeyword",
+			Handler:    _GitService_UpdateKeyword_Handler,
+		},
+		{
+			MethodName: "DeleteKeyword",
+			Handler:    _GitService_DeleteKeyword_Handler,
+		},
+		{
+			MethodName: "CreateEdge",
+			Handler:    _GitService_CreateEdge_Handler,
+		},
+		{
+			MethodName: "DeleteEdge",
+			Handler:    _GitService_DeleteEdge_Handler,
+		},
+		{
+			MethodName: "GetNeighborhood",
+			Handler:    _GitService_GetNeighborhood_Handler,
+		},
+		{
+			MethodName: "SearchByKeywords",
+			Handler:    _GitService_SearchByKeywords_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
