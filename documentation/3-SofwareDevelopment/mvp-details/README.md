@@ -11,7 +11,7 @@ CodeValdGit is a Go library that provides Git-based artifact versioning for **Co
 | Concern | Approach |
 |---|---|
 | Git engine | [go-git](https://github.com/go-git/go-git) pure-Go — no system `git` binary |
-| Repo granularity | 1 repo per Agency |
+| Repo granularity | Multiple repos per Agency |
 | Agent write policy | Always on a `task/{task-id}` branch — never directly to `main` |
 | Merge strategy | Auto-merge on task completion; auto-rebase when `main` has advanced |
 | Storage (v2) | Single `entitygraph.DataManager` for both gRPC and Smart HTTP paths |

@@ -380,9 +380,9 @@ func mustInitRepo(t *testing.T, mgr codevaldgit.GitManager) codevaldgit.Reposito
 
 // mustDefaultBranch returns the repository's default branch and fatals the test
 // if it cannot be found.
-func mustDefaultBranch(t *testing.T, mgr codevaldgit.GitManager) codevaldgit.Branch {
+func mustDefaultBranch(t *testing.T, mgr codevaldgit.GitManager, repoID string) codevaldgit.Branch {
 	t.Helper()
-	branches, err := mgr.ListBranches(context.Background())
+	branches, err := mgr.ListBranches(context.Background(), repoID)
 	if err != nil {
 		t.Fatalf("ListBranches: %v", err)
 	}
@@ -433,16 +433,22 @@ func TestGitManager_InitRepo(t *testing.T) {
 		t.Errorf("repo.DefaultBranch = %q, want %q", repo.DefaultBranch, "main")
 	}
 
-	// Second call on the same agency must return ErrRepoAlreadyExists.
-	_, err = mgr.InitRepo(ctx, codevaldgit.CreateRepoRequest{Name: "another"})
+	// Second InitRepo with the same name must return ErrRepoAlreadyExists.
+	_, err = mgr.InitRepo(ctx, codevaldgit.CreateRepoRequest{Name: "my-repo"})
 	if !errors.Is(err, codevaldgit.ErrRepoAlreadyExists) {
-		t.Errorf("second InitRepo: got %v, want ErrRepoAlreadyExists", err)
+		t.Errorf("second InitRepo same name: got %v, want ErrRepoAlreadyExists", err)
+	}
+
+	// A different name succeeds — multiple repos per agency are allowed.
+	_, err = mgr.InitRepo(ctx, codevaldgit.CreateRepoRequest{Name: "another"})
+	if err != nil {
+		t.Errorf("InitRepo different name: got %v, want nil", err)
 	}
 }
 
 func TestGitManager_GetRepository_BeforeInit(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
-	_, err := mgr.GetRepository(context.Background())
+	_, err := mgr.GetRepository(context.Background(), "nonexistent-id")
 	if !errors.Is(err, codevaldgit.ErrRepoNotInitialised) {
 		t.Errorf("GetRepository before init: got %v, want ErrRepoNotInitialised", err)
 	}
@@ -450,14 +456,14 @@ func TestGitManager_GetRepository_BeforeInit(t *testing.T) {
 
 func TestGitManager_GetRepository_AfterInit(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	repo, err := mgr.GetRepository(context.Background())
+	got, err := mgr.GetRepository(context.Background(), repo.ID)
 	if err != nil {
 		t.Fatalf("GetRepository: %v", err)
 	}
-	if repo.Name != "test-repo" {
-		t.Errorf("repo.Name = %q, want %q", repo.Name, "test-repo")
+	if got.Name != "test-repo" {
+		t.Errorf("repo.Name = %q, want %q", got.Name, "test-repo")
 	}
 }
 
@@ -465,18 +471,18 @@ func TestGitManager_DeleteRepo(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
 
-	// DeleteRepo before init returns ErrRepoNotInitialised.
-	if err := mgr.DeleteRepo(ctx); !errors.Is(err, codevaldgit.ErrRepoNotInitialised) {
+	// DeleteRepo with an unknown ID returns ErrRepoNotInitialised.
+	if err := mgr.DeleteRepo(ctx, "nonexistent-id"); !errors.Is(err, codevaldgit.ErrRepoNotInitialised) {
 		t.Errorf("DeleteRepo before init: got %v, want ErrRepoNotInitialised", err)
 	}
 
-	mustInitRepo(t, mgr)
-	if err := mgr.DeleteRepo(ctx); err != nil {
+	repo := mustInitRepo(t, mgr)
+	if err := mgr.DeleteRepo(ctx, repo.ID); err != nil {
 		t.Fatalf("DeleteRepo: %v", err)
 	}
 
 	// Repository is gone after deletion.
-	_, err := mgr.GetRepository(ctx)
+	_, err := mgr.GetRepository(ctx, repo.ID)
 	if !errors.Is(err, codevaldgit.ErrRepoNotInitialised) {
 		t.Errorf("GetRepository after delete: got %v, want ErrRepoNotInitialised", err)
 	}
@@ -484,9 +490,9 @@ func TestGitManager_DeleteRepo(t *testing.T) {
 
 func TestGitManager_ListBranches(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	branches, err := mgr.ListBranches(context.Background())
+	branches, err := mgr.ListBranches(context.Background(), repo.ID)
 	if err != nil {
 		t.Fatalf("ListBranches: %v", err)
 	}
@@ -500,9 +506,9 @@ func TestGitManager_ListBranches(t *testing.T) {
 		t.Error("branch.IsDefault = false, want true")
 	}
 
-	// ListBranches before init returns ErrRepoNotInitialised.
+	// ListBranches with an unknown repoID returns ErrRepoNotInitialised.
 	mgr2, _, _ := newTestManager(t)
-	_, err = mgr2.ListBranches(context.Background())
+	_, err = mgr2.ListBranches(context.Background(), "nonexistent-id")
 	if !errors.Is(err, codevaldgit.ErrRepoNotInitialised) {
 		t.Errorf("ListBranches before init: got %v, want ErrRepoNotInitialised", err)
 	}
@@ -511,9 +517,9 @@ func TestGitManager_ListBranches(t *testing.T) {
 func TestGitManager_CreateBranch(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	b, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "feature/xyz"})
+	b, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "feature/xyz"})
 	if err != nil {
 		t.Fatalf("CreateBranch: %v", err)
 	}
@@ -525,7 +531,7 @@ func TestGitManager_CreateBranch(t *testing.T) {
 	}
 
 	// A second branch with the same name returns ErrBranchExists.
-	_, err = mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "feature/xyz"})
+	_, err = mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "feature/xyz"})
 	if !errors.Is(err, codevaldgit.ErrBranchExists) {
 		t.Errorf("duplicate CreateBranch: got %v, want ErrBranchExists", err)
 	}
@@ -534,9 +540,9 @@ func TestGitManager_CreateBranch(t *testing.T) {
 func TestGitManager_GetBranch(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	def := mustDefaultBranch(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 	got, err := mgr.GetBranch(ctx, def.ID)
 	if err != nil {
 		t.Fatalf("GetBranch: %v", err)
@@ -558,9 +564,9 @@ func TestGitManager_GetBranch(t *testing.T) {
 func TestGitManager_DeleteBranch(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	b, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "task/delete-me"})
+	b, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "task/delete-me"})
 	if err != nil {
 		t.Fatalf("CreateBranch: %v", err)
 	}
@@ -580,7 +586,7 @@ func TestGitManager_DeleteBranch(t *testing.T) {
 	}
 
 	// Cannot delete the default (protected) branch.
-	def := mustDefaultBranch(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 	err = mgr.DeleteBranch(ctx, def.ID)
 	if !errors.Is(err, codevaldgit.ErrDefaultBranchDeleteForbidden) {
 		t.Errorf("DeleteBranch default: got %v, want ErrDefaultBranchDeleteForbidden", err)
@@ -590,8 +596,8 @@ func TestGitManager_DeleteBranch(t *testing.T) {
 func TestGitManager_WriteFile(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	commit, err := mgr.WriteFile(ctx, codevaldgit.WriteFileRequest{
 		BranchID:   def.ID,
@@ -640,8 +646,8 @@ func TestGitManager_WriteFile(t *testing.T) {
 func TestGitManager_ReadFile(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	mustWriteFile(t, mgr, def.ID, "hello.txt", "hello world")
 
@@ -672,8 +678,8 @@ func TestGitManager_ReadFile(t *testing.T) {
 func TestGitManager_DeleteFile(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	mustWriteFile(t, mgr, def.ID, "file.txt", "content")
 
@@ -700,8 +706,8 @@ func TestGitManager_DeleteFile(t *testing.T) {
 func TestGitManager_ListDirectory(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	// Write one file at the root.
 	mustWriteFile(t, mgr, def.ID, "README.md", "# docs")
@@ -720,7 +726,7 @@ func TestGitManager_ListDirectory(t *testing.T) {
 	}
 
 	// Write a file in a subdirectory on a fresh branch.
-	sub, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "task/sub"})
+	sub, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "task/sub"})
 	if err != nil {
 		t.Fatalf("CreateBranch: %v", err)
 	}
@@ -756,8 +762,8 @@ func TestGitManager_ListDirectory(t *testing.T) {
 func TestGitManager_Log(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	messages := []string{"commit A", "commit B", "commit C"}
 	for _, msg := range messages {
@@ -816,9 +822,9 @@ func TestGitManager_Log(t *testing.T) {
 func TestGitManager_MergeBranch(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
+	repo := mustInitRepo(t, mgr)
 
-	feature, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "task/merge-test"})
+	feature, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "task/merge-test"})
 	if err != nil {
 		t.Fatalf("CreateBranch: %v", err)
 	}
@@ -838,7 +844,7 @@ func TestGitManager_MergeBranch(t *testing.T) {
 	}
 
 	// The file written on the feature branch is now visible on the default branch.
-	def := mustDefaultBranch(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 	blob, err := mgr.ReadFile(ctx, def.ID, "feature.txt")
 	if err != nil {
 		t.Fatalf("ReadFile after merge: %v", err)
@@ -857,17 +863,18 @@ func TestGitManager_MergeBranch(t *testing.T) {
 func TestGitManager_Tags(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	commit := mustWriteFile(t, mgr, def.ID, "release.txt", "v1.0")
 
 	// CreateTag succeeds.
 	tag, err := mgr.CreateTag(ctx, codevaldgit.CreateTagRequest{
-		Name:       "v1.0.0",
-		CommitID:   commit.ID,
-		Message:    "First release",
-		TaggerName: "tester",
+		RepositoryID: repo.ID,
+		Name:         "v1.0.0",
+		CommitID:     commit.ID,
+		Message:      "First release",
+		TaggerName:   "tester",
 	})
 	if err != nil {
 		t.Fatalf("CreateTag: %v", err)
@@ -880,7 +887,7 @@ func TestGitManager_Tags(t *testing.T) {
 	}
 
 	// Duplicate name returns ErrTagAlreadyExists.
-	_, err = mgr.CreateTag(ctx, codevaldgit.CreateTagRequest{Name: "v1.0.0", CommitID: commit.ID})
+	_, err = mgr.CreateTag(ctx, codevaldgit.CreateTagRequest{RepositoryID: repo.ID, Name: "v1.0.0", CommitID: commit.ID})
 	if !errors.Is(err, codevaldgit.ErrTagAlreadyExists) {
 		t.Errorf("duplicate CreateTag: got %v, want ErrTagAlreadyExists", err)
 	}
@@ -901,7 +908,7 @@ func TestGitManager_Tags(t *testing.T) {
 	}
 
 	// ListTags returns all tags.
-	tags, err := mgr.ListTags(ctx)
+	tags, err := mgr.ListTags(ctx, repo.ID)
 	if err != nil {
 		t.Fatalf("ListTags: %v", err)
 	}
@@ -927,14 +934,14 @@ func TestGitManager_Tags(t *testing.T) {
 func TestGitManager_Diff(t *testing.T) {
 	mgr, _, _ := newTestManager(t)
 	ctx := context.Background()
-	mustInitRepo(t, mgr)
-	def := mustDefaultBranch(t, mgr)
+	repo := mustInitRepo(t, mgr)
+	def := mustDefaultBranch(t, mgr, repo.ID)
 
 	// Write a file on the default branch.
 	mustWriteFile(t, mgr, def.ID, "file-a.txt", "content a")
 
 	// Create a feature branch (inherits main's HEAD which has file-a.txt).
-	feature, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{Name: "feature/diff-test"})
+	feature, err := mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{RepositoryID: repo.ID, Name: "feature/diff-test"})
 	if err != nil {
 		t.Fatalf("CreateBranch: %v", err)
 	}
@@ -996,7 +1003,7 @@ func TestImportRepo_RejectsIfRepoExists(t *testing.T) {
 	mustInitRepo(t, mgr)
 
 	_, err := mgr.ImportRepo(ctx, codevaldgit.ImportRepoRequest{
-		Name:      "import-attempt",
+		Name:      "test-repo",
 		SourceURL: "https://example.com/repo.git",
 	})
 	if !errors.Is(err, codevaldgit.ErrRepoAlreadyExists) {

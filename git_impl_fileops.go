@@ -33,7 +33,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}
-	repo, err := m.GetRepository(ctx)
+	repo, err := m.GetRepository(ctx, branch.RepositoryID)
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}

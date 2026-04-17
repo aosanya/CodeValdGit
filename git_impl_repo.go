@@ -16,16 +16,18 @@ import (
 
 // ── Repository Lifecycle ──────────────────────────────────────────────────────
 
-// InitRepo creates the single Repository entity for this agency.
-// Returns [ErrRepoAlreadyExists] if a repository entity already exists.
+// InitRepo creates a new Repository entity for this agency.
+// Returns [ErrRepoAlreadyExists] if a repository with the same name already exists.
 // Publishes "cross.git.{agencyID}.repo.created" after a successful write.
 func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error) {
 	existing, err := m.listRepositories(ctx)
 	if err != nil {
 		return Repository{}, fmt.Errorf("InitRepo: %w", err)
 	}
-	if len(existing) > 0 {
-		return Repository{}, ErrRepoAlreadyExists
+	for _, r := range existing {
+		if strProp(r.Properties, "name") == req.Name {
+			return Repository{}, ErrRepoAlreadyExists
+		}
 	}
 
 	// Ensure the Agency root entity exists; create it if not.
@@ -95,23 +97,36 @@ func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repos
 	return repo, nil
 }
 
-// GetRepository retrieves the single Repository entity for this agency.
-// Returns [ErrRepoNotInitialised] if no repository has been created yet.
-func (m *gitManager) GetRepository(ctx context.Context) (Repository, error) {
-	repos, err := m.listRepositories(ctx)
+// ListRepositories returns all Repository entities for this agency.
+func (m *gitManager) ListRepositories(ctx context.Context) ([]Repository, error) {
+	entities, err := m.listRepositories(ctx)
 	if err != nil {
-		return Repository{}, fmt.Errorf("GetRepository: %w", err)
+		return nil, fmt.Errorf("ListRepositories: %w", err)
 	}
-	if len(repos) == 0 {
-		return Repository{}, ErrRepoNotInitialised
+	out := make([]Repository, len(entities))
+	for i, e := range entities {
+		out[i] = entityToRepository(e, m.agencyID)
 	}
-	return entityToRepository(repos[0], m.agencyID), nil
+	return out, nil
 }
 
-// DeleteRepo soft-deletes the repository entity and all owned sub-entities.
-// Returns [ErrRepoNotInitialised] if no repository entity exists.
-func (m *gitManager) DeleteRepo(ctx context.Context) error {
-	repo, err := m.GetRepository(ctx)
+// GetRepository retrieves a Repository entity by its ID.
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+func (m *gitManager) GetRepository(ctx context.Context, repoID string) (Repository, error) {
+	e, err := m.dm.GetEntity(ctx, m.agencyID, repoID)
+	if err != nil {
+		return Repository{}, ErrRepoNotInitialised
+	}
+	if e.TypeID != "Repository" {
+		return Repository{}, ErrRepoNotInitialised
+	}
+	return entityToRepository(e, m.agencyID), nil
+}
+
+// DeleteRepo soft-deletes the specified repository entity and all owned sub-entities.
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+func (m *gitManager) DeleteRepo(ctx context.Context, repoID string) error {
+	repo, err := m.GetRepository(ctx, repoID)
 	if err != nil {
 		return fmt.Errorf("DeleteRepo: %w", err)
 	}
@@ -147,19 +162,19 @@ func (m *gitManager) DeleteRepo(ctx context.Context) error {
 
 // PurgeRepo is a no-op alias for DeleteRepo in the entitygraph model — soft
 // deletion is the only supported deletion strategy in v1.
-// Returns [ErrRepoNotInitialised] if no repository entity exists.
-func (m *gitManager) PurgeRepo(ctx context.Context) error {
-	return m.DeleteRepo(ctx)
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+func (m *gitManager) PurgeRepo(ctx context.Context, repoID string) error {
+	return m.DeleteRepo(ctx, repoID)
 }
 
 // ── Branch Management ─────────────────────────────────────────────────────────
 
 // CreateBranch creates a new Branch entity from the specified source branch.
 // If req.FromBranchID is empty, the repository default branch is used.
-// Returns [ErrRepoNotInitialised] if no repository entity exists.
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 // Returns [ErrBranchExists] if a branch with the given name already exists.
 func (m *gitManager) CreateBranch(ctx context.Context, req CreateBranchRequest) (Branch, error) {
-	repo, err := m.GetRepository(ctx)
+	repo, err := m.GetRepository(ctx, req.RepositoryID)
 	if err != nil {
 		return Branch{}, fmt.Errorf("CreateBranch: %w", err)
 	}
@@ -245,20 +260,19 @@ func (m *gitManager) GetBranch(ctx context.Context, branchID string) (Branch, er
 	return entityToBranch(e, repoID), nil
 }
 
-// ListBranches returns all Branch entities for this agency's repository.
-// Returns [ErrRepoNotInitialised] if no repository entity exists.
-func (m *gitManager) ListBranches(ctx context.Context) ([]Branch, error) {
-	repo, err := m.GetRepository(ctx)
-	if err != nil {
+// ListBranches returns all Branch entities for the specified repository.
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch, error) {
+	if _, err := m.GetRepository(ctx, repoID); err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
-	entities, err := m.listBranchesByRepo(ctx, repo.ID)
+	entities, err := m.listBranchesByRepo(ctx, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
 	out := make([]Branch, len(entities))
 	for i, e := range entities {
-		out[i] = entityToBranch(e, repo.ID)
+		out[i] = entityToBranch(e, repoID)
 	}
 	return out, nil
 }
@@ -292,11 +306,11 @@ func (m *gitManager) DeleteBranch(ctx context.Context, branchID string) error {
 // Returns [ErrBranchNotFound] if no branch with that ID exists.
 // Returns [ErrRepoNotInitialised] if no repository entity exists.
 func (m *gitManager) MergeBranch(ctx context.Context, branchID string) (Branch, error) {
-	repo, err := m.GetRepository(ctx)
+	sourceBranch, err := m.GetBranch(ctx, branchID)
 	if err != nil {
 		return Branch{}, fmt.Errorf("MergeBranch: %w", err)
 	}
-	sourceBranch, err := m.GetBranch(ctx, branchID)
+	repo, err := m.GetRepository(ctx, sourceBranch.RepositoryID)
 	if err != nil {
 		return Branch{}, fmt.Errorf("MergeBranch: %w", err)
 	}
@@ -323,7 +337,7 @@ func (m *gitManager) MergeBranch(ctx context.Context, branchID string) (Branch, 
 // Returns [ErrTagAlreadyExists] if a tag with the given name already exists.
 // Returns [ErrBranchNotFound] if req.CommitID does not resolve to a Commit entity.
 func (m *gitManager) CreateTag(ctx context.Context, req CreateTagRequest) (Tag, error) {
-	repo, err := m.GetRepository(ctx)
+	repo, err := m.GetRepository(ctx, req.RepositoryID)
 	if err != nil {
 		return Tag{}, fmt.Errorf("CreateTag: %w", err)
 	}
@@ -391,20 +405,19 @@ func (m *gitManager) GetTag(ctx context.Context, tagID string) (Tag, error) {
 	return entityToTag(e, repoID), nil
 }
 
-// ListTags returns all Tag entities for this agency's repository.
-// Returns [ErrRepoNotInitialised] if no repository entity exists.
-func (m *gitManager) ListTags(ctx context.Context) ([]Tag, error) {
-	repo, err := m.GetRepository(ctx)
-	if err != nil {
+// ListTags returns all Tag entities for the specified repository.
+// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+func (m *gitManager) ListTags(ctx context.Context, repoID string) ([]Tag, error) {
+	if _, err := m.GetRepository(ctx, repoID); err != nil {
 		return nil, fmt.Errorf("ListTags: %w", err)
 	}
-	tags, err := m.listTagsByRepo(ctx, repo.ID)
+	tags, err := m.listTagsByRepo(ctx, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("ListTags: %w", err)
 	}
 	out := make([]Tag, len(tags))
 	for i, e := range tags {
-		out[i] = entityToTag(e, repo.ID)
+		out[i] = entityToTag(e, repoID)
 	}
 	return out, nil
 }
@@ -666,23 +679,4 @@ func int64Prop(props map[string]any, key string) int64 {
 		}
 	}
 	return 0
-}
-
-// stringSliceProp returns the []string value of key in props, or nil if absent.
-func stringSliceProp(props map[string]any, key string) []string {
-	if v, ok := props[key]; ok {
-		switch vv := v.(type) {
-		case []string:
-			return vv
-		case []any:
-			out := make([]string, 0, len(vv))
-			for _, item := range vv {
-				if s, ok := item.(string); ok {
-					out = append(out, s)
-				}
-			}
-			return out
-		}
-	}
-	return nil
 }

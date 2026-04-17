@@ -19,28 +19,29 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GitService_InitRepo_FullMethodName        = "/codevaldgit.v1.GitService/InitRepo"
-	GitService_GetRepository_FullMethodName   = "/codevaldgit.v1.GitService/GetRepository"
-	GitService_DeleteRepo_FullMethodName      = "/codevaldgit.v1.GitService/DeleteRepo"
-	GitService_PurgeRepo_FullMethodName       = "/codevaldgit.v1.GitService/PurgeRepo"
-	GitService_CreateBranch_FullMethodName    = "/codevaldgit.v1.GitService/CreateBranch"
-	GitService_GetBranch_FullMethodName       = "/codevaldgit.v1.GitService/GetBranch"
-	GitService_ListBranches_FullMethodName    = "/codevaldgit.v1.GitService/ListBranches"
-	GitService_DeleteBranch_FullMethodName    = "/codevaldgit.v1.GitService/DeleteBranch"
-	GitService_MergeBranch_FullMethodName     = "/codevaldgit.v1.GitService/MergeBranch"
-	GitService_CreateTag_FullMethodName       = "/codevaldgit.v1.GitService/CreateTag"
-	GitService_GetTag_FullMethodName          = "/codevaldgit.v1.GitService/GetTag"
-	GitService_ListTags_FullMethodName        = "/codevaldgit.v1.GitService/ListTags"
-	GitService_DeleteTag_FullMethodName       = "/codevaldgit.v1.GitService/DeleteTag"
-	GitService_WriteFile_FullMethodName       = "/codevaldgit.v1.GitService/WriteFile"
-	GitService_ReadFile_FullMethodName        = "/codevaldgit.v1.GitService/ReadFile"
-	GitService_DeleteFile_FullMethodName      = "/codevaldgit.v1.GitService/DeleteFile"
-	GitService_ListDirectory_FullMethodName   = "/codevaldgit.v1.GitService/ListDirectory"
-	GitService_Log_FullMethodName             = "/codevaldgit.v1.GitService/Log"
-	GitService_Diff_FullMethodName            = "/codevaldgit.v1.GitService/Diff"
-	GitService_ImportRepo_FullMethodName      = "/codevaldgit.v1.GitService/ImportRepo"
-	GitService_GetImportStatus_FullMethodName = "/codevaldgit.v1.GitService/GetImportStatus"
-	GitService_CancelImport_FullMethodName    = "/codevaldgit.v1.GitService/CancelImport"
+	GitService_InitRepo_FullMethodName         = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_ListRepositories_FullMethodName = "/codevaldgit.v1.GitService/ListRepositories"
+	GitService_GetRepository_FullMethodName    = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_DeleteRepo_FullMethodName       = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName        = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName     = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName        = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_ListBranches_FullMethodName     = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName     = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName      = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateTag_FullMethodName        = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName           = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName         = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName        = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName        = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName         = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName       = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName    = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName              = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName             = "/codevaldgit.v1.GitService/Diff"
+	GitService_ImportRepo_FullMethodName       = "/codevaldgit.v1.GitService/ImportRepo"
+	GitService_GetImportStatus_FullMethodName  = "/codevaldgit.v1.GitService/GetImportStatus"
+	GitService_CancelImport_FullMethodName     = "/codevaldgit.v1.GitService/CancelImport"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -52,17 +53,19 @@ const (
 // The agency_id is determined at server construction time and is not passed
 // per-call (see CodeValdAI for the same pattern).
 type GitServiceClient interface {
-	// InitRepo creates the single Repository entity for this agency.
-	// Error: ALREADY_EXISTS if a repository already exists.
+	// InitRepo creates a new Repository entity for this agency.
+	// Error: ALREADY_EXISTS if a repository with the same name already exists.
 	InitRepo(ctx context.Context, in *InitRepoRequest, opts ...grpc.CallOption) (*Repository, error)
-	// GetRepository retrieves the single Repository entity for this agency.
-	// Error: NOT_FOUND if no repository has been initialised.
+	// ListRepositories returns all Repository entities for this agency.
+	ListRepositories(ctx context.Context, in *ListRepositoriesRequest, opts ...grpc.CallOption) (*ListRepositoriesResponse, error)
+	// GetRepository retrieves a Repository entity by its ID.
+	// Error: NOT_FOUND if no repository with that ID exists.
 	GetRepository(ctx context.Context, in *GetRepositoryRequest, opts ...grpc.CallOption) (*Repository, error)
-	// DeleteRepo marks the repository entity as archived (soft delete).
-	// Error: NOT_FOUND if no repository entity exists.
+	// DeleteRepo marks the specified repository entity as archived (soft delete).
+	// Error: NOT_FOUND if no repository with that ID exists.
 	DeleteRepo(ctx context.Context, in *DeleteRepoRequest, opts ...grpc.CallOption) (*DeleteRepoResponse, error)
-	// PurgeRepo permanently removes all repository data for this agency.
-	// Irreversible. Error: NOT_FOUND if no repository entity exists.
+	// PurgeRepo permanently removes all data for the specified repository.
+	// Irreversible. Error: NOT_FOUND if no repository with that ID exists.
 	PurgeRepo(ctx context.Context, in *PurgeRepoRequest, opts ...grpc.CallOption) (*PurgeRepoResponse, error)
 	// CreateBranch creates a new Branch entity from the specified source.
 	// Error: ALREADY_EXISTS if a branch with the given name exists.
@@ -71,7 +74,7 @@ type GitServiceClient interface {
 	// GetBranch retrieves a Branch entity by its ID.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	GetBranch(ctx context.Context, in *GetBranchRequest, opts ...grpc.CallOption) (*Branch, error)
-	// ListBranches returns all Branch entities for this agency's repository.
+	// ListBranches returns all Branch entities for the specified repository.
 	ListBranches(ctx context.Context, in *ListBranchesRequest, opts ...grpc.CallOption) (*ListBranchesResponse, error)
 	// DeleteBranch removes a Branch entity.
 	// Error: NOT_FOUND if no branch with that ID exists.
@@ -88,7 +91,7 @@ type GitServiceClient interface {
 	// GetTag retrieves a Tag entity by its ID.
 	// Error: NOT_FOUND if no tag with that ID exists.
 	GetTag(ctx context.Context, in *GetTagRequest, opts ...grpc.CallOption) (*Tag, error)
-	// ListTags returns all Tag entities for this agency's repository.
+	// ListTags returns all Tag entities for the specified repository.
 	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
 	// DeleteTag removes a Tag entity.
 	// Error: NOT_FOUND if no tag with that ID exists.
@@ -117,7 +120,7 @@ type GitServiceClient interface {
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// ImportRepo begins an async import of a public Git repository.
 	// Returns immediately with a job ID; poll GetImportStatus for progress.
-	// Error: ALREADY_EXISTS if a repository already exists for the agency.
+	// Error: ALREADY_EXISTS if a repository with the same name already exists.
 	// Error: FAILED_PRECONDITION if an import is already in progress.
 	ImportRepo(ctx context.Context, in *ImportRepoRequest, opts ...grpc.CallOption) (*ImportRepoResponse, error)
 	// GetImportStatus returns the current state of an import job.
@@ -141,6 +144,16 @@ func (c *gitServiceClient) InitRepo(ctx context.Context, in *InitRepoRequest, op
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Repository)
 	err := c.cc.Invoke(ctx, GitService_InitRepo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) ListRepositories(ctx context.Context, in *ListRepositoriesRequest, opts ...grpc.CallOption) (*ListRepositoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRepositoriesResponse)
+	err := c.cc.Invoke(ctx, GitService_ListRepositories_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -366,17 +379,19 @@ func (c *gitServiceClient) CancelImport(ctx context.Context, in *CancelImportReq
 // The agency_id is determined at server construction time and is not passed
 // per-call (see CodeValdAI for the same pattern).
 type GitServiceServer interface {
-	// InitRepo creates the single Repository entity for this agency.
-	// Error: ALREADY_EXISTS if a repository already exists.
+	// InitRepo creates a new Repository entity for this agency.
+	// Error: ALREADY_EXISTS if a repository with the same name already exists.
 	InitRepo(context.Context, *InitRepoRequest) (*Repository, error)
-	// GetRepository retrieves the single Repository entity for this agency.
-	// Error: NOT_FOUND if no repository has been initialised.
+	// ListRepositories returns all Repository entities for this agency.
+	ListRepositories(context.Context, *ListRepositoriesRequest) (*ListRepositoriesResponse, error)
+	// GetRepository retrieves a Repository entity by its ID.
+	// Error: NOT_FOUND if no repository with that ID exists.
 	GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error)
-	// DeleteRepo marks the repository entity as archived (soft delete).
-	// Error: NOT_FOUND if no repository entity exists.
+	// DeleteRepo marks the specified repository entity as archived (soft delete).
+	// Error: NOT_FOUND if no repository with that ID exists.
 	DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error)
-	// PurgeRepo permanently removes all repository data for this agency.
-	// Irreversible. Error: NOT_FOUND if no repository entity exists.
+	// PurgeRepo permanently removes all data for the specified repository.
+	// Irreversible. Error: NOT_FOUND if no repository with that ID exists.
 	PurgeRepo(context.Context, *PurgeRepoRequest) (*PurgeRepoResponse, error)
 	// CreateBranch creates a new Branch entity from the specified source.
 	// Error: ALREADY_EXISTS if a branch with the given name exists.
@@ -385,7 +400,7 @@ type GitServiceServer interface {
 	// GetBranch retrieves a Branch entity by its ID.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	GetBranch(context.Context, *GetBranchRequest) (*Branch, error)
-	// ListBranches returns all Branch entities for this agency's repository.
+	// ListBranches returns all Branch entities for the specified repository.
 	ListBranches(context.Context, *ListBranchesRequest) (*ListBranchesResponse, error)
 	// DeleteBranch removes a Branch entity.
 	// Error: NOT_FOUND if no branch with that ID exists.
@@ -402,7 +417,7 @@ type GitServiceServer interface {
 	// GetTag retrieves a Tag entity by its ID.
 	// Error: NOT_FOUND if no tag with that ID exists.
 	GetTag(context.Context, *GetTagRequest) (*Tag, error)
-	// ListTags returns all Tag entities for this agency's repository.
+	// ListTags returns all Tag entities for the specified repository.
 	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
 	// DeleteTag removes a Tag entity.
 	// Error: NOT_FOUND if no tag with that ID exists.
@@ -431,7 +446,7 @@ type GitServiceServer interface {
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	// ImportRepo begins an async import of a public Git repository.
 	// Returns immediately with a job ID; poll GetImportStatus for progress.
-	// Error: ALREADY_EXISTS if a repository already exists for the agency.
+	// Error: ALREADY_EXISTS if a repository with the same name already exists.
 	// Error: FAILED_PRECONDITION if an import is already in progress.
 	ImportRepo(context.Context, *ImportRepoRequest) (*ImportRepoResponse, error)
 	// GetImportStatus returns the current state of an import job.
@@ -453,6 +468,9 @@ type UnimplementedGitServiceServer struct{}
 
 func (UnimplementedGitServiceServer) InitRepo(context.Context, *InitRepoRequest) (*Repository, error) {
 	return nil, status.Error(codes.Unimplemented, "method InitRepo not implemented")
+}
+func (UnimplementedGitServiceServer) ListRepositories(context.Context, *ListRepositoriesRequest) (*ListRepositoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRepositories not implemented")
 }
 func (UnimplementedGitServiceServer) GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRepository not implemented")
@@ -552,6 +570,24 @@ func _GitService_InitRepo_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GitServiceServer).InitRepo(ctx, req.(*InitRepoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_ListRepositories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRepositoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ListRepositories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ListRepositories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ListRepositories(ctx, req.(*ListRepositoriesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -944,6 +980,10 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InitRepo",
 			Handler:    _GitService_InitRepo_Handler,
+		},
+		{
+			MethodName: "ListRepositories",
+			Handler:    _GitService_ListRepositories_Handler,
 		},
 		{
 			MethodName: "GetRepository",

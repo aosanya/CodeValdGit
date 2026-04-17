@@ -105,7 +105,7 @@ type ImportJob struct {
 // ID can be used to poll GetImportStatus.
 //
 // Returns [ErrRepoAlreadyExists] if a Repository entity already exists for
-// this agency. Each agency supports exactly one repository.
+// this agency. A repository with the same name cannot be imported twice.
 ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error)
 
 // GetImportStatus returns the current state of an import job.

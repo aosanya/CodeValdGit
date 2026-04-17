@@ -40,25 +40,38 @@ func (s *Server) InitRepo(ctx context.Context, req *pb.InitRepoRequest) (*pb.Rep
 }
 
 // GetRepository implements pb.GitServiceServer.
-func (s *Server) GetRepository(ctx context.Context, _ *pb.GetRepositoryRequest) (*pb.Repository, error) {
-	repo, err := s.mgr.GetRepository(ctx)
+func (s *Server) GetRepository(ctx context.Context, req *pb.GetRepositoryRequest) (*pb.Repository, error) {
+	repo, err := s.mgr.GetRepository(ctx, req.GetRepositoryId())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
 	return repoToProto(repo), nil
 }
 
+// ListRepositories implements pb.GitServiceServer.
+func (s *Server) ListRepositories(ctx context.Context, _ *pb.ListRepositoriesRequest) (*pb.ListRepositoriesResponse, error) {
+	repos, err := s.mgr.ListRepositories(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	out := make([]*pb.Repository, len(repos))
+	for i, r := range repos {
+		out[i] = repoToProto(r)
+	}
+	return &pb.ListRepositoriesResponse{Repositories: out}, nil
+}
+
 // DeleteRepo implements pb.GitServiceServer.
-func (s *Server) DeleteRepo(ctx context.Context, _ *pb.DeleteRepoRequest) (*pb.DeleteRepoResponse, error) {
-	if err := s.mgr.DeleteRepo(ctx); err != nil {
+func (s *Server) DeleteRepo(ctx context.Context, req *pb.DeleteRepoRequest) (*pb.DeleteRepoResponse, error) {
+	if err := s.mgr.DeleteRepo(ctx, req.GetRepositoryId()); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &pb.DeleteRepoResponse{}, nil
 }
 
 // PurgeRepo implements pb.GitServiceServer.
-func (s *Server) PurgeRepo(ctx context.Context, _ *pb.PurgeRepoRequest) (*pb.PurgeRepoResponse, error) {
-	if err := s.mgr.PurgeRepo(ctx); err != nil {
+func (s *Server) PurgeRepo(ctx context.Context, req *pb.PurgeRepoRequest) (*pb.PurgeRepoResponse, error) {
+	if err := s.mgr.PurgeRepo(ctx, req.GetRepositoryId()); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &pb.PurgeRepoResponse{}, nil
@@ -69,6 +82,7 @@ func (s *Server) PurgeRepo(ctx context.Context, _ *pb.PurgeRepoRequest) (*pb.Pur
 // CreateBranch implements pb.GitServiceServer.
 func (s *Server) CreateBranch(ctx context.Context, req *pb.CreateBranchRequest) (*pb.Branch, error) {
 	branch, err := s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
+		RepositoryID: req.GetRepositoryId(),
 		Name:         req.GetName(),
 		FromBranchID: req.GetFromBranchId(),
 	})
@@ -88,8 +102,8 @@ func (s *Server) GetBranch(ctx context.Context, req *pb.GetBranchRequest) (*pb.B
 }
 
 // ListBranches implements pb.GitServiceServer.
-func (s *Server) ListBranches(ctx context.Context, _ *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
-	branches, err := s.mgr.ListBranches(ctx)
+func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
+	branches, err := s.mgr.ListBranches(ctx, req.GetRepositoryId())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -122,10 +136,11 @@ func (s *Server) MergeBranch(ctx context.Context, req *pb.MergeBranchRequest) (*
 // CreateTag implements pb.GitServiceServer.
 func (s *Server) CreateTag(ctx context.Context, req *pb.CreateTagRequest) (*pb.Tag, error) {
 	tag, err := s.mgr.CreateTag(ctx, codevaldgit.CreateTagRequest{
-		Name:       req.GetName(),
-		CommitID:   req.GetCommitId(),
-		Message:    req.GetMessage(),
-		TaggerName: req.GetTaggerName(),
+		RepositoryID: req.GetRepositoryId(),
+		Name:         req.GetName(),
+		CommitID:     req.GetCommitId(),
+		Message:      req.GetMessage(),
+		TaggerName:   req.GetTaggerName(),
 	})
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -143,8 +158,8 @@ func (s *Server) GetTag(ctx context.Context, req *pb.GetTagRequest) (*pb.Tag, er
 }
 
 // ListTags implements pb.GitServiceServer.
-func (s *Server) ListTags(ctx context.Context, _ *pb.ListTagsRequest) (*pb.ListTagsResponse, error) {
-	tags, err := s.mgr.ListTags(ctx)
+func (s *Server) ListTags(ctx context.Context, req *pb.ListTagsRequest) (*pb.ListTagsResponse, error) {
+	tags, err := s.mgr.ListTags(ctx, req.GetRepositoryId())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

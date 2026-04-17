@@ -8,8 +8,8 @@ import "google/protobuf/timestamp.proto";
 
 // ── Entity Messages ───────────────────────────────────────────────────────────
 
-// Repository is the root entity for a per-agency Git repository.
-// One Repository entity exists per agency.
+// Repository is a per-agency Git repository.
+// An agency may own multiple Repository entities.
 // agency_id is the entitygraph ID of the owning Agency (resolved from the
 // belongs_to_agency edge). The GitService is scoped per-agency at construction
 // time — agency_id is populated in responses for callers that need it.
@@ -115,20 +115,23 @@ service GitService {
 
   // ── Repository Lifecycle ──────────────────────────────────────────────────
 
-  // InitRepo creates the single Repository entity for this agency.
-  // Error: ALREADY_EXISTS if a repository already exists.
+  // InitRepo creates a new Repository entity for this agency.
+  // Error: ALREADY_EXISTS if a repository with the same name already exists.
   rpc InitRepo (InitRepoRequest) returns (Repository);
 
-  // GetRepository retrieves the single Repository entity for this agency.
-  // Error: NOT_FOUND if no repository has been initialised.
+  // ListRepositories returns all Repository entities for this agency.
+  rpc ListRepositories (ListRepositoriesRequest) returns (ListRepositoriesResponse);
+
+  // GetRepository retrieves a Repository entity by its ID.
+  // Error: NOT_FOUND if no repository with that ID exists.
   rpc GetRepository (GetRepositoryRequest) returns (Repository);
 
-  // DeleteRepo marks the repository entity as archived (soft delete).
-  // Error: NOT_FOUND if no repository entity exists.
+  // DeleteRepo marks the specified repository entity as archived (soft delete).
+  // Error: NOT_FOUND if no repository with that ID exists.
   rpc DeleteRepo (DeleteRepoRequest) returns (DeleteRepoResponse);
 
-  // PurgeRepo permanently removes all repository data for this agency.
-  // Irreversible. Error: NOT_FOUND if no repository entity exists.
+  // PurgeRepo permanently removes all data for the specified repository.
+  // Irreversible. Error: NOT_FOUND if no repository with that ID exists.
   rpc PurgeRepo (PurgeRepoRequest) returns (PurgeRepoResponse);
 
   // ── Branch Management ─────────────────────────────────────────────────────
@@ -142,7 +145,7 @@ service GitService {
   // Error: NOT_FOUND if no branch with that ID exists.
   rpc GetBranch (GetBranchRequest) returns (Branch);
 
-  // ListBranches returns all Branch entities for this agency's repository.
+  // ListBranches returns all Branch entities for the specified repository.
   rpc ListBranches (ListBranchesRequest) returns (ListBranchesResponse);
 
   // DeleteBranch removes a Branch entity.
@@ -166,7 +169,7 @@ service GitService {
   // Error: NOT_FOUND if no tag with that ID exists.
   rpc GetTag (GetTagRequest) returns (Tag);
 
-  // ListTags returns all Tag entities for this agency's repository.
+  // ListTags returns all Tag entities for the specified repository.
   rpc ListTags (ListTagsRequest) returns (ListTagsResponse);
 
   // DeleteTag removes a Tag entity.
@@ -207,7 +210,7 @@ service GitService {
 
   // ImportRepo begins an async import of a public Git repository.
   // Returns immediately with a job ID; poll GetImportStatus for progress.
-  // Error: ALREADY_EXISTS if a repository already exists for the agency.
+  // Error: ALREADY_EXISTS if a repository with the same name already exists.
   // Error: FAILED_PRECONDITION if an import is already in progress.
   rpc ImportRepo (ImportRepoRequest) returns (ImportRepoResponse);
 
@@ -231,26 +234,40 @@ message InitRepoRequest {
   string default_branch = 3;
 }
 
-message GetRepositoryRequest {}
+message ListRepositoriesRequest {}
+message ListRepositoriesResponse {
+  repeated Repository repositories = 1;
+}
 
-message DeleteRepoRequest {}
+message GetRepositoryRequest {
+  string repository_id = 1;
+}
+
+message DeleteRepoRequest {
+  string repository_id = 1;
+}
 message DeleteRepoResponse {}
 
-message PurgeRepoRequest {}
+message PurgeRepoRequest {
+  string repository_id = 1;
+}
 message PurgeRepoResponse {}
 
 // Branch management
 
 message CreateBranchRequest {
-  string name           = 1;
-  string from_branch_id = 2;
+  string repository_id  = 1;
+  string name           = 2;
+  string from_branch_id = 3;
 }
 
 message GetBranchRequest {
   string branch_id = 1;
 }
 
-message ListBranchesRequest {}
+message ListBranchesRequest {
+  string repository_id = 1;
+}
 message ListBranchesResponse {
   repeated Branch branches = 1;
 }
@@ -267,17 +284,20 @@ message MergeBranchRequest {
 // Tag management
 
 message CreateTagRequest {
-  string name        = 1;
-  string commit_id   = 2;
-  string message     = 3;
-  string tagger_name = 4;
+  string repository_id = 1;
+  string name          = 2;
+  string commit_id     = 3;
+  string message       = 4;
+  string tagger_name   = 5;
 }
 
 message GetTagRequest {
   string tag_id = 1;
 }
 
-message ListTagsRequest {}
+message ListTagsRequest {
+  string repository_id = 1;
+}
 message ListTagsResponse {
   repeated Tag tags = 1;
 }

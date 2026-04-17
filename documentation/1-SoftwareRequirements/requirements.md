@@ -43,7 +43,7 @@ CodeValdGit **fully replaces** the legacy `internal/git/` hand-rolled Git engine
 ## 4. Functional Requirements
 
 ### FR-001: Repository Per Agency
-- Each Agency has exactly **one Git repository**
+- Each Agency may own **multiple Git repositories**, each uniquely identified by name
 - Repository identity is the **Agency ID** (matches the existing database-per-agency isolation model)
 - Repos must be initializable, openable, and deletable by Agency ID
 

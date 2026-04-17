@@ -62,11 +62,15 @@ var importJobs = make(map[string]importCancelEntry)
 // Returns [ErrImportInProgress] if a pending or running import already exists.
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
 
-	// 1. Reject if any Repository entity already exists for this agency.
-	// Each agency has exactly one repository — a successful GetRepository means
-	// the agency is already initialised and cannot accept an import.
-	if _, err := m.GetRepository(ctx); err == nil {
-		return ImportJob{}, ErrRepoAlreadyExists
+	// 1. Reject if a Repository with the same name already exists for this agency.
+	existingRepos, err := m.listRepositories(ctx)
+	if err != nil {
+		return ImportJob{}, fmt.Errorf("ImportRepo %s: list repos: %w", m.agencyID, err)
+	}
+	for _, r := range existingRepos {
+		if strProp(r.Properties, "name") == req.Name {
+			return ImportJob{}, ErrRepoAlreadyExists
+		}
 	}
 
 	// 2. Reject if an active import job already exists.
