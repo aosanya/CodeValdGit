@@ -255,7 +255,129 @@ Result: List of documentation Blobs
 
 ---
 
-## 6. Open Questions (Research Gaps)
+## 6. Frontend Graph Navigation Decisions
+
+### DR-014: Graph Library — react-force-graph-2d + d3-hierarchy
+
+Use **`react-force-graph-2d`** (wraps D3 force simulation, React-friendly) for
+the relationship graph and **`d3-hierarchy`** (math-only, React renders SVG) for
+the keyword taxonomy tree. Avoids D3-vs-React DOM conflicts.
+
+### DR-015: View Strategy — Sidebar + Full-Page Explorer
+
+Two views coexist:
+
+1. **Sidebar panel on file viewer** — shows the current file's immediate
+   relationships (docs, dependencies, keywords). Interactive — supports
+   inline edge creation/removal without leaving the file viewer.
+2. **Full-page graph explorer** — dedicated route at
+   `/agencies/:id/repositories/:repo/branches/:branch/graph`. Split view:
+   keyword taxonomy tree on the left, force-directed graph on the right.
+   Clicking a keyword in the tree populates the graph with its tagged entities.
+
+### DR-016: Sidebar Edge Creation UX
+
+- **Keywords**: autocomplete search — user types keyword name, gets suggestions,
+  selects to create `tagged_with` edge.
+- **File-to-file edges** (`documents`, `depends_on`): drag a file from the
+  existing file tree onto the graph to create the edge.
+
+### DR-017: Edge Lifecycle — Branch-Scoped
+
+All documentation edges are **branch-scoped**. File navigation is always per
+branch, so edge creation follows the same model. Edges created on a task branch
+are replicated to `main` on merge (DR-010). The sidebar should display which
+branch the user is on.
+
+### DR-018: Neighborhood Query — Configurable Depth 1-3
+
+A single graph endpoint accepts `?depth=N` (1-3). Depth 1 for sidebar
+(immediate neighbors), depth 2-3 for the full-page explorer (transitive
+relationships).
+
+### DR-019: Keyword Management — Inline + Dedicated Page
+
+- **Inline**: right-click / button controls on the graph explorer's keyword tree
+  for quick create/rename/delete/reparent.
+- **Dedicated page**: `/agencies/:id/repositories/:repo/keywords` for bulk
+  operations and full CRUD table/tree view.
+
+### DR-020: API Response Shape — Generic Graph Format
+
+```json
+{
+  "nodes": [
+    { "id": "entity-123", "type": "Blob", "label": "server.go", "properties": { "path": "internal/server/server.go" } }
+  ],
+  "edges": [
+    { "id": "edge-456", "source": "entity-123", "target": "kw-789", "label": "tagged_with" }
+  ]
+}
+```
+
+Frontend maps `type` to colors/icons. Backend is graph-library agnostic.
+
+### DR-021: Performance — Lazy Expand + Hard Cap
+
+- **Lazy expand**: show depth-1 neighbors initially; user clicks "expand" on a
+  node to fetch its neighbors (progressive disclosure).
+- **Hard cap**: API caps response at 100 nodes; frontend shows "N more results"
+  with option to filter.
+
+### DR-022: Visual Encoding — Icons + Colors + Distinct Edges
+
+**Nodes** (icon inside colored circle):
+
+| Type | Color | Icon |
+|---|---|---|
+| Blob | Blue | File icon |
+| Keyword | Orange | Tag icon |
+| Commit | Green | Git-commit icon |
+| Branch | Purple | Git-branch icon |
+
+**Edges** (color + line style):
+
+| Edge Type | Color | Style |
+|---|---|---|
+| `tagged_with` | Orange | Dashed |
+| `documents` | Blue | Solid |
+| `depends_on` | Red | Solid |
+| `has_child` | Gray | Dotted |
+
+Accessible for colorblind users via shape/icon + line style differentiation.
+
+---
+
+## 7. HTTP API Endpoints (Documentation Layer)
+
+### Keyword CRUD
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/git/{agencyId}/repositories/{repoName}/keywords` | Create keyword |
+| `GET` | `/git/{agencyId}/repositories/{repoName}/keywords` | List all keywords (flat) |
+| `GET` | `/git/{agencyId}/repositories/{repoName}/keywords/tree` | Full keyword taxonomy tree |
+| `GET` | `/git/{agencyId}/repositories/{repoName}/keywords/{keywordId}` | Get single keyword |
+| `PUT` | `/git/{agencyId}/repositories/{repoName}/keywords/{keywordId}` | Update keyword (rename, reparent) |
+| `DELETE` | `/git/{agencyId}/repositories/{repoName}/keywords/{keywordId}` | Delete keyword |
+
+### Edge Management (Branch-Scoped)
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/git/{agencyId}/repositories/{repoName}/branches/{branchId}/edges` | Create edge (`tagged_with`, `documents`, `depends_on`) |
+| `DELETE` | `/git/{agencyId}/repositories/{repoName}/branches/{branchId}/edges/{edgeId}` | Remove edge |
+
+### Graph Queries (Branch-Scoped)
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/git/{agencyId}/repositories/{repoName}/branches/{branchId}/graph/{entityId}` | Neighborhood query (`?depth=1-3`) |
+| `GET` | `/git/{agencyId}/repositories/{repoName}/branches/{branchId}/graph/search` | SearchByKeywords (`?keywords=X,Y&match_mode=AND\|OR&cascade=true`) |
+
+---
+
+## 8. Open Questions (Research Gaps)
 
 All questions resolved. ✅
 

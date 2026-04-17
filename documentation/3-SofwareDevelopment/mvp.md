@@ -281,6 +281,65 @@ _(None yet)_
 
 ---
 
+## P2: Documentation Layer — Keywords & Graph Navigation
+
+### GIT-019 — Keyword Entity Type + Documentation Edges
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-019a: Add `Keyword` TypeDefinition to `schema.go` (`git_keywords` collection) with `name`, `description`, `scope`, timestamps | 📋 Not Started | ~~GIT-001~~ ✅ |
+| GIT-019b: Add `tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`, `has_child`/`belongs_to_parent` relationship definitions to `schema.go` | 📋 Not Started | GIT-019a |
+| GIT-019c: Add `GitManager` interface methods — `CreateKeyword`, `GetKeyword`, `ListKeywords`, `GetKeywordTree`, `UpdateKeyword`, `DeleteKeyword` | 📋 Not Started | GIT-019a |
+| GIT-019d: Concrete `GitManager` implementation for keyword CRUD in `internal/manager/` | 📋 Not Started | GIT-019c |
+| GIT-019e: Add `GitManager` interface methods — `CreateEdge`, `DeleteEdge` (branch-scoped, follows DR-010 lifecycle) | 📋 Not Started | GIT-019b |
+| GIT-019f: Concrete `GitManager` implementation for edge CRUD (with inverse auto-creation) | 📋 Not Started | GIT-019e |
+
+**Scope**: Foundation for the documentation layer. Adds the `Keyword` entity type and all new
+relationship types (`tagged_with`, `documents`/`documented_by`, `depends_on`/`imported_by`,
+`has_child`/`belongs_to_parent`) to the existing `git-schema-v1`. Implements keyword CRUD and
+branch-scoped edge creation/deletion with automatic inverse edges.
+See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_documentation.md)
+
+### GIT-020 — Graph Query Endpoints
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-020a: Add `GitManager` interface methods — `GetNeighborhood(ctx, branchID, entityID, depth)` returning generic `{ nodes, edges }` graph response | 📋 Not Started | GIT-019f |
+| GIT-020b: Add `GitManager` interface method — `SearchByKeywords(ctx, branchID, keywords, matchMode, cascade)` | 📋 Not Started | GIT-019d, GIT-019f |
+| GIT-020c: Concrete implementation — AQL graph traversal for neighborhood query (depth 1-3, 100-node cap) | 📋 Not Started | GIT-020a |
+| GIT-020d: Concrete implementation — AQL keyword search with cascading hierarchy + AND/OR match mode | 📋 Not Started | GIT-020b |
+
+**Scope**: Graph query layer. Neighborhood query returns a generic `{ nodes, edges }` response
+with configurable depth (1-3) and a 100-node hard cap. SearchByKeywords traverses the keyword
+hierarchy when `cascade=true` and supports AND/OR match modes.
+See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_documentation.md)
+
+### GIT-021 — Proto, gRPC Handlers & Route Registration
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-021a: Proto additions — `KeywordService` RPCs + `GraphService` RPCs; `buf generate` | 📋 Not Started | GIT-019c, GIT-020a |
+| GIT-021b: gRPC server handlers for keyword CRUD, edge CRUD, and graph queries | 📋 Not Started | GIT-021a |
+| GIT-021c: Register keyword, edge, and graph HTTP routes in `internal/registrar/routes.go` | 📋 Not Started | GIT-021b |
+| GIT-021d: Unit tests for all new handlers and graph queries | 📋 Not Started | GIT-021c |
+
+**Scope**: Exposes the documentation layer via gRPC and registers HTTP routes through
+CodeValdCross. 10 new HTTP routes covering keyword CRUD, edge management, and graph queries.
+See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_documentation.md) §7
+
+### GIT-022 — Edge Lifecycle on Merge/Delete/Revert
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-022a: Replicate `tagged_with`, `documents`, `depends_on` edges from branch blobs to `main` blobs (by path) on `MergeBranch` | 📋 Not Started | GIT-019f, GIT-012 |
+| GIT-022b: Delete documentation edges when branch is deleted without merge | 📋 Not Started | GIT-022a |
+| GIT-022c: Migrate edges on file rename/move; remove edges on file delete | 📋 Not Started | GIT-022a |
+
+**Scope**: Implements the DR-010 edge lifecycle rules. Edges are replicated to `main` on merge
+(matched by path), deleted on branch delete, migrated on rename, and removed on file delete.
+
+---
+
 ## Deprecated / Removed Tasks
 
 _(None)_
