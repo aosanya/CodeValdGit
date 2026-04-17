@@ -57,6 +57,11 @@ type GitManager interface {
 	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 	GetRepository(ctx context.Context, repoID string) (Repository, error)
 
+	// GetRepositoryByName retrieves a Repository entity by its human-readable
+	// name. Returns [ErrRepoNotInitialised] if no repository with that name
+	// exists for this agency.
+	GetRepositoryByName(ctx context.Context, repoName string) (Repository, error)
+
 	// DeleteRepo marks the specified repository entity as archived (soft delete).
 	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 	DeleteRepo(ctx context.Context, repoID string) error

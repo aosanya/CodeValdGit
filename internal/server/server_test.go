@@ -30,6 +30,7 @@ type fakeGitManager struct {
 	initRepo         func(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error)
 	listRepositories func(ctx context.Context) ([]codevaldgit.Repository, error)
 	getRepository    func(ctx context.Context, repoID string) (codevaldgit.Repository, error)
+	getRepositoryByName func(ctx context.Context, repoName string) (codevaldgit.Repository, error)
 	deleteRepo       func(ctx context.Context, repoID string) error
 	purgeRepo        func(ctx context.Context, repoID string) error
 	createTag        func(ctx context.Context, req codevaldgit.CreateTagRequest) (codevaldgit.Tag, error)
@@ -60,6 +61,12 @@ func (f *fakeGitManager) GetRepository(ctx context.Context, repoID string) (code
 		return f.getRepository(ctx, repoID)
 	}
 	return codevaldgit.Repository{ID: repoID, Name: "test-repo", DefaultBranch: "main"}, nil
+}
+func (f *fakeGitManager) GetRepositoryByName(ctx context.Context, repoName string) (codevaldgit.Repository, error) {
+	if f.getRepositoryByName != nil {
+		return f.getRepositoryByName(ctx, repoName)
+	}
+	return codevaldgit.Repository{ID: "repo-1", Name: repoName, DefaultBranch: "main"}, nil
 }
 func (f *fakeGitManager) ListRepositories(ctx context.Context) ([]codevaldgit.Repository, error) {
 	if f.listRepositories != nil {

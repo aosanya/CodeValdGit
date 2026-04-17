@@ -126,6 +126,10 @@ service GitService {
   // Error: NOT_FOUND if no repository with that ID exists.
   rpc GetRepository (GetRepositoryRequest) returns (Repository);
 
+  // GetRepositoryByName retrieves a Repository entity by its human-readable name.
+  // Error: NOT_FOUND if no repository with that name exists.
+  rpc GetRepositoryByName (GetRepositoryByNameRequest) returns (Repository);
+
   // DeleteRepo marks the specified repository entity as archived (soft delete).
   // Error: NOT_FOUND if no repository with that ID exists.
   rpc DeleteRepo (DeleteRepoRequest) returns (DeleteRepoResponse);
@@ -243,22 +247,29 @@ message GetRepositoryRequest {
   string repository_id = 1;
 }
 
+message GetRepositoryByNameRequest {
+  string repository_name = 1;
+}
+
 message DeleteRepoRequest {
-  string repository_id = 1;
+  string repository_id   = 1;
+  string repository_name = 2;
 }
 message DeleteRepoResponse {}
 
 message PurgeRepoRequest {
-  string repository_id = 1;
+  string repository_id   = 1;
+  string repository_name = 2;
 }
 message PurgeRepoResponse {}
 
 // Branch management
 
 message CreateBranchRequest {
-  string repository_id  = 1;
-  string name           = 2;
-  string from_branch_id = 3;
+  string repository_id   = 1;
+  string name            = 2;
+  string from_branch_id  = 3;
+  string repository_name = 4;
 }
 
 message GetBranchRequest {
@@ -266,7 +277,8 @@ message GetBranchRequest {
 }
 
 message ListBranchesRequest {
-  string repository_id = 1;
+  string repository_id   = 1;
+  string repository_name = 2;
 }
 message ListBranchesResponse {
   repeated Branch branches = 1;
@@ -284,11 +296,12 @@ message MergeBranchRequest {
 // Tag management
 
 message CreateTagRequest {
-  string repository_id = 1;
-  string name          = 2;
-  string commit_id     = 3;
-  string message       = 4;
-  string tagger_name   = 5;
+  string repository_id   = 1;
+  string name            = 2;
+  string commit_id       = 3;
+  string message         = 4;
+  string tagger_name     = 5;
+  string repository_name = 6;
 }
 
 message GetTagRequest {
@@ -296,7 +309,8 @@ message GetTagRequest {
 }
 
 message ListTagsRequest {
-  string repository_id = 1;
+  string repository_id   = 1;
+  string repository_name = 2;
 }
 message ListTagsResponse {
   repeated Tag tags = 1;
@@ -352,8 +366,9 @@ message LogResponse {
 }
 
 message DiffRequest {
-  string from_ref = 1;
-  string to_ref   = 2;
+  string from_ref        = 1;
+  string to_ref          = 2;
+  string repository_name = 3;
 }
 message DiffResponse {
   repeated FileDiff diffs = 1;
