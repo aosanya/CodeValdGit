@@ -49,6 +49,29 @@ func (s *Server) GetRepository(ctx context.Context, req *pb.GetRepositoryRequest
 	return repoToProto(repo), nil
 }
 
+// GetRepositoryByName implements pb.GitServiceServer.
+func (s *Server) GetRepositoryByName(ctx context.Context, req *pb.GetRepositoryByNameRequest) (*pb.Repository, error) {
+	repo, err := s.mgr.GetRepositoryByName(ctx, req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return repoToProto(repo), nil
+}
+
+// resolveRepoID resolves a repository entity ID from either a direct ID or a
+// human-readable name. When repoName is non-empty it takes precedence over
+// repoID, allowing URL-based name lookups to work transparently.
+func (s *Server) resolveRepoID(ctx context.Context, repoID, repoName string) (string, error) {
+	if repoName != "" {
+		repo, err := s.mgr.GetRepositoryByName(ctx, repoName)
+		if err != nil {
+			return "", err
+		}
+		return repo.ID, nil
+	}
+	return repoID, nil
+}
+
 // ListRepositories implements pb.GitServiceServer.
 func (s *Server) ListRepositories(ctx context.Context, _ *pb.ListRepositoriesRequest) (*pb.ListRepositoriesResponse, error) {
 	repos, err := s.mgr.ListRepositories(ctx)
@@ -64,7 +87,11 @@ func (s *Server) ListRepositories(ctx context.Context, _ *pb.ListRepositoriesReq
 
 // DeleteRepo implements pb.GitServiceServer.
 func (s *Server) DeleteRepo(ctx context.Context, req *pb.DeleteRepoRequest) (*pb.DeleteRepoResponse, error) {
-	if err := s.mgr.DeleteRepo(ctx, req.GetRepositoryId()); err != nil {
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	if err := s.mgr.DeleteRepo(ctx, repoID); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &pb.DeleteRepoResponse{}, nil
@@ -72,7 +99,11 @@ func (s *Server) DeleteRepo(ctx context.Context, req *pb.DeleteRepoRequest) (*pb
 
 // PurgeRepo implements pb.GitServiceServer.
 func (s *Server) PurgeRepo(ctx context.Context, req *pb.PurgeRepoRequest) (*pb.PurgeRepoResponse, error) {
-	if err := s.mgr.PurgeRepo(ctx, req.GetRepositoryId()); err != nil {
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	if err := s.mgr.PurgeRepo(ctx, repoID); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &pb.PurgeRepoResponse{}, nil
@@ -82,8 +113,12 @@ func (s *Server) PurgeRepo(ctx context.Context, req *pb.PurgeRepoRequest) (*pb.P
 
 // CreateBranch implements pb.GitServiceServer.
 func (s *Server) CreateBranch(ctx context.Context, req *pb.CreateBranchRequest) (*pb.Branch, error) {
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	branch, err := s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
-		RepositoryID: req.GetRepositoryId(),
+		RepositoryID: repoID,
 		Name:         req.GetName(),
 		FromBranchID: req.GetFromBranchId(),
 	})
@@ -104,7 +139,10 @@ func (s *Server) GetBranch(ctx context.Context, req *pb.GetBranchRequest) (*pb.B
 
 // ListBranches implements pb.GitServiceServer.
 func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
-	repoID := req.GetRepositoryId()
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	log.Printf("[ListBranches] repository_id=%q", repoID)
 	branches, err := s.mgr.ListBranches(ctx, repoID)
 	if err != nil {
@@ -140,8 +178,12 @@ func (s *Server) MergeBranch(ctx context.Context, req *pb.MergeBranchRequest) (*
 
 // CreateTag implements pb.GitServiceServer.
 func (s *Server) CreateTag(ctx context.Context, req *pb.CreateTagRequest) (*pb.Tag, error) {
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	tag, err := s.mgr.CreateTag(ctx, codevaldgit.CreateTagRequest{
-		RepositoryID: req.GetRepositoryId(),
+		RepositoryID: repoID,
 		Name:         req.GetName(),
 		CommitID:     req.GetCommitId(),
 		Message:      req.GetMessage(),
@@ -164,7 +206,11 @@ func (s *Server) GetTag(ctx context.Context, req *pb.GetTagRequest) (*pb.Tag, er
 
 // ListTags implements pb.GitServiceServer.
 func (s *Server) ListTags(ctx context.Context, req *pb.ListTagsRequest) (*pb.ListTagsResponse, error) {
-	tags, err := s.mgr.ListTags(ctx, req.GetRepositoryId())
+	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	tags, err := s.mgr.ListTags(ctx, repoID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

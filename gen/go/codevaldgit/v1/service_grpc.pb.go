@@ -19,29 +19,30 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GitService_InitRepo_FullMethodName         = "/codevaldgit.v1.GitService/InitRepo"
-	GitService_ListRepositories_FullMethodName = "/codevaldgit.v1.GitService/ListRepositories"
-	GitService_GetRepository_FullMethodName    = "/codevaldgit.v1.GitService/GetRepository"
-	GitService_DeleteRepo_FullMethodName       = "/codevaldgit.v1.GitService/DeleteRepo"
-	GitService_PurgeRepo_FullMethodName        = "/codevaldgit.v1.GitService/PurgeRepo"
-	GitService_CreateBranch_FullMethodName     = "/codevaldgit.v1.GitService/CreateBranch"
-	GitService_GetBranch_FullMethodName        = "/codevaldgit.v1.GitService/GetBranch"
-	GitService_ListBranches_FullMethodName     = "/codevaldgit.v1.GitService/ListBranches"
-	GitService_DeleteBranch_FullMethodName     = "/codevaldgit.v1.GitService/DeleteBranch"
-	GitService_MergeBranch_FullMethodName      = "/codevaldgit.v1.GitService/MergeBranch"
-	GitService_CreateTag_FullMethodName        = "/codevaldgit.v1.GitService/CreateTag"
-	GitService_GetTag_FullMethodName           = "/codevaldgit.v1.GitService/GetTag"
-	GitService_ListTags_FullMethodName         = "/codevaldgit.v1.GitService/ListTags"
-	GitService_DeleteTag_FullMethodName        = "/codevaldgit.v1.GitService/DeleteTag"
-	GitService_WriteFile_FullMethodName        = "/codevaldgit.v1.GitService/WriteFile"
-	GitService_ReadFile_FullMethodName         = "/codevaldgit.v1.GitService/ReadFile"
-	GitService_DeleteFile_FullMethodName       = "/codevaldgit.v1.GitService/DeleteFile"
-	GitService_ListDirectory_FullMethodName    = "/codevaldgit.v1.GitService/ListDirectory"
-	GitService_Log_FullMethodName              = "/codevaldgit.v1.GitService/Log"
-	GitService_Diff_FullMethodName             = "/codevaldgit.v1.GitService/Diff"
-	GitService_ImportRepo_FullMethodName       = "/codevaldgit.v1.GitService/ImportRepo"
-	GitService_GetImportStatus_FullMethodName  = "/codevaldgit.v1.GitService/GetImportStatus"
-	GitService_CancelImport_FullMethodName     = "/codevaldgit.v1.GitService/CancelImport"
+	GitService_InitRepo_FullMethodName            = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_ListRepositories_FullMethodName    = "/codevaldgit.v1.GitService/ListRepositories"
+	GitService_GetRepository_FullMethodName       = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_GetRepositoryByName_FullMethodName = "/codevaldgit.v1.GitService/GetRepositoryByName"
+	GitService_DeleteRepo_FullMethodName          = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName           = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName        = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName           = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_ListBranches_FullMethodName        = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName        = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName         = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateTag_FullMethodName           = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName              = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName            = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName           = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName           = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName            = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName          = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName       = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName                 = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName                = "/codevaldgit.v1.GitService/Diff"
+	GitService_ImportRepo_FullMethodName          = "/codevaldgit.v1.GitService/ImportRepo"
+	GitService_GetImportStatus_FullMethodName     = "/codevaldgit.v1.GitService/GetImportStatus"
+	GitService_CancelImport_FullMethodName        = "/codevaldgit.v1.GitService/CancelImport"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -61,6 +62,9 @@ type GitServiceClient interface {
 	// GetRepository retrieves a Repository entity by its ID.
 	// Error: NOT_FOUND if no repository with that ID exists.
 	GetRepository(ctx context.Context, in *GetRepositoryRequest, opts ...grpc.CallOption) (*Repository, error)
+	// GetRepositoryByName retrieves a Repository entity by its human-readable name.
+	// Error: NOT_FOUND if no repository with that name exists.
+	GetRepositoryByName(ctx context.Context, in *GetRepositoryByNameRequest, opts ...grpc.CallOption) (*Repository, error)
 	// DeleteRepo marks the specified repository entity as archived (soft delete).
 	// Error: NOT_FOUND if no repository with that ID exists.
 	DeleteRepo(ctx context.Context, in *DeleteRepoRequest, opts ...grpc.CallOption) (*DeleteRepoResponse, error)
@@ -164,6 +168,16 @@ func (c *gitServiceClient) GetRepository(ctx context.Context, in *GetRepositoryR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Repository)
 	err := c.cc.Invoke(ctx, GitService_GetRepository_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetRepositoryByName(ctx context.Context, in *GetRepositoryByNameRequest, opts ...grpc.CallOption) (*Repository, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Repository)
+	err := c.cc.Invoke(ctx, GitService_GetRepositoryByName_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -387,6 +401,9 @@ type GitServiceServer interface {
 	// GetRepository retrieves a Repository entity by its ID.
 	// Error: NOT_FOUND if no repository with that ID exists.
 	GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error)
+	// GetRepositoryByName retrieves a Repository entity by its human-readable name.
+	// Error: NOT_FOUND if no repository with that name exists.
+	GetRepositoryByName(context.Context, *GetRepositoryByNameRequest) (*Repository, error)
 	// DeleteRepo marks the specified repository entity as archived (soft delete).
 	// Error: NOT_FOUND if no repository with that ID exists.
 	DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error)
@@ -474,6 +491,9 @@ func (UnimplementedGitServiceServer) ListRepositories(context.Context, *ListRepo
 }
 func (UnimplementedGitServiceServer) GetRepository(context.Context, *GetRepositoryRequest) (*Repository, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRepository not implemented")
+}
+func (UnimplementedGitServiceServer) GetRepositoryByName(context.Context, *GetRepositoryByNameRequest) (*Repository, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRepositoryByName not implemented")
 }
 func (UnimplementedGitServiceServer) DeleteRepo(context.Context, *DeleteRepoRequest) (*DeleteRepoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteRepo not implemented")
@@ -606,6 +626,24 @@ func _GitService_GetRepository_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GitServiceServer).GetRepository(ctx, req.(*GetRepositoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetRepositoryByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRepositoryByNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetRepositoryByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetRepositoryByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetRepositoryByName(ctx, req.(*GetRepositoryByNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -988,6 +1026,10 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRepository",
 			Handler:    _GitService_GetRepository_Handler,
+		},
+		{
+			MethodName: "GetRepositoryByName",
+			Handler:    _GitService_GetRepositoryByName_Handler,
 		},
 		{
 			MethodName: "DeleteRepo",

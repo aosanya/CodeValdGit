@@ -128,6 +128,24 @@ func (m *gitManager) GetRepository(ctx context.Context, repoID string) (Reposito
 	return entityToRepository(e, m.agencyID), nil
 }
 
+// GetRepositoryByName retrieves a Repository entity by its human-readable name.
+// Returns [ErrRepoNotInitialised] if no repository with that name exists.
+func (m *gitManager) GetRepositoryByName(ctx context.Context, repoName string) (Repository, error) {
+	log.Printf("[GetRepositoryByName] agencyID=%q repoName=%q", m.agencyID, repoName)
+	entities, err := m.listRepositories(ctx)
+	if err != nil {
+		return Repository{}, fmt.Errorf("GetRepositoryByName: %w", err)
+	}
+	for _, e := range entities {
+		if strProp(e.Properties, "name") == repoName {
+			log.Printf("[GetRepositoryByName] found: agencyID=%q repoName=%q id=%q", m.agencyID, repoName, e.ID)
+			return entityToRepository(e, m.agencyID), nil
+		}
+	}
+	log.Printf("[GetRepositoryByName] not found: agencyID=%q repoName=%q", m.agencyID, repoName)
+	return Repository{}, ErrRepoNotInitialised
+}
+
 // DeleteRepo soft-deletes the specified repository entity and all owned sub-entities.
 // Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 func (m *gitManager) DeleteRepo(ctx context.Context, repoID string) error {
