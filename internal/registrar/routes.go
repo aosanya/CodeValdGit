@@ -48,129 +48,143 @@ func repoRoutes() []types.RouteInfo {
 }
 
 // branchRoutes returns routes for branch CRUD and merge operations.
+// All routes are nested under /git/{agencyId}/repositories/{repoId}/ so that
+// the repository context is always present in the URL (GIT-018).
 func branchRoutes() []types.RouteInfo {
-	bid := []types.PathBinding{{URLParam: "branchId", Field: "branch_id"}}
+	rid := types.PathBinding{URLParam: "repoId", Field: "repository_id"}
+	bid := types.PathBinding{URLParam: "branchId", Field: "branch_id"}
 	return []types.RouteInfo{
 		{
-			Method:     "POST",
-			Pattern:    "/git/{agencyId}/branches",
-			Capability: "create_branch",
-			GrpcMethod: "/codevaldgit.v1.GitService/CreateBranch",
-		},
-		{
-			Method:     "GET",
-			Pattern:    "/git/{agencyId}/branches",
-			Capability: "list_branches",
-			GrpcMethod: "/codevaldgit.v1.GitService/ListBranches",
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches",
+			Capability:   "create_branch",
+			GrpcMethod:   "/codevaldgit.v1.GitService/CreateBranch",
+			PathBindings: []types.PathBinding{rid},
 		},
 		{
 			Method:       "GET",
-			Pattern:      "/git/{agencyId}/branches/{branchId}",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches",
+			Capability:   "list_branches",
+			GrpcMethod:   "/codevaldgit.v1.GitService/ListBranches",
+			PathBindings: []types.PathBinding{rid},
+		},
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}",
 			Capability:   "get_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/GetBranch",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
 			Method:       "DELETE",
-			Pattern:      "/git/{agencyId}/branches/{branchId}",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}",
 			Capability:   "delete_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteBranch",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
 			Method:       "POST",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/merge",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/merge",
 			Capability:   "merge_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/MergeBranch",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 	}
 }
 
 // tagRoutes returns routes for tag CRUD operations.
+// All routes are nested under /git/{agencyId}/repositories/{repoId}/ (GIT-018).
 func tagRoutes() []types.RouteInfo {
-	tid := []types.PathBinding{{URLParam: "tagId", Field: "tag_id"}}
+	rid := types.PathBinding{URLParam: "repoId", Field: "repository_id"}
+	tid := types.PathBinding{URLParam: "tagId", Field: "tag_id"}
 	return []types.RouteInfo{
 		{
-			Method:     "POST",
-			Pattern:    "/git/{agencyId}/tags",
-			Capability: "create_tag",
-			GrpcMethod: "/codevaldgit.v1.GitService/CreateTag",
-		},
-		{
-			Method:     "GET",
-			Pattern:    "/git/{agencyId}/tags",
-			Capability: "list_tags",
-			GrpcMethod: "/codevaldgit.v1.GitService/ListTags",
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/tags",
+			Capability:   "create_tag",
+			GrpcMethod:   "/codevaldgit.v1.GitService/CreateTag",
+			PathBindings: []types.PathBinding{rid},
 		},
 		{
 			Method:       "GET",
-			Pattern:      "/git/{agencyId}/tags/{tagId}",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/tags",
+			Capability:   "list_tags",
+			GrpcMethod:   "/codevaldgit.v1.GitService/ListTags",
+			PathBindings: []types.PathBinding{rid},
+		},
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/tags/{tagId}",
 			Capability:   "get_tag",
 			GrpcMethod:   "/codevaldgit.v1.GitService/GetTag",
-			PathBindings: tid,
+			PathBindings: []types.PathBinding{rid, tid},
 		},
 		{
 			Method:       "DELETE",
-			Pattern:      "/git/{agencyId}/tags/{tagId}",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/tags/{tagId}",
 			Capability:   "delete_tag",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteTag",
-			PathBindings: tid,
+			PathBindings: []types.PathBinding{rid, tid},
 		},
 	}
 }
 
 // fileRoutes returns routes for file read/write operations on a branch.
+// All routes are nested under /git/{agencyId}/repositories/{repoId}/branches/{branchId}/ (GIT-018).
 func fileRoutes() []types.RouteInfo {
-	bid := []types.PathBinding{{URLParam: "branchId", Field: "branch_id"}}
+	rid := types.PathBinding{URLParam: "repoId", Field: "repository_id"}
+	bid := types.PathBinding{URLParam: "branchId", Field: "branch_id"}
 	return []types.RouteInfo{
 		{
 			Method:       "POST",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/files",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/files",
 			Capability:   "write_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/WriteFile",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
 			Method:       "GET",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/files",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/files",
 			Capability:   "read_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/ReadFile",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
 			Method:       "DELETE",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/files",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/files",
 			Capability:   "delete_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteFile",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
 			Method:       "GET",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/tree",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/tree",
 			Capability:   "list_directory",
 			GrpcMethod:   "/codevaldgit.v1.GitService/ListDirectory",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 	}
 }
 
 // historyRoutes returns routes for commit log and diff operations.
+// All routes are nested under /git/{agencyId}/repositories/{repoId}/ (GIT-018).
 func historyRoutes() []types.RouteInfo {
-	bid := []types.PathBinding{{URLParam: "branchId", Field: "branch_id"}}
+	rid := types.PathBinding{URLParam: "repoId", Field: "repository_id"}
+	bid := types.PathBinding{URLParam: "branchId", Field: "branch_id"}
 	return []types.RouteInfo{
 		{
 			Method:       "GET",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/log",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/branches/{branchId}/log",
 			Capability:   "log",
 			GrpcMethod:   "/codevaldgit.v1.GitService/Log",
-			PathBindings: bid,
+			PathBindings: []types.PathBinding{rid, bid},
 		},
 		{
-			Method:     "GET",
-			Pattern:    "/git/{agencyId}/diff",
-			Capability: "diff",
-			GrpcMethod: "/codevaldgit.v1.GitService/Diff",
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/repositories/{repoId}/diff",
+			Capability:   "diff",
+			GrpcMethod:   "/codevaldgit.v1.GitService/Diff",
+			PathBindings: []types.PathBinding{rid},
 		},
 	}
 }

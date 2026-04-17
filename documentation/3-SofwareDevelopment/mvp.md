@@ -261,7 +261,7 @@ See: [architecture-pull-flow.md](../2-SoftwareDesignAndArchitecture/architecture
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-018a: Update `branchRoutes()`, `tagRoutes()`, `fileRoutes()`, and `historyRoutes()` in `internal/registrar/routes.go` to nest all sub-resource patterns under `/git/{agencyId}/repositories/{repoName}/` | 🔲 Not Started | ~~GIT-011~~ ✅ |
+| GIT-018a: Update `branchRoutes()`, `tagRoutes()`, `fileRoutes()`, and `historyRoutes()` in `internal/registrar/routes.go` to nest all sub-resource patterns under `/git/{agencyId}/repositories/{repoName}/` | � In Progress | ~~GIT-011~~ ✅ |
 | GIT-018b: Update gRPC server HTTP handlers (`internal/server/server.go`) to extract `repoName` from the URL path and pass it to the corresponding `GitManager` calls (`ListBranches(repoID)`, `ListTags(repoID)`, etc.) | 🔲 Not Started | GIT-018a |
 | GIT-018c: Update integration tests in `CodeValdCross/integration/` to use the new repo-scoped URL structure | 🔲 Not Started | GIT-018b |
 
