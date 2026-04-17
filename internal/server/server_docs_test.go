@@ -1,6 +1,3 @@
-// server_docs_test.go tests the gRPC handlers for the documentation layer
-// (GIT-021d): keyword CRUD, branch-scoped edge CRUD, and graph queries.
-// Uses the same fakeGitManager and newTestServer helpers defined in server_test.go.
 package server_test
 
 import (
@@ -11,8 +8,6 @@ codevaldgit "github.com/aosanya/CodeValdGit"
 pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
 "google.golang.org/grpc/codes"
 )
-
-// ── CreateKeyword ─────────────────────────────────────────────────────────────
 
 func TestServer_CreateKeyword_Success(t *testing.T) {
 want := codevaldgit.Keyword{ID: "kw-1", Name: "authentication"}
@@ -42,8 +37,6 @@ t.Errorf("code = %v, want AlreadyExists", grpcCode(err))
 }
 }
 
-// ── GetKeyword ────────────────────────────────────────────────────────────────
-
 func TestServer_GetKeyword_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
 getKeyword: func(_ context.Context, kwID string) (codevaldgit.Keyword, error) {
@@ -71,8 +64,6 @@ t.Errorf("code = %v, want NotFound", grpcCode(err))
 }
 }
 
-// ── ListKeywords ──────────────────────────────────────────────────────────────
-
 func TestServer_ListKeywords_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
 listKeywords: func(_ context.Context, _ codevaldgit.KeywordFilter) ([]codevaldgit.Keyword, error) {
@@ -87,8 +78,6 @@ if len(resp.GetKeywords()) != 2 {
 t.Errorf("len = %d, want 2", len(resp.GetKeywords()))
 }
 }
-
-// ── GetKeywordTree ────────────────────────────────────────────────────────────
 
 func TestServer_GetKeywordTree_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
@@ -109,8 +98,6 @@ if len(resp.GetNodes()) != 1 || len(resp.GetNodes()[0].GetChildren()) != 1 {
 t.Errorf("unexpected tree shape: nodes=%d children=%d", len(resp.GetNodes()), len(resp.GetNodes()[0].GetChildren()))
 }
 }
-
-// ── UpdateKeyword ─────────────────────────────────────────────────────────────
 
 func TestServer_UpdateKeyword_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
@@ -139,16 +126,12 @@ t.Errorf("code = %v, want NotFound", grpcCode(err))
 }
 }
 
-// ── DeleteKeyword ─────────────────────────────────────────────────────────────
-
 func TestServer_DeleteKeyword_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{})
 if _, err := client.DeleteKeyword(context.Background(), &pb.DeleteKeywordRequest{KeywordId: "kw-del"}); err != nil {
 t.Fatalf("DeleteKeyword: %v", err)
 }
 }
-
-// ── CreateEdge ────────────────────────────────────────────────────────────────
 
 func TestServer_CreateEdge_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
@@ -179,8 +162,6 @@ t.Errorf("code = %v, want InvalidArgument", grpcCode(err))
 }
 }
 
-// ── DeleteEdge ────────────────────────────────────────────────────────────────
-
 func TestServer_DeleteEdge_NotFound(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
 deleteEdge: func(_ context.Context, _ codevaldgit.DeleteEdgeRequest) error {
@@ -194,8 +175,6 @@ if grpcCode(err) != codes.NotFound {
 t.Errorf("code = %v, want NotFound", grpcCode(err))
 }
 }
-
-// ── GetNeighborhood ───────────────────────────────────────────────────────────
 
 func TestServer_GetNeighborhood_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{
@@ -216,8 +195,6 @@ if len(resp.GetNodes()) != 1 || len(resp.GetEdges()) != 1 {
 t.Errorf("nodes=%d edges=%d, want 1/1", len(resp.GetNodes()), len(resp.GetEdges()))
 }
 }
-
-// ── SearchByKeywords ──────────────────────────────────────────────────────────
 
 func TestServer_SearchByKeywords_Success(t *testing.T) {
 client := newTestServer(t, &fakeGitManager{

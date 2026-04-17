@@ -50,6 +50,14 @@ func toGRPCError(err error) error {
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, codevaldgit.ErrImportJobNotCancellable):
 		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, codevaldgit.ErrKeywordNotFound):
+		return status.Error(codes.NotFound, err.Error())
+	case errors.Is(err, codevaldgit.ErrKeywordAlreadyExists):
+		return status.Error(codes.AlreadyExists, err.Error())
+	case errors.Is(err, codevaldgit.ErrEdgeNotFound):
+		return status.Error(codes.NotFound, err.Error())
+	case errors.Is(err, codevaldgit.ErrInvalidRelationship):
+		return status.Error(codes.InvalidArgument, err.Error())
 	default:
 		return status.Errorf(codes.Internal, "internal error: %v", err)
 	}
