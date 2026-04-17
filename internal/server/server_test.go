@@ -48,6 +48,16 @@ type fakeGitManager struct {
 	listDirectory       func(ctx context.Context, branchID, path string) ([]codevaldgit.FileEntry, error)
 	log                 func(ctx context.Context, branchID string, filter codevaldgit.LogFilter) ([]codevaldgit.CommitEntry, error)
 	diffFunc            func(ctx context.Context, fromRef, toRef string) ([]codevaldgit.FileDiff, error)
+	createKeyword       func(ctx context.Context, req codevaldgit.CreateKeywordRequest) (codevaldgit.Keyword, error)
+	getKeyword          func(ctx context.Context, kwID string) (codevaldgit.Keyword, error)
+	listKeywords        func(ctx context.Context, filter codevaldgit.KeywordFilter) ([]codevaldgit.Keyword, error)
+	getKeywordTree      func(ctx context.Context, kwID string) ([]codevaldgit.KeywordTreeNode, error)
+	updateKeyword       func(ctx context.Context, kwID string, req codevaldgit.UpdateKeywordRequest) (codevaldgit.Keyword, error)
+	deleteKeyword       func(ctx context.Context, kwID string) error
+	createEdge          func(ctx context.Context, req codevaldgit.CreateEdgeRequest) error
+	deleteEdge          func(ctx context.Context, req codevaldgit.DeleteEdgeRequest) error
+	getNeighborhood     func(ctx context.Context, branchID, entityID string, depth int) (codevaldgit.GraphResult, error)
+	searchByKeywords    func(ctx context.Context, req codevaldgit.SearchByKeywordsRequest) (codevaldgit.GraphResult, error)
 }
 
 func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error) {
@@ -189,43 +199,73 @@ func (f *fakeGitManager) CancelImport(_ context.Context, _ string) error {
 	return nil
 }
 
-func (f *fakeGitManager) CreateKeyword(_ context.Context, _ codevaldgit.CreateKeywordRequest) (codevaldgit.Keyword, error) {
+func (f *fakeGitManager) CreateKeyword(_ context.Context, req codevaldgit.CreateKeywordRequest) (codevaldgit.Keyword, error) {
+	if f.createKeyword != nil {
+		return f.createKeyword(context.Background(), req)
+	}
 	return codevaldgit.Keyword{}, nil
 }
 
-func (f *fakeGitManager) GetKeyword(_ context.Context, _ string) (codevaldgit.Keyword, error) {
+func (f *fakeGitManager) GetKeyword(_ context.Context, kwID string) (codevaldgit.Keyword, error) {
+	if f.getKeyword != nil {
+		return f.getKeyword(context.Background(), kwID)
+	}
 	return codevaldgit.Keyword{}, nil
 }
 
-func (f *fakeGitManager) ListKeywords(_ context.Context, _ codevaldgit.KeywordFilter) ([]codevaldgit.Keyword, error) {
+func (f *fakeGitManager) ListKeywords(_ context.Context, filter codevaldgit.KeywordFilter) ([]codevaldgit.Keyword, error) {
+	if f.listKeywords != nil {
+		return f.listKeywords(context.Background(), filter)
+	}
 	return nil, nil
 }
 
-func (f *fakeGitManager) GetKeywordTree(_ context.Context, _ string) ([]codevaldgit.KeywordTreeNode, error) {
+func (f *fakeGitManager) GetKeywordTree(_ context.Context, kwID string) ([]codevaldgit.KeywordTreeNode, error) {
+	if f.getKeywordTree != nil {
+		return f.getKeywordTree(context.Background(), kwID)
+	}
 	return nil, nil
 }
 
-func (f *fakeGitManager) UpdateKeyword(_ context.Context, _ string, _ codevaldgit.UpdateKeywordRequest) (codevaldgit.Keyword, error) {
+func (f *fakeGitManager) UpdateKeyword(_ context.Context, kwID string, req codevaldgit.UpdateKeywordRequest) (codevaldgit.Keyword, error) {
+	if f.updateKeyword != nil {
+		return f.updateKeyword(context.Background(), kwID, req)
+	}
 	return codevaldgit.Keyword{}, nil
 }
 
-func (f *fakeGitManager) DeleteKeyword(_ context.Context, _ string) error {
+func (f *fakeGitManager) DeleteKeyword(_ context.Context, kwID string) error {
+	if f.deleteKeyword != nil {
+		return f.deleteKeyword(context.Background(), kwID)
+	}
 	return nil
 }
 
-func (f *fakeGitManager) CreateEdge(_ context.Context, _ codevaldgit.CreateEdgeRequest) error {
+func (f *fakeGitManager) CreateEdge(_ context.Context, req codevaldgit.CreateEdgeRequest) error {
+	if f.createEdge != nil {
+		return f.createEdge(context.Background(), req)
+	}
 	return nil
 }
 
-func (f *fakeGitManager) DeleteEdge(_ context.Context, _ codevaldgit.DeleteEdgeRequest) error {
+func (f *fakeGitManager) DeleteEdge(_ context.Context, req codevaldgit.DeleteEdgeRequest) error {
+	if f.deleteEdge != nil {
+		return f.deleteEdge(context.Background(), req)
+	}
 	return nil
 }
 
-func (f *fakeGitManager) GetNeighborhood(_ context.Context, _, _ string, _ int) (codevaldgit.GraphResult, error) {
+func (f *fakeGitManager) GetNeighborhood(_ context.Context, branchID, entityID string, depth int) (codevaldgit.GraphResult, error) {
+	if f.getNeighborhood != nil {
+		return f.getNeighborhood(context.Background(), branchID, entityID, depth)
+	}
 	return codevaldgit.GraphResult{}, nil
 }
 
-func (f *fakeGitManager) SearchByKeywords(_ context.Context, _ codevaldgit.SearchByKeywordsRequest) (codevaldgit.GraphResult, error) {
+func (f *fakeGitManager) SearchByKeywords(_ context.Context, req codevaldgit.SearchByKeywordsRequest) (codevaldgit.GraphResult, error) {
+	if f.searchByKeywords != nil {
+		return f.searchByKeywords(context.Background(), req)
+	}
 	return codevaldgit.GraphResult{}, nil
 }
 
