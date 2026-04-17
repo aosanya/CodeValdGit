@@ -9,6 +9,7 @@ package codevaldgit
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
@@ -113,13 +114,17 @@ func (m *gitManager) ListRepositories(ctx context.Context) ([]Repository, error)
 // GetRepository retrieves a Repository entity by its ID.
 // Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 func (m *gitManager) GetRepository(ctx context.Context, repoID string) (Repository, error) {
+	log.Printf("[GetRepository] agencyID=%q repoID=%q", m.agencyID, repoID)
 	e, err := m.dm.GetEntity(ctx, m.agencyID, repoID)
 	if err != nil {
+		log.Printf("[GetRepository] GetEntity error: agencyID=%q repoID=%q err=%v", m.agencyID, repoID, err)
 		return Repository{}, ErrRepoNotInitialised
 	}
 	if e.TypeID != "Repository" {
+		log.Printf("[GetRepository] wrong TypeID: agencyID=%q repoID=%q typeID=%q (expected \"Repository\")", m.agencyID, repoID, e.TypeID)
 		return Repository{}, ErrRepoNotInitialised
 	}
+	log.Printf("[GetRepository] found: agencyID=%q repoID=%q name=%q", m.agencyID, repoID, e.Properties["name"])
 	return entityToRepository(e, m.agencyID), nil
 }
 
@@ -263,6 +268,7 @@ func (m *gitManager) GetBranch(ctx context.Context, branchID string) (Branch, er
 // ListBranches returns all Branch entities for the specified repository.
 // Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch, error) {
+	log.Printf("[ListBranches] agencyID=%q repoID=%q", m.agencyID, repoID)
 	if _, err := m.GetRepository(ctx, repoID); err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
@@ -270,6 +276,7 @@ func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch,
 	if err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
+	log.Printf("[ListBranches] agencyID=%q repoID=%q — found %d branch(es)", m.agencyID, repoID, len(entities))
 	out := make([]Branch, len(entities))
 	for i, e := range entities {
 		out[i] = entityToBranch(e, repoID)
@@ -444,10 +451,13 @@ func (m *gitManager) listRepositories(ctx context.Context) ([]entitygraph.Entity
 	})
 }
 
-// listBranchesByRepo returns all Branch entities whose belongs_to_repository
-// edge points to the given repositoryID.
+// listBranchesByRepo returns all Branch entities linked to the given
+// repositoryID. It first queries the forward has_branch edge (repo→branch)
+// and falls back to the reverse belongs_to_repository edge (branch→repo) for
+// repos imported before the has_branch edge was created on import.
 func (m *gitManager) listBranchesByRepo(ctx context.Context, repositoryID string) ([]entitygraph.Entity, error) {
-	rels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
+	// Primary: forward has_branch edges (repo → branch).
+	forwardRels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
 		AgencyID: m.agencyID,
 		Name:     "has_branch",
 		FromID:   repositoryID,
@@ -455,11 +465,40 @@ func (m *gitManager) listBranchesByRepo(ctx context.Context, repositoryID string
 	if err != nil {
 		return nil, err
 	}
-	out := make([]entitygraph.Entity, 0, len(rels))
-	for _, r := range rels {
-		e, err := m.dm.GetEntity(ctx, m.agencyID, r.ToID)
+	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q has_branch edges=%d", m.agencyID, repositoryID, len(forwardRels))
+
+	if len(forwardRels) > 0 {
+		out := make([]entitygraph.Entity, 0, len(forwardRels))
+		for _, r := range forwardRels {
+			e, err := m.dm.GetEntity(ctx, m.agencyID, r.ToID)
+			if err != nil {
+				continue // skip soft-deleted branches
+			}
+			out = append(out, e)
+		}
+		return out, nil
+	}
+
+	// Fallback: reverse belongs_to_repository edges (branch → repo).
+	// Used for repos that were imported before the has_branch edge was written.
+	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q — no has_branch edges; falling back to belongs_to_repository", m.agencyID, repositoryID)
+	reverseRels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
+		AgencyID: m.agencyID,
+		Name:     "belongs_to_repository",
+		ToID:     repositoryID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q belongs_to_repository edges=%d", m.agencyID, repositoryID, len(reverseRels))
+	out := make([]entitygraph.Entity, 0, len(reverseRels))
+	for _, r := range reverseRels {
+		e, err := m.dm.GetEntity(ctx, m.agencyID, r.FromID)
 		if err != nil {
 			continue // skip soft-deleted branches
+		}
+		if e.TypeID != "Branch" {
+			continue // ignore non-branch entities sharing the relationship name
 		}
 		out = append(out, e)
 	}

@@ -6,6 +6,7 @@ package server
 
 import (
 	"context"
+	"log"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
@@ -103,10 +104,14 @@ func (s *Server) GetBranch(ctx context.Context, req *pb.GetBranchRequest) (*pb.B
 
 // ListBranches implements pb.GitServiceServer.
 func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
-	branches, err := s.mgr.ListBranches(ctx, req.GetRepositoryId())
+	repoID := req.GetRepositoryId()
+	log.Printf("[ListBranches] repository_id=%q", repoID)
+	branches, err := s.mgr.ListBranches(ctx, repoID)
 	if err != nil {
+		log.Printf("[ListBranches] error for repository_id=%q: %v", repoID, err)
 		return nil, toGRPCError(err)
 	}
+	log.Printf("[ListBranches] repository_id=%q — found %d branch(es)", repoID, len(branches))
 	out := make([]*pb.Branch, len(branches))
 	for i, b := range branches {
 		out[i] = branchToProto(b)

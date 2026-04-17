@@ -208,6 +208,27 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 
+	// Create the Repository entity FIRST so that walkBranchCommits can link
+	// branches to it via has_branch and belongs_to_repository edges.
+	now := time.Now().UTC().Format(time.RFC3339)
+	repoEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		AgencyID: m.agencyID,
+		TypeID:   "Repository",
+		Properties: map[string]any{
+			"name":           req.Name,
+			"description":    req.Description,
+			"default_branch": defaultBranch,
+			"created_at":     now,
+			"updated_at":     now,
+		},
+	})
+	if err != nil {
+		m.failImportJob(ctx, jobID, fmt.Sprintf("create Repository entity: %v", err))
+		return
+	}
+	repoID := repoEntity.ID
+	log.Printf("[runImport] created Repository entity repoID=%q agencyID=%q", repoID, m.agencyID)
+
 	// Walk all remote references (branches).
 	refs, err := repo.References()
 	if err != nil {
@@ -222,7 +243,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		if !ref.Name().IsBranch() && !ref.Name().IsRemote() {
 			return nil
 		}
-		return m.walkBranchCommits(ctx, repo, ref)
+		return m.walkBranchCommits(ctx, repo, ref, repoID)
 	}); err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
@@ -230,23 +251,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 			return
 		}
 		m.failImportJob(ctx, jobID, fmt.Sprintf("walk refs: %v", err))
-		return
-	}
-
-	// Create the Repository entity using the provided name and default branch.
-	now := time.Now().UTC().Format(time.RFC3339)
-	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
-		AgencyID: m.agencyID,
-		TypeID:   "Repository",
-		Properties: map[string]any{
-			"name":           req.Name,
-			"description":    req.Description,
-			"default_branch": defaultBranch,
-			"created_at":     now,
-			"updated_at":     now,
-		},
-	}); err != nil {
-		m.failImportJob(ctx, jobID, fmt.Sprintf("create Repository entity: %v", err))
 		return
 	}
 
@@ -259,8 +263,10 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 }
 
 // walkBranchCommits upserts Branch, Commit, Tree, and Blob entities for every
-// commit reachable from the given reference.
-func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Repository, ref *gogitplumbing.Reference) error {
+// commit reachable from the given reference. repoID is the entitygraph ID of
+// the parent Repository entity; it is used to create has_branch and
+// belongs_to_repository edges so that listBranchesByRepo can find the branch.
+func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Repository, ref *gogitplumbing.Reference, repoID string) error {
 	branchName := ref.Name().Short()
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -273,8 +279,10 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 	if err != nil {
 		return fmt.Errorf("upsert branch %s: list: %w", branchName, err)
 	}
+	var branchID string
 	if len(existing) > 0 {
-		if _, err := m.dm.UpdateEntity(ctx, m.agencyID, existing[0].ID, entitygraph.UpdateEntityRequest{
+		branchID = existing[0].ID
+		if _, err := m.dm.UpdateEntity(ctx, m.agencyID, branchID, entitygraph.UpdateEntityRequest{
 			Properties: map[string]any{
 				"sha":        ref.Hash().String(),
 				"updated_at": now,
@@ -283,7 +291,7 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 			return fmt.Errorf("upsert branch %s: update: %w", branchName, err)
 		}
 	} else {
-		if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+		branchEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 			AgencyID: m.agencyID,
 			TypeID:   "Branch",
 			Properties: map[string]any{
@@ -292,8 +300,32 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 				"created_at": now,
 				"updated_at": now,
 			},
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("upsert branch %s: create: %w", branchName, err)
+		}
+		branchID = branchEntity.ID
+	}
+
+	// Link branch to repository: repo→branch (has_branch) and branch→repo
+	// (belongs_to_repository). Both edges are idempotency-safe via create;
+	// duplicate-edge errors are non-fatal so that re-imports don't fail.
+	if repoID != "" {
+		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "has_branch",
+			FromID:   repoID,
+			ToID:     branchID,
+		}); relErr != nil {
+			log.Printf("[walkBranchCommits] has_branch edge repoID=%q branchID=%q: %v (continuing)", repoID, branchID, relErr)
+		}
+		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "belongs_to_repository",
+			FromID:   branchID,
+			ToID:     repoID,
+		}); relErr != nil {
+			log.Printf("[walkBranchCommits] belongs_to_repository edge branchID=%q repoID=%q: %v (continuing)", branchID, repoID, relErr)
 		}
 	}
 
