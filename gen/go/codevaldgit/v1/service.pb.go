@@ -2677,6 +2677,1134 @@ func (x *ImportJobResponse) GetUpdatedAt() string {
 	return ""
 }
 
+// Keyword is a taxonomy entity used to tag Blob entities in the documentation graph.
+type Keyword struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Scope         string                 `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty"`
+	ParentId      string                 `protobuf:"bytes,5,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	ChildIds      []string               `protobuf:"bytes,6,rep,name=child_ids,json=childIds,proto3" json:"child_ids,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Keyword) Reset() {
+	*x = Keyword{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Keyword) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Keyword) ProtoMessage() {}
+
+func (x *Keyword) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Keyword.ProtoReflect.Descriptor instead.
+func (*Keyword) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *Keyword) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Keyword) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Keyword) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Keyword) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *Keyword) GetParentId() string {
+	if x != nil {
+		return x.ParentId
+	}
+	return ""
+}
+
+func (x *Keyword) GetChildIds() []string {
+	if x != nil {
+		return x.ChildIds
+	}
+	return nil
+}
+
+func (x *Keyword) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *Keyword) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+// KeywordTreeNode is a recursive node in the keyword taxonomy tree.
+type KeywordTreeNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Keyword       *Keyword               `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword,omitempty"`
+	Children      []*KeywordTreeNode     `protobuf:"bytes,2,rep,name=children,proto3" json:"children,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeywordTreeNode) Reset() {
+	*x = KeywordTreeNode{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeywordTreeNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeywordTreeNode) ProtoMessage() {}
+
+func (x *KeywordTreeNode) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeywordTreeNode.ProtoReflect.Descriptor instead.
+func (*KeywordTreeNode) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *KeywordTreeNode) GetKeyword() *Keyword {
+	if x != nil {
+		return x.Keyword
+	}
+	return nil
+}
+
+func (x *KeywordTreeNode) GetChildren() []*KeywordTreeNode {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+type CreateKeywordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Scope         string                 `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
+	ParentId      string                 `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateKeywordRequest) Reset() {
+	*x = CreateKeywordRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateKeywordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateKeywordRequest) ProtoMessage() {}
+
+func (x *CreateKeywordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateKeywordRequest.ProtoReflect.Descriptor instead.
+func (*CreateKeywordRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *CreateKeywordRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateKeywordRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateKeywordRequest) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *CreateKeywordRequest) GetParentId() string {
+	if x != nil {
+		return x.ParentId
+	}
+	return ""
+}
+
+type GetKeywordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeywordId     string                 `protobuf:"bytes,1,opt,name=keyword_id,json=keywordId,proto3" json:"keyword_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKeywordRequest) Reset() {
+	*x = GetKeywordRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKeywordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKeywordRequest) ProtoMessage() {}
+
+func (x *GetKeywordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKeywordRequest.ProtoReflect.Descriptor instead.
+func (*GetKeywordRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *GetKeywordRequest) GetKeywordId() string {
+	if x != nil {
+		return x.KeywordId
+	}
+	return ""
+}
+
+type ListKeywordsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scope         string                 `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
+	ParentId      string                 `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListKeywordsRequest) Reset() {
+	*x = ListKeywordsRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListKeywordsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListKeywordsRequest) ProtoMessage() {}
+
+func (x *ListKeywordsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListKeywordsRequest.ProtoReflect.Descriptor instead.
+func (*ListKeywordsRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ListKeywordsRequest) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *ListKeywordsRequest) GetParentId() string {
+	if x != nil {
+		return x.ParentId
+	}
+	return ""
+}
+
+func (x *ListKeywordsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListKeywordsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Keywords      []*Keyword             `protobuf:"bytes,1,rep,name=keywords,proto3" json:"keywords,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListKeywordsResponse) Reset() {
+	*x = ListKeywordsResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListKeywordsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListKeywordsResponse) ProtoMessage() {}
+
+func (x *ListKeywordsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListKeywordsResponse.ProtoReflect.Descriptor instead.
+func (*ListKeywordsResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *ListKeywordsResponse) GetKeywords() []*Keyword {
+	if x != nil {
+		return x.Keywords
+	}
+	return nil
+}
+
+type GetKeywordTreeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// keyword_id is the root of the subtree. Empty means return the full forest.
+	KeywordId     string `protobuf:"bytes,1,opt,name=keyword_id,json=keywordId,proto3" json:"keyword_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKeywordTreeRequest) Reset() {
+	*x = GetKeywordTreeRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKeywordTreeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKeywordTreeRequest) ProtoMessage() {}
+
+func (x *GetKeywordTreeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKeywordTreeRequest.ProtoReflect.Descriptor instead.
+func (*GetKeywordTreeRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *GetKeywordTreeRequest) GetKeywordId() string {
+	if x != nil {
+		return x.KeywordId
+	}
+	return ""
+}
+
+type GetKeywordTreeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nodes         []*KeywordTreeNode     `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKeywordTreeResponse) Reset() {
+	*x = GetKeywordTreeResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKeywordTreeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKeywordTreeResponse) ProtoMessage() {}
+
+func (x *GetKeywordTreeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKeywordTreeResponse.ProtoReflect.Descriptor instead.
+func (*GetKeywordTreeResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *GetKeywordTreeResponse) GetNodes() []*KeywordTreeNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+type UpdateKeywordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeywordId     string                 `protobuf:"bytes,1,opt,name=keyword_id,json=keywordId,proto3" json:"keyword_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Scope         string                 `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateKeywordRequest) Reset() {
+	*x = UpdateKeywordRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateKeywordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateKeywordRequest) ProtoMessage() {}
+
+func (x *UpdateKeywordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateKeywordRequest.ProtoReflect.Descriptor instead.
+func (*UpdateKeywordRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *UpdateKeywordRequest) GetKeywordId() string {
+	if x != nil {
+		return x.KeywordId
+	}
+	return ""
+}
+
+func (x *UpdateKeywordRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateKeywordRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *UpdateKeywordRequest) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+type DeleteKeywordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeywordId     string                 `protobuf:"bytes,1,opt,name=keyword_id,json=keywordId,proto3" json:"keyword_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteKeywordRequest) Reset() {
+	*x = DeleteKeywordRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteKeywordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteKeywordRequest) ProtoMessage() {}
+
+func (x *DeleteKeywordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteKeywordRequest.ProtoReflect.Descriptor instead.
+func (*DeleteKeywordRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *DeleteKeywordRequest) GetKeywordId() string {
+	if x != nil {
+		return x.KeywordId
+	}
+	return ""
+}
+
+type DeleteKeywordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteKeywordResponse) Reset() {
+	*x = DeleteKeywordResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteKeywordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteKeywordResponse) ProtoMessage() {}
+
+func (x *DeleteKeywordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteKeywordResponse.ProtoReflect.Descriptor instead.
+func (*DeleteKeywordResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{55}
+}
+
+type CreateEdgeRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	BranchId         string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	FromEntityId     string                 `protobuf:"bytes,2,opt,name=from_entity_id,json=fromEntityId,proto3" json:"from_entity_id,omitempty"`
+	RelationshipName string                 `protobuf:"bytes,3,opt,name=relationship_name,json=relationshipName,proto3" json:"relationship_name,omitempty"`
+	ToEntityId       string                 `protobuf:"bytes,4,opt,name=to_entity_id,json=toEntityId,proto3" json:"to_entity_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CreateEdgeRequest) Reset() {
+	*x = CreateEdgeRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateEdgeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateEdgeRequest) ProtoMessage() {}
+
+func (x *CreateEdgeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateEdgeRequest.ProtoReflect.Descriptor instead.
+func (*CreateEdgeRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *CreateEdgeRequest) GetBranchId() string {
+	if x != nil {
+		return x.BranchId
+	}
+	return ""
+}
+
+func (x *CreateEdgeRequest) GetFromEntityId() string {
+	if x != nil {
+		return x.FromEntityId
+	}
+	return ""
+}
+
+func (x *CreateEdgeRequest) GetRelationshipName() string {
+	if x != nil {
+		return x.RelationshipName
+	}
+	return ""
+}
+
+func (x *CreateEdgeRequest) GetToEntityId() string {
+	if x != nil {
+		return x.ToEntityId
+	}
+	return ""
+}
+
+type CreateEdgeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateEdgeResponse) Reset() {
+	*x = CreateEdgeResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateEdgeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateEdgeResponse) ProtoMessage() {}
+
+func (x *CreateEdgeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateEdgeResponse.ProtoReflect.Descriptor instead.
+func (*CreateEdgeResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{57}
+}
+
+type DeleteEdgeRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	BranchId         string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	FromEntityId     string                 `protobuf:"bytes,2,opt,name=from_entity_id,json=fromEntityId,proto3" json:"from_entity_id,omitempty"`
+	RelationshipName string                 `protobuf:"bytes,3,opt,name=relationship_name,json=relationshipName,proto3" json:"relationship_name,omitempty"`
+	ToEntityId       string                 `protobuf:"bytes,4,opt,name=to_entity_id,json=toEntityId,proto3" json:"to_entity_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DeleteEdgeRequest) Reset() {
+	*x = DeleteEdgeRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteEdgeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteEdgeRequest) ProtoMessage() {}
+
+func (x *DeleteEdgeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteEdgeRequest.ProtoReflect.Descriptor instead.
+func (*DeleteEdgeRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *DeleteEdgeRequest) GetBranchId() string {
+	if x != nil {
+		return x.BranchId
+	}
+	return ""
+}
+
+func (x *DeleteEdgeRequest) GetFromEntityId() string {
+	if x != nil {
+		return x.FromEntityId
+	}
+	return ""
+}
+
+func (x *DeleteEdgeRequest) GetRelationshipName() string {
+	if x != nil {
+		return x.RelationshipName
+	}
+	return ""
+}
+
+func (x *DeleteEdgeRequest) GetToEntityId() string {
+	if x != nil {
+		return x.ToEntityId
+	}
+	return ""
+}
+
+type DeleteEdgeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteEdgeResponse) Reset() {
+	*x = DeleteEdgeResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteEdgeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteEdgeResponse) ProtoMessage() {}
+
+func (x *DeleteEdgeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteEdgeResponse.ProtoReflect.Descriptor instead.
+func (*DeleteEdgeResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{59}
+}
+
+type GetNeighborhoodRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	EntityId      string                 `protobuf:"bytes,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Depth         int32                  `protobuf:"varint,3,opt,name=depth,proto3" json:"depth,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNeighborhoodRequest) Reset() {
+	*x = GetNeighborhoodRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNeighborhoodRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNeighborhoodRequest) ProtoMessage() {}
+
+func (x *GetNeighborhoodRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNeighborhoodRequest.ProtoReflect.Descriptor instead.
+func (*GetNeighborhoodRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *GetNeighborhoodRequest) GetBranchId() string {
+	if x != nil {
+		return x.BranchId
+	}
+	return ""
+}
+
+func (x *GetNeighborhoodRequest) GetEntityId() string {
+	if x != nil {
+		return x.EntityId
+	}
+	return ""
+}
+
+func (x *GetNeighborhoodRequest) GetDepth() int32 {
+	if x != nil {
+		return x.Depth
+	}
+	return 0
+}
+
+type SearchByKeywordsRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	BranchId string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	Keywords []string               `protobuf:"bytes,2,rep,name=keywords,proto3" json:"keywords,omitempty"`
+	// match_mode is "AND" or "OR". Defaults to "OR".
+	MatchMode     string `protobuf:"bytes,3,opt,name=match_mode,json=matchMode,proto3" json:"match_mode,omitempty"`
+	Cascade       bool   `protobuf:"varint,4,opt,name=cascade,proto3" json:"cascade,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchByKeywordsRequest) Reset() {
+	*x = SearchByKeywordsRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchByKeywordsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchByKeywordsRequest) ProtoMessage() {}
+
+func (x *SearchByKeywordsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchByKeywordsRequest.ProtoReflect.Descriptor instead.
+func (*SearchByKeywordsRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *SearchByKeywordsRequest) GetBranchId() string {
+	if x != nil {
+		return x.BranchId
+	}
+	return ""
+}
+
+func (x *SearchByKeywordsRequest) GetKeywords() []string {
+	if x != nil {
+		return x.Keywords
+	}
+	return nil
+}
+
+func (x *SearchByKeywordsRequest) GetMatchMode() string {
+	if x != nil {
+		return x.MatchMode
+	}
+	return ""
+}
+
+func (x *SearchByKeywordsRequest) GetCascade() bool {
+	if x != nil {
+		return x.Cascade
+	}
+	return false
+}
+
+// GraphNode is a vertex in a graph query result.
+type GraphNode struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TypeId string                 `protobuf:"bytes,2,opt,name=type_id,json=typeId,proto3" json:"type_id,omitempty"`
+	// properties is a JSON-encoded map of property key/value pairs.
+	Properties    string `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GraphNode) Reset() {
+	*x = GraphNode{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GraphNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GraphNode) ProtoMessage() {}
+
+func (x *GraphNode) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GraphNode.ProtoReflect.Descriptor instead.
+func (*GraphNode) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *GraphNode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GraphNode) GetTypeId() string {
+	if x != nil {
+		return x.TypeId
+	}
+	return ""
+}
+
+func (x *GraphNode) GetProperties() string {
+	if x != nil {
+		return x.Properties
+	}
+	return ""
+}
+
+// GraphEdge is a directed edge in a graph query result.
+type GraphEdge struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	FromId        string                 `protobuf:"bytes,3,opt,name=from_id,json=fromId,proto3" json:"from_id,omitempty"`
+	ToId          string                 `protobuf:"bytes,4,opt,name=to_id,json=toId,proto3" json:"to_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GraphEdge) Reset() {
+	*x = GraphEdge{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GraphEdge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GraphEdge) ProtoMessage() {}
+
+func (x *GraphEdge) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GraphEdge.ProtoReflect.Descriptor instead.
+func (*GraphEdge) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *GraphEdge) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GraphEdge) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GraphEdge) GetFromId() string {
+	if x != nil {
+		return x.FromId
+	}
+	return ""
+}
+
+func (x *GraphEdge) GetToId() string {
+	if x != nil {
+		return x.ToId
+	}
+	return ""
+}
+
+// GraphResult is the response for neighborhood and keyword search queries.
+type GraphResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nodes         []*GraphNode           `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Edges         []*GraphEdge           `protobuf:"bytes,2,rep,name=edges,proto3" json:"edges,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GraphResult) Reset() {
+	*x = GraphResult{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GraphResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GraphResult) ProtoMessage() {}
+
+func (x *GraphResult) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GraphResult.ProtoReflect.Descriptor instead.
+func (*GraphResult) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *GraphResult) GetNodes() []*GraphNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+func (x *GraphResult) GetEdges() []*GraphEdge {
+	if x != nil {
+		return x.Edges
+	}
+	return nil
+}
+
 var File_codevaldgit_v1_service_proto protoreflect.FileDescriptor
 
 const file_codevaldgit_v1_service_proto_rawDesc = "" +
@@ -2874,7 +4002,88 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\tR\tupdatedAt2\x8f\x0f\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt\"\xdd\x01\n" +
+	"\aKeyword\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05scope\x18\x04 \x01(\tR\x05scope\x12\x1b\n" +
+	"\tparent_id\x18\x05 \x01(\tR\bparentId\x12\x1b\n" +
+	"\tchild_ids\x18\x06 \x03(\tR\bchildIds\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\"\x81\x01\n" +
+	"\x0fKeywordTreeNode\x121\n" +
+	"\akeyword\x18\x01 \x01(\v2\x17.codevaldgit.v1.KeywordR\akeyword\x12;\n" +
+	"\bchildren\x18\x02 \x03(\v2\x1f.codevaldgit.v1.KeywordTreeNodeR\bchildren\"\x7f\n" +
+	"\x14CreateKeywordRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05scope\x18\x03 \x01(\tR\x05scope\x12\x1b\n" +
+	"\tparent_id\x18\x04 \x01(\tR\bparentId\"2\n" +
+	"\x11GetKeywordRequest\x12\x1d\n" +
+	"\n" +
+	"keyword_id\x18\x01 \x01(\tR\tkeywordId\"^\n" +
+	"\x13ListKeywordsRequest\x12\x14\n" +
+	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x1b\n" +
+	"\tparent_id\x18\x02 \x01(\tR\bparentId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"K\n" +
+	"\x14ListKeywordsResponse\x123\n" +
+	"\bkeywords\x18\x01 \x03(\v2\x17.codevaldgit.v1.KeywordR\bkeywords\"6\n" +
+	"\x15GetKeywordTreeRequest\x12\x1d\n" +
+	"\n" +
+	"keyword_id\x18\x01 \x01(\tR\tkeywordId\"O\n" +
+	"\x16GetKeywordTreeResponse\x125\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x1f.codevaldgit.v1.KeywordTreeNodeR\x05nodes\"\x81\x01\n" +
+	"\x14UpdateKeywordRequest\x12\x1d\n" +
+	"\n" +
+	"keyword_id\x18\x01 \x01(\tR\tkeywordId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05scope\x18\x04 \x01(\tR\x05scope\"5\n" +
+	"\x14DeleteKeywordRequest\x12\x1d\n" +
+	"\n" +
+	"keyword_id\x18\x01 \x01(\tR\tkeywordId\"\x17\n" +
+	"\x15DeleteKeywordResponse\"\xa5\x01\n" +
+	"\x11CreateEdgeRequest\x12\x1b\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12$\n" +
+	"\x0efrom_entity_id\x18\x02 \x01(\tR\ffromEntityId\x12+\n" +
+	"\x11relationship_name\x18\x03 \x01(\tR\x10relationshipName\x12 \n" +
+	"\fto_entity_id\x18\x04 \x01(\tR\n" +
+	"toEntityId\"\x14\n" +
+	"\x12CreateEdgeResponse\"\xa5\x01\n" +
+	"\x11DeleteEdgeRequest\x12\x1b\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12$\n" +
+	"\x0efrom_entity_id\x18\x02 \x01(\tR\ffromEntityId\x12+\n" +
+	"\x11relationship_name\x18\x03 \x01(\tR\x10relationshipName\x12 \n" +
+	"\fto_entity_id\x18\x04 \x01(\tR\n" +
+	"toEntityId\"\x14\n" +
+	"\x12DeleteEdgeResponse\"h\n" +
+	"\x16GetNeighborhoodRequest\x12\x1b\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x1b\n" +
+	"\tentity_id\x18\x02 \x01(\tR\bentityId\x12\x14\n" +
+	"\x05depth\x18\x03 \x01(\x05R\x05depth\"\x8b\x01\n" +
+	"\x17SearchByKeywordsRequest\x12\x1b\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x1a\n" +
+	"\bkeywords\x18\x02 \x03(\tR\bkeywords\x12\x1d\n" +
+	"\n" +
+	"match_mode\x18\x03 \x01(\tR\tmatchMode\x12\x18\n" +
+	"\acascade\x18\x04 \x01(\bR\acascade\"T\n" +
+	"\tGraphNode\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\atype_id\x18\x02 \x01(\tR\x06typeId\x12\x1e\n" +
+	"\n" +
+	"properties\x18\x03 \x01(\tR\n" +
+	"properties\"]\n" +
+	"\tGraphEdge\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
+	"\afrom_id\x18\x03 \x01(\tR\x06fromId\x12\x13\n" +
+	"\x05to_id\x18\x04 \x01(\tR\x04toId\"o\n" +
+	"\vGraphResult\x12/\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x19.codevaldgit.v1.GraphNodeR\x05nodes\x12/\n" +
+	"\x05edges\x18\x02 \x03(\v2\x19.codevaldgit.v1.GraphEdgeR\x05edges2\xef\x15\n" +
 	"\n" +
 	"GitService\x12G\n" +
 	"\bInitRepo\x12\x1f.codevaldgit.v1.InitRepoRequest\x1a\x1a.codevaldgit.v1.Repository\x12e\n" +
@@ -2903,7 +4112,20 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"ImportRepo\x12!.codevaldgit.v1.ImportRepoRequest\x1a\".codevaldgit.v1.ImportRepoResponse\x12\\\n" +
 	"\x0fGetImportStatus\x12&.codevaldgit.v1.GetImportStatusRequest\x1a!.codevaldgit.v1.ImportJobResponse\x12Y\n" +
-	"\fCancelImport\x12#.codevaldgit.v1.CancelImportRequest\x1a$.codevaldgit.v1.CancelImportResponseBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
+	"\fCancelImport\x12#.codevaldgit.v1.CancelImportRequest\x1a$.codevaldgit.v1.CancelImportResponse\x12N\n" +
+	"\rCreateKeyword\x12$.codevaldgit.v1.CreateKeywordRequest\x1a\x17.codevaldgit.v1.Keyword\x12H\n" +
+	"\n" +
+	"GetKeyword\x12!.codevaldgit.v1.GetKeywordRequest\x1a\x17.codevaldgit.v1.Keyword\x12Y\n" +
+	"\fListKeywords\x12#.codevaldgit.v1.ListKeywordsRequest\x1a$.codevaldgit.v1.ListKeywordsResponse\x12_\n" +
+	"\x0eGetKeywordTree\x12%.codevaldgit.v1.GetKeywordTreeRequest\x1a&.codevaldgit.v1.GetKeywordTreeResponse\x12N\n" +
+	"\rUpdateKeyword\x12$.codevaldgit.v1.UpdateKeywordRequest\x1a\x17.codevaldgit.v1.Keyword\x12\\\n" +
+	"\rDeleteKeyword\x12$.codevaldgit.v1.DeleteKeywordRequest\x1a%.codevaldgit.v1.DeleteKeywordResponse\x12S\n" +
+	"\n" +
+	"CreateEdge\x12!.codevaldgit.v1.CreateEdgeRequest\x1a\".codevaldgit.v1.CreateEdgeResponse\x12S\n" +
+	"\n" +
+	"DeleteEdge\x12!.codevaldgit.v1.DeleteEdgeRequest\x1a\".codevaldgit.v1.DeleteEdgeResponse\x12V\n" +
+	"\x0fGetNeighborhood\x12&.codevaldgit.v1.GetNeighborhoodRequest\x1a\x1b.codevaldgit.v1.GraphResult\x12X\n" +
+	"\x10SearchByKeywords\x12'.codevaldgit.v1.SearchByKeywordsRequest\x1a\x1b.codevaldgit.v1.GraphResultBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
 
 var (
 	file_codevaldgit_v1_service_proto_rawDescOnce sync.Once
@@ -2917,7 +4139,7 @@ func file_codevaldgit_v1_service_proto_rawDescGZIP() []byte {
 	return file_codevaldgit_v1_service_proto_rawDescData
 }
 
-var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*Repository)(nil),                 // 0: codevaldgit.v1.Repository
 	(*Branch)(nil),                     // 1: codevaldgit.v1.Branch
@@ -2964,79 +4186,125 @@ var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*CancelImportRequest)(nil),        // 42: codevaldgit.v1.CancelImportRequest
 	(*CancelImportResponse)(nil),       // 43: codevaldgit.v1.CancelImportResponse
 	(*ImportJobResponse)(nil),          // 44: codevaldgit.v1.ImportJobResponse
-	(*timestamppb.Timestamp)(nil),      // 45: google.protobuf.Timestamp
+	(*Keyword)(nil),                    // 45: codevaldgit.v1.Keyword
+	(*KeywordTreeNode)(nil),            // 46: codevaldgit.v1.KeywordTreeNode
+	(*CreateKeywordRequest)(nil),       // 47: codevaldgit.v1.CreateKeywordRequest
+	(*GetKeywordRequest)(nil),          // 48: codevaldgit.v1.GetKeywordRequest
+	(*ListKeywordsRequest)(nil),        // 49: codevaldgit.v1.ListKeywordsRequest
+	(*ListKeywordsResponse)(nil),       // 50: codevaldgit.v1.ListKeywordsResponse
+	(*GetKeywordTreeRequest)(nil),      // 51: codevaldgit.v1.GetKeywordTreeRequest
+	(*GetKeywordTreeResponse)(nil),     // 52: codevaldgit.v1.GetKeywordTreeResponse
+	(*UpdateKeywordRequest)(nil),       // 53: codevaldgit.v1.UpdateKeywordRequest
+	(*DeleteKeywordRequest)(nil),       // 54: codevaldgit.v1.DeleteKeywordRequest
+	(*DeleteKeywordResponse)(nil),      // 55: codevaldgit.v1.DeleteKeywordResponse
+	(*CreateEdgeRequest)(nil),          // 56: codevaldgit.v1.CreateEdgeRequest
+	(*CreateEdgeResponse)(nil),         // 57: codevaldgit.v1.CreateEdgeResponse
+	(*DeleteEdgeRequest)(nil),          // 58: codevaldgit.v1.DeleteEdgeRequest
+	(*DeleteEdgeResponse)(nil),         // 59: codevaldgit.v1.DeleteEdgeResponse
+	(*GetNeighborhoodRequest)(nil),     // 60: codevaldgit.v1.GetNeighborhoodRequest
+	(*SearchByKeywordsRequest)(nil),    // 61: codevaldgit.v1.SearchByKeywordsRequest
+	(*GraphNode)(nil),                  // 62: codevaldgit.v1.GraphNode
+	(*GraphEdge)(nil),                  // 63: codevaldgit.v1.GraphEdge
+	(*GraphResult)(nil),                // 64: codevaldgit.v1.GraphResult
+	(*timestamppb.Timestamp)(nil),      // 65: google.protobuf.Timestamp
 }
 var file_codevaldgit_v1_service_proto_depIdxs = []int32{
-	45, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
-	45, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
-	45, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
-	45, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
-	45, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
-	45, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
-	45, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
-	45, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
-	45, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
-	45, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
-	45, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
+	65, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
+	65, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
+	65, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
+	65, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
+	65, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
+	65, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
+	65, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
+	65, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
+	65, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
+	65, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
+	65, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 11: codevaldgit.v1.ListRepositoriesResponse.repositories:type_name -> codevaldgit.v1.Repository
 	1,  // 12: codevaldgit.v1.ListBranchesResponse.branches:type_name -> codevaldgit.v1.Branch
 	2,  // 13: codevaldgit.v1.ListTagsResponse.tags:type_name -> codevaldgit.v1.Tag
 	6,  // 14: codevaldgit.v1.ListDirectoryResponse.entries:type_name -> codevaldgit.v1.FileEntry
 	5,  // 15: codevaldgit.v1.LogResponse.commits:type_name -> codevaldgit.v1.CommitEntry
 	7,  // 16: codevaldgit.v1.DiffResponse.diffs:type_name -> codevaldgit.v1.FileDiff
-	8,  // 17: codevaldgit.v1.GitService.InitRepo:input_type -> codevaldgit.v1.InitRepoRequest
-	9,  // 18: codevaldgit.v1.GitService.ListRepositories:input_type -> codevaldgit.v1.ListRepositoriesRequest
-	11, // 19: codevaldgit.v1.GitService.GetRepository:input_type -> codevaldgit.v1.GetRepositoryRequest
-	12, // 20: codevaldgit.v1.GitService.GetRepositoryByName:input_type -> codevaldgit.v1.GetRepositoryByNameRequest
-	13, // 21: codevaldgit.v1.GitService.DeleteRepo:input_type -> codevaldgit.v1.DeleteRepoRequest
-	15, // 22: codevaldgit.v1.GitService.PurgeRepo:input_type -> codevaldgit.v1.PurgeRepoRequest
-	17, // 23: codevaldgit.v1.GitService.CreateBranch:input_type -> codevaldgit.v1.CreateBranchRequest
-	18, // 24: codevaldgit.v1.GitService.GetBranch:input_type -> codevaldgit.v1.GetBranchRequest
-	19, // 25: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
-	21, // 26: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
-	23, // 27: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
-	24, // 28: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
-	25, // 29: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
-	26, // 30: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
-	28, // 31: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
-	30, // 32: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
-	31, // 33: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
-	32, // 34: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
-	33, // 35: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
-	35, // 36: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
-	37, // 37: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
-	39, // 38: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
-	41, // 39: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
-	42, // 40: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
-	0,  // 41: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
-	10, // 42: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
-	0,  // 43: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
-	0,  // 44: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
-	14, // 45: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
-	16, // 46: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
-	1,  // 47: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
-	1,  // 48: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
-	20, // 49: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
-	22, // 50: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
-	1,  // 51: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
-	2,  // 52: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
-	2,  // 53: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
-	27, // 54: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
-	29, // 55: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
-	3,  // 56: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
-	4,  // 57: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
-	3,  // 58: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
-	34, // 59: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
-	36, // 60: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
-	38, // 61: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
-	40, // 62: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
-	44, // 63: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
-	43, // 64: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
-	41, // [41:65] is the sub-list for method output_type
-	17, // [17:41] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	45, // 17: codevaldgit.v1.KeywordTreeNode.keyword:type_name -> codevaldgit.v1.Keyword
+	46, // 18: codevaldgit.v1.KeywordTreeNode.children:type_name -> codevaldgit.v1.KeywordTreeNode
+	45, // 19: codevaldgit.v1.ListKeywordsResponse.keywords:type_name -> codevaldgit.v1.Keyword
+	46, // 20: codevaldgit.v1.GetKeywordTreeResponse.nodes:type_name -> codevaldgit.v1.KeywordTreeNode
+	62, // 21: codevaldgit.v1.GraphResult.nodes:type_name -> codevaldgit.v1.GraphNode
+	63, // 22: codevaldgit.v1.GraphResult.edges:type_name -> codevaldgit.v1.GraphEdge
+	8,  // 23: codevaldgit.v1.GitService.InitRepo:input_type -> codevaldgit.v1.InitRepoRequest
+	9,  // 24: codevaldgit.v1.GitService.ListRepositories:input_type -> codevaldgit.v1.ListRepositoriesRequest
+	11, // 25: codevaldgit.v1.GitService.GetRepository:input_type -> codevaldgit.v1.GetRepositoryRequest
+	12, // 26: codevaldgit.v1.GitService.GetRepositoryByName:input_type -> codevaldgit.v1.GetRepositoryByNameRequest
+	13, // 27: codevaldgit.v1.GitService.DeleteRepo:input_type -> codevaldgit.v1.DeleteRepoRequest
+	15, // 28: codevaldgit.v1.GitService.PurgeRepo:input_type -> codevaldgit.v1.PurgeRepoRequest
+	17, // 29: codevaldgit.v1.GitService.CreateBranch:input_type -> codevaldgit.v1.CreateBranchRequest
+	18, // 30: codevaldgit.v1.GitService.GetBranch:input_type -> codevaldgit.v1.GetBranchRequest
+	19, // 31: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
+	21, // 32: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
+	23, // 33: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
+	24, // 34: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
+	25, // 35: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
+	26, // 36: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
+	28, // 37: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
+	30, // 38: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
+	31, // 39: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
+	32, // 40: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
+	33, // 41: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
+	35, // 42: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
+	37, // 43: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
+	39, // 44: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
+	41, // 45: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
+	42, // 46: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
+	47, // 47: codevaldgit.v1.GitService.CreateKeyword:input_type -> codevaldgit.v1.CreateKeywordRequest
+	48, // 48: codevaldgit.v1.GitService.GetKeyword:input_type -> codevaldgit.v1.GetKeywordRequest
+	49, // 49: codevaldgit.v1.GitService.ListKeywords:input_type -> codevaldgit.v1.ListKeywordsRequest
+	51, // 50: codevaldgit.v1.GitService.GetKeywordTree:input_type -> codevaldgit.v1.GetKeywordTreeRequest
+	53, // 51: codevaldgit.v1.GitService.UpdateKeyword:input_type -> codevaldgit.v1.UpdateKeywordRequest
+	54, // 52: codevaldgit.v1.GitService.DeleteKeyword:input_type -> codevaldgit.v1.DeleteKeywordRequest
+	56, // 53: codevaldgit.v1.GitService.CreateEdge:input_type -> codevaldgit.v1.CreateEdgeRequest
+	58, // 54: codevaldgit.v1.GitService.DeleteEdge:input_type -> codevaldgit.v1.DeleteEdgeRequest
+	60, // 55: codevaldgit.v1.GitService.GetNeighborhood:input_type -> codevaldgit.v1.GetNeighborhoodRequest
+	61, // 56: codevaldgit.v1.GitService.SearchByKeywords:input_type -> codevaldgit.v1.SearchByKeywordsRequest
+	0,  // 57: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
+	10, // 58: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
+	0,  // 59: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
+	0,  // 60: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
+	14, // 61: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
+	16, // 62: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
+	1,  // 63: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 64: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
+	20, // 65: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
+	22, // 66: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
+	1,  // 67: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
+	2,  // 68: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
+	2,  // 69: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
+	27, // 70: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
+	29, // 71: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
+	3,  // 72: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
+	4,  // 73: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
+	3,  // 74: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
+	34, // 75: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
+	36, // 76: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
+	38, // 77: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
+	40, // 78: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
+	44, // 79: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
+	43, // 80: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
+	45, // 81: codevaldgit.v1.GitService.CreateKeyword:output_type -> codevaldgit.v1.Keyword
+	45, // 82: codevaldgit.v1.GitService.GetKeyword:output_type -> codevaldgit.v1.Keyword
+	50, // 83: codevaldgit.v1.GitService.ListKeywords:output_type -> codevaldgit.v1.ListKeywordsResponse
+	52, // 84: codevaldgit.v1.GitService.GetKeywordTree:output_type -> codevaldgit.v1.GetKeywordTreeResponse
+	45, // 85: codevaldgit.v1.GitService.UpdateKeyword:output_type -> codevaldgit.v1.Keyword
+	55, // 86: codevaldgit.v1.GitService.DeleteKeyword:output_type -> codevaldgit.v1.DeleteKeywordResponse
+	57, // 87: codevaldgit.v1.GitService.CreateEdge:output_type -> codevaldgit.v1.CreateEdgeResponse
+	59, // 88: codevaldgit.v1.GitService.DeleteEdge:output_type -> codevaldgit.v1.DeleteEdgeResponse
+	64, // 89: codevaldgit.v1.GitService.GetNeighborhood:output_type -> codevaldgit.v1.GraphResult
+	64, // 90: codevaldgit.v1.GitService.SearchByKeywords:output_type -> codevaldgit.v1.GraphResult
+	57, // [57:91] is the sub-list for method output_type
+	23, // [23:57] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_codevaldgit_v1_service_proto_init() }
@@ -3050,7 +4318,7 @@ func file_codevaldgit_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_codevaldgit_v1_service_proto_rawDesc), len(file_codevaldgit_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   45,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

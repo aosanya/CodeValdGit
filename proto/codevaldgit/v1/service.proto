@@ -226,6 +226,57 @@ service GitService {
   // Error: NOT_FOUND if no job with the given ID exists.
   // Error: FAILED_PRECONDITION if the job is already in a terminal state.
   rpc CancelImport (CancelImportRequest) returns (CancelImportResponse);
+
+  // ── Keyword CRUD (GIT-021a) ───────────────────────────────────────────────
+
+  // CreateKeyword creates a new Keyword entity in the taxonomy.
+  // Error: ALREADY_EXISTS if a keyword with the same name exists under the same parent.
+  // Error: NOT_FOUND if parent_id is set and does not exist.
+  rpc CreateKeyword (CreateKeywordRequest) returns (Keyword);
+
+  // GetKeyword retrieves a Keyword entity by its ID.
+  // Error: NOT_FOUND if no keyword with that ID exists.
+  rpc GetKeyword (GetKeywordRequest) returns (Keyword);
+
+  // ListKeywords returns Keyword entities matching the given filter.
+  // When parent_id is empty, root keywords are returned.
+  rpc ListKeywords (ListKeywordsRequest) returns (ListKeywordsResponse);
+
+  // GetKeywordTree returns the full taxonomy subtree rooted at keyword_id,
+  // or the full forest of root keywords when keyword_id is empty.
+  rpc GetKeywordTree (GetKeywordTreeRequest) returns (GetKeywordTreeResponse);
+
+  // UpdateKeyword updates mutable fields of a Keyword entity.
+  // Error: NOT_FOUND if no keyword with that ID exists.
+  rpc UpdateKeyword (UpdateKeywordRequest) returns (Keyword);
+
+  // DeleteKeyword removes a Keyword entity and re-roots its children.
+  // Error: NOT_FOUND if no keyword with that ID exists.
+  rpc DeleteKeyword (DeleteKeywordRequest) returns (DeleteKeywordResponse);
+
+  // ── Branch-Scoped Edge CRUD (GIT-021a) ───────────────────────────────────
+
+  // CreateEdge creates a documentation edge between two entities on a branch.
+  // Error: NOT_FOUND if the branch does not exist.
+  // Error: INVALID_ARGUMENT if the relationship name is not a valid edge type.
+  rpc CreateEdge (CreateEdgeRequest) returns (CreateEdgeResponse);
+
+  // DeleteEdge removes a documentation edge between two entities on a branch.
+  // Error: NOT_FOUND if the branch or edge does not exist.
+  // Error: INVALID_ARGUMENT if the relationship name is invalid.
+  rpc DeleteEdge (DeleteEdgeRequest) returns (DeleteEdgeResponse);
+
+  // ── Graph Queries (GIT-021a) ──────────────────────────────────────────────
+
+  // GetNeighborhood returns all entities and edges reachable from entity_id
+  // within the given depth (1-3), bounded by a 100-node hard cap.
+  // Error: NOT_FOUND if the branch or entity does not exist.
+  rpc GetNeighborhood (GetNeighborhoodRequest) returns (GraphResult);
+
+  // SearchByKeywords returns entities tagged with the specified keywords,
+  // optionally cascading down the keyword hierarchy.
+  // Error: NOT_FOUND if the branch does not exist.
+  rpc SearchByKeywords (SearchByKeywordsRequest) returns (GraphResult);
 }
 
 // ── Request / Response Messages ───────────────────────────────────────────────
@@ -405,4 +456,120 @@ message ImportJobResponse {
   string error_message = 5;
   string created_at    = 6;
   string updated_at    = 7;
+}
+
+// ── Keyword messages (GIT-021a) ───────────────────────────────────────────────
+
+// Keyword is a taxonomy entity used to tag Blob entities in the documentation graph.
+message Keyword {
+  string          id          = 1;
+  string          name        = 2;
+  string          description = 3;
+  string          scope       = 4;
+  string          parent_id   = 5;
+  repeated string child_ids   = 6;
+  string          created_at  = 7;
+  string          updated_at  = 8;
+}
+
+// KeywordTreeNode is a recursive node in the keyword taxonomy tree.
+message KeywordTreeNode {
+  Keyword                  keyword  = 1;
+  repeated KeywordTreeNode children = 2;
+}
+
+message CreateKeywordRequest {
+  string name        = 1;
+  string description = 2;
+  string scope       = 3;
+  string parent_id   = 4;
+}
+
+message GetKeywordRequest {
+  string keyword_id = 1;
+}
+
+message ListKeywordsRequest {
+  string scope     = 1;
+  string parent_id = 2;
+  int32  limit     = 3;
+}
+message ListKeywordsResponse {
+  repeated Keyword keywords = 1;
+}
+
+message GetKeywordTreeRequest {
+  // keyword_id is the root of the subtree. Empty means return the full forest.
+  string keyword_id = 1;
+}
+message GetKeywordTreeResponse {
+  repeated KeywordTreeNode nodes = 1;
+}
+
+message UpdateKeywordRequest {
+  string keyword_id  = 1;
+  string name        = 2;
+  string description = 3;
+  string scope       = 4;
+}
+
+message DeleteKeywordRequest {
+  string keyword_id = 1;
+}
+message DeleteKeywordResponse {}
+
+// ── Branch-scoped edge messages (GIT-021a) ────────────────────────────────────
+
+message CreateEdgeRequest {
+  string branch_id          = 1;
+  string from_entity_id     = 2;
+  string relationship_name  = 3;
+  string to_entity_id       = 4;
+}
+message CreateEdgeResponse {}
+
+message DeleteEdgeRequest {
+  string branch_id          = 1;
+  string from_entity_id     = 2;
+  string relationship_name  = 3;
+  string to_entity_id       = 4;
+}
+message DeleteEdgeResponse {}
+
+// ── Graph query messages (GIT-021a) ───────────────────────────────────────────
+
+message GetNeighborhoodRequest {
+  string branch_id  = 1;
+  string entity_id  = 2;
+  int32  depth      = 3;
+}
+
+message SearchByKeywordsRequest {
+  string          branch_id  = 1;
+  repeated string keywords   = 2;
+  // match_mode is "AND" or "OR". Defaults to "OR".
+  string          match_mode = 3;
+  bool            cascade    = 4;
+}
+
+// GraphNode is a vertex in a graph query result.
+message GraphNode {
+  string            id         = 1;
+  string            type_id    = 2;
+  // properties is a JSON-encoded map of property key/value pairs.
+  string            properties = 3;
+}
+
+// GraphEdge is a directed edge in a graph query result.
+message GraphEdge {
+  string id      = 1;
+  string name    = 2;
+  string from_id = 3;
+  string to_id   = 4;
+}
+
+// GraphResult is the response for neighborhood and keyword search queries.
+message GraphResult {
+  repeated GraphNode nodes = 1;
+  repeated GraphEdge edges = 2;
 }

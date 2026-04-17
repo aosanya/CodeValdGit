@@ -326,10 +326,10 @@ See: [requiements_documentation.md](../1-SoftwareRequirements/requiements_docume
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-021a: Proto additions — `KeywordService` RPCs + `GraphService` RPCs; `buf generate` | 📋 Not Started | GIT-019c, GIT-020a |
-| GIT-021b: gRPC server handlers for keyword CRUD, edge CRUD, and graph queries | 📋 Not Started | GIT-021a |
-| GIT-021c: Register keyword, edge, and graph HTTP routes in `internal/registrar/routes.go` | 📋 Not Started | GIT-021b |
-| GIT-021d: Unit tests for all new handlers and graph queries | 📋 Not Started | GIT-021c |
+| GIT-021a: Proto additions — `KeywordService` RPCs + `GraphService` RPCs; `buf generate` | ✅ Done | GIT-019c, GIT-020a |
+| GIT-021b: gRPC server handlers for keyword CRUD, edge CRUD, and graph queries | ✅ Done | GIT-021a |
+| GIT-021c: Register keyword, edge, and graph HTTP routes in `internal/registrar/routes.go` | ✅ Done | GIT-021b |
+| GIT-021d: Unit tests for all new handlers and graph queries | ✅ Done | GIT-021c |
 
 **Scope**: Exposes the documentation layer via gRPC and registers HTTP routes through
 CodeValdCross. 10 new HTTP routes covering keyword CRUD, edge management, and graph queries.

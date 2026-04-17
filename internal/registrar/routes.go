@@ -242,3 +242,84 @@ func importRoutes() []types.RouteInfo {
 		},
 	}
 }
+
+// docsRoutes returns routes for the documentation layer (GIT-021c):
+// keyword CRUD, branch-scoped edge CRUD, and graph query operations.
+// All routes are nested under /git/{agencyId}/.
+func docsRoutes() []types.RouteInfo {
+	kid := types.PathBinding{URLParam: "keywordId", Field: "keyword_id"}
+	bid := types.PathBinding{URLParam: "branchId", Field: "branch_id"}
+	eid := types.PathBinding{URLParam: "entityId", Field: "entity_id"}
+	return []types.RouteInfo{
+		// Keyword CRUD
+		{
+			Method:     "POST",
+			Pattern:    "/git/{agencyId}/keywords",
+			Capability: "create_keyword",
+			GrpcMethod: "/codevaldgit.v1.GitService/CreateKeyword",
+		},
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/keywords/{keywordId}",
+			Capability:   "get_keyword",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetKeyword",
+			PathBindings: []types.PathBinding{kid},
+		},
+		{
+			Method:     "GET",
+			Pattern:    "/git/{agencyId}/keywords",
+			Capability: "list_keywords",
+			GrpcMethod: "/codevaldgit.v1.GitService/ListKeywords",
+		},
+		{
+			Method:     "GET",
+			Pattern:    "/git/{agencyId}/keyword-tree",
+			Capability: "get_keyword_tree",
+			GrpcMethod: "/codevaldgit.v1.GitService/GetKeywordTree",
+		},
+		{
+			Method:       "PUT",
+			Pattern:      "/git/{agencyId}/keywords/{keywordId}",
+			Capability:   "update_keyword",
+			GrpcMethod:   "/codevaldgit.v1.GitService/UpdateKeyword",
+			PathBindings: []types.PathBinding{kid},
+		},
+		{
+			Method:       "DELETE",
+			Pattern:      "/git/{agencyId}/keywords/{keywordId}",
+			Capability:   "delete_keyword",
+			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteKeyword",
+			PathBindings: []types.PathBinding{kid},
+		},
+		// Branch-scoped edge CRUD
+		{
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/branches/{branchId}/edges",
+			Capability:   "create_edge",
+			GrpcMethod:   "/codevaldgit.v1.GitService/CreateEdge",
+			PathBindings: []types.PathBinding{bid},
+		},
+		{
+			Method:       "DELETE",
+			Pattern:      "/git/{agencyId}/branches/{branchId}/edges",
+			Capability:   "delete_edge",
+			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteEdge",
+			PathBindings: []types.PathBinding{bid},
+		},
+		// Graph queries
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/branches/{branchId}/graph/{entityId}/neighborhood",
+			Capability:   "get_neighborhood",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetNeighborhood",
+			PathBindings: []types.PathBinding{bid, eid},
+		},
+		{
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/branches/{branchId}/graph/search",
+			Capability:   "search_by_keywords",
+			GrpcMethod:   "/codevaldgit.v1.GitService/SearchByKeywords",
+			PathBindings: []types.PathBinding{bid},
+		},
+	}
+}
