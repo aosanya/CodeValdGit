@@ -4,7 +4,7 @@
 // for CodeValdGit. cmd/main.go seeds this schema idempotently on startup via
 // GitSchemaManager.SetSchema.
 //
-// The schema declares seven TypeDefinitions:
+// The schema declares eight TypeDefinitions:
 //   - Agency     — root entity; one per agency ID (mutable)
 //   - Repository — a versioned codebase owned by an Agency; an Agency can
 //     have multiple Repositories (mutable)
@@ -12,18 +12,28 @@
 //   - Tag        — immutable named ref pointing to a Commit (immutable)
 //   - Commit     — immutable snapshot with author, message, and pointer to a Tree (immutable)
 //   - Tree       — immutable directory listing at a specific point in time (immutable)
-//   - Blob       — immutable file content entity content-addressed by SHA (immutable)
+//   - Blob       — file content entity; content-addressed by SHA; carries documentation edges
+//   - Keyword    — hierarchical discovery label; forms a taxonomy tree (mutable)
 //
-// Graph topology:
+// Graph topology (Git objects):
 //
 //	Agency ──has_repository──► Repository ──has_branch──► Branch ──points_to──► Commit ──has_tree──► Tree ──has_blob──► Blob
 //	                                       ──has_tag─────► Tag    ──points_to──► Commit              ──has_subtree──► Tree
 //	                                       ──has_commit──► Commit ──has_parent──► Commit
 //
+// Documentation edges (branch-scoped, replicated to main on merge per DR-010):
+//
+//	Blob ──tagged_with──► Keyword ──has_child──► Keyword   (keyword taxonomy)
+//	Blob ──documents────► Blob                             (doc → code)
+//	Blob ──documented_by► Blob                             (code → doc, inverse)
+//	Blob ──depends_on───► Blob                             (code → dependency)
+//	Blob ──imported_by──► Blob                             (dependency → importer, inverse)
+//
 // Storage:
 //   - Agency, Branch, Tag  → "git_entities" document collection (mutable refs / live state)
 //   - Repository           → "git_repositories" document collection (one per agency; mutable)
 //   - Commit, Tree, Blob   → "git_objects" document collection (immutable, content-addressed by SHA)
+//   - Keyword              → "git_keywords" document collection (mutable; taxonomy labels)
 //   - GitInternalState     → "git_internal" document collection (go-git internal: config, index, shallow)
 //   - All edges            → "git_relationships" edge collection
 //
@@ -36,6 +46,9 @@
 //	Tree       ──belongs_to_commit──────► Commit
 //	Blob       ──belongs_to_tree────────► Tree
 //	Tree       ──belongs_to_tree────────► Tree   (subtree inverse)
+//	Keyword    ──belongs_to_parent──────► Keyword (taxonomy inverse)
+//	Blob       ──documented_by──────────► Blob   (documents inverse)
+//	Blob       ──imported_by────────────► Blob   (depends_on inverse)
 package codevaldgit
 
 import "github.com/aosanya/CodeValdSharedLib/types"
@@ -356,8 +369,53 @@ func DefaultGitSchema() types.Schema {
 						ToMany:      false,
 						Required:    true,
 						Inverse:     "has_blob",
+					}, // tagged_with links a Blob to Keyword nodes for discovery.
+					// Branch-scoped: created on task-branch Blobs, replicated to main on merge (DR-010).
+					{
+						Name:        "tagged_with",
+						Label:       "Keywords",
+						PathSegment: "keywords",
+						ToType:      "Keyword",
+						ToMany:      true,
 					},
-				},
+					// documents links a documentation Blob to the code Blobs it describes.
+					// Inverse: documented_by (auto-created by entitygraph.DataManager).
+					{
+						Name:        "documents",
+						Label:       "Documents",
+						PathSegment: "documents",
+						ToType:      "Blob",
+						ToMany:      true,
+						Inverse:     "documented_by",
+					},
+					// documented_by is the inverse of documents.
+					{
+						Name:        "documented_by",
+						Label:       "Documented By",
+						PathSegment: "documented-by",
+						ToType:      "Blob",
+						ToMany:      true,
+						Inverse:     "documents",
+					},
+					// depends_on links a code Blob to the Blobs it imports or depends on.
+					// Inverse: imported_by (auto-created by entitygraph.DataManager).
+					{
+						Name:        "depends_on",
+						Label:       "Depends On",
+						PathSegment: "depends-on",
+						ToType:      "Blob",
+						ToMany:      true,
+						Inverse:     "imported_by",
+					},
+					// imported_by is the inverse of depends_on.
+					{
+						Name:        "imported_by",
+						Label:       "Imported By",
+						PathSegment: "imported-by",
+						ToType:      "Blob",
+						ToMany:      true,
+						Inverse:     "depends_on",
+					}},
 			},
 			{
 				Name:              "GitInternalState",
@@ -379,6 +437,47 @@ func DefaultGitSchema() types.Schema {
 					//   shallow — newline-separated shallow commit SHAs
 					{Name: "data", Type: types.PropertyTypeString, Required: true},
 					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
+			},
+			{
+				Name:              "Keyword",
+				DisplayName:       "Keyword",
+				PathSegment:       "keywords",
+				EntityIDParam:     "keywordId",
+				StorageCollection: "git_keywords",
+				// Keywords are hierarchical discovery labels used by AI agents to tag
+				// Blobs, Branches, and Commits. A Keyword can have child Keywords
+				// (has_child / belongs_to_parent), forming a free-form taxonomy tree.
+				// Querying a parent Keyword cascades to all descendants by default.
+				Properties: []types.PropertyDefinition{
+					// name is the human-readable label, e.g. "authentication" or "grpc".
+					{Name: "name", Type: types.PropertyTypeString, Required: true},
+					// description is an optional plain-text summary of the keyword.
+					{Name: "description", Type: types.PropertyTypeString},
+					// scope is an optional grouping label (e.g. "domain", "layer", "technology").
+					{Name: "scope", Type: types.PropertyTypeString},
+					{Name: "created_at", Type: types.PropertyTypeString},
+					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
+				Relationships: []types.RelationshipDefinition{
+					// has_child links a parent keyword to its direct children in the taxonomy.
+					{
+						Name:        "has_child",
+						Label:       "Children",
+						PathSegment: "children",
+						ToType:      "Keyword",
+						ToMany:      true,
+						Inverse:     "belongs_to_parent",
+					},
+					// belongs_to_parent is the inverse of has_child.
+					{
+						Name:        "belongs_to_parent",
+						Label:       "Parent",
+						PathSegment: "parent",
+						ToType:      "Keyword",
+						ToMany:      false,
+						Inverse:     "has_child",
+					},
 				},
 			},
 			{

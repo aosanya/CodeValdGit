@@ -177,6 +177,57 @@ type GitManager interface {
 	// Returns [ErrImportJobNotCancellable] if the job has already reached a
 	// terminal state (completed, failed, or cancelled).
 	CancelImport(ctx context.Context, jobID string) error
+
+	// ── Keyword CRUD (GIT-019c) ────────────────────────────────────────────────
+
+	// CreateKeyword creates a new Keyword entity in the taxonomy.
+	// If req.ParentID is set the keyword is added as a child of that parent.
+	// Returns [ErrKeywordAlreadyExists] if a keyword with the same name exists
+	// under the same parent (or at root level when ParentID is empty).
+	// Returns [ErrKeywordNotFound] if req.ParentID does not resolve to a keyword.
+	CreateKeyword(ctx context.Context, req CreateKeywordRequest) (Keyword, error)
+
+	// GetKeyword retrieves a Keyword entity by its entitygraph ID.
+	// Returns [ErrKeywordNotFound] if no keyword with that ID exists.
+	GetKeyword(ctx context.Context, keywordID string) (Keyword, error)
+
+	// ListKeywords returns Keyword entities matching the given filter.
+	// When filter.ParentID is empty, root keywords (no parent) are returned.
+	// Set filter.ParentID to a keyword ID to list its direct children.
+	ListKeywords(ctx context.Context, filter KeywordFilter) ([]Keyword, error)
+
+	// GetKeywordTree returns the full taxonomy subtree rooted at the given
+	// keywordID, or the full forest of root keywords when keywordID is empty.
+	// Tree depth is unlimited; each node's Children field is populated.
+	GetKeywordTree(ctx context.Context, keywordID string) ([]KeywordTreeNode, error)
+
+	// UpdateKeyword updates the mutable fields of a Keyword entity.
+	// Returns [ErrKeywordNotFound] if no keyword with that ID exists.
+	UpdateKeyword(ctx context.Context, keywordID string, req UpdateKeywordRequest) (Keyword, error)
+
+	// DeleteKeyword removes a Keyword entity and all its has_child edges.
+	// Children are re-rooted to the deleted keyword's parent (or become root
+	// keywords if the deleted keyword had no parent).
+	// Returns [ErrKeywordNotFound] if no keyword with that ID exists.
+	DeleteKeyword(ctx context.Context, keywordID string) error
+
+	// ── Branch-Scoped Edge CRUD (GIT-019e) ───────────────────────────────────
+
+	// CreateEdge creates a documentation edge between two entities on the
+	// specified branch. Supported relationship names: "tagged_with",
+	// "documents", "documented_by", "depends_on", "imported_by".
+	// The inverse edge is auto-created by entitygraph.DataManager.
+	// Returns [ErrBranchNotFound] if the branch does not exist.
+	// Returns [ErrInvalidRelationship] if the relationship name is not a valid
+	// documentation edge type.
+	CreateEdge(ctx context.Context, req CreateEdgeRequest) error
+
+	// DeleteEdge removes a documentation edge between two entities.
+	// Supported relationship names are the same as CreateEdge.
+	// Returns [ErrBranchNotFound] if the branch does not exist.
+	// Returns [ErrEdgeNotFound] if no matching edge exists.
+	// Returns [ErrInvalidRelationship] if the relationship name is invalid.
+	DeleteEdge(ctx context.Context, req DeleteEdgeRequest) error
 }
 
 // gitManager is the concrete implementation of [GitManager].
