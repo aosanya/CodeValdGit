@@ -316,7 +316,7 @@ func (m *gitManager) ListDirectory(ctx context.Context, branchID, path string) (
 		return nil, fmt.Errorf("ListDirectory: %w", err)
 	}
 	if branch.HeadCommitID == "" {
-		return nil, ErrFileNotFound
+		return []FileEntry{}, nil
 	}
 
 	// Find all blobs reachable from the HEAD commit.

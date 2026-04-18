@@ -58,29 +58,14 @@ var importJobs = make(map[string]importCancelEntry)
 // agency's entity graph. It returns immediately with an ImportJob whose
 // ID can be used to poll [GitManager.GetImportStatus].
 //
-// Returns [ErrRepoAlreadyExists] if a Repository entity already exists.
+// If a Repository with the same name already exists it will be overwritten
+// (upsert semantics).
 // Returns [ErrImportInProgress] if a pending or running import already exists.
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
 
-	// 1. Reject if a Repository with the same name already exists for this agency.
-	existingRepos, err := m.listRepositories(ctx)
-	if err != nil {
-		return ImportJob{}, fmt.Errorf("ImportRepo %s: list repos: %w", m.agencyID, err)
-	}
-	for _, r := range existingRepos {
-		if strProp(r.Properties, "name") == req.Name {
-			return ImportJob{}, ErrRepoAlreadyExists
-		}
-	}
+	// 1. (Upsert) — no duplicate-repo check; reimporting overwrites entities.
 
-	// 2. Reject if an active import job already exists.
-	active, err := m.findActiveImportJob(ctx)
-	if err != nil {
-		return ImportJob{}, fmt.Errorf("ImportRepo %s: check active job: %w", m.agencyID, err)
-	}
-	if active != nil {
-		return ImportJob{}, ErrImportInProgress
-	}
+	// 2. (Upsert) — no active-job check; a new import overwrites any prior state.
 
 	// 3. Create the ImportJob entity; capture the auto-assigned ID as jobID.
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -100,6 +85,7 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 		return ImportJob{}, fmt.Errorf("ImportRepo %s: create job entity: %w", m.agencyID, err)
 	}
 	jobID := jobEntity.ID
+	log.Printf("[ImportRepo] created job entity agencyID=%q jobID=%q", m.agencyID, jobID)
 
 	// 4. Snapshot the ImportJob from the entity BEFORE starting the goroutine.
 	// importJobFromEntity reads jobEntity.Properties; the goroutine may later
@@ -126,13 +112,16 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 // GetImportStatus returns the current state of an import job.
 // Returns [ErrImportJobNotFound] if no job with the given ID exists.
 func (m *gitManager) GetImportStatus(ctx context.Context, jobID string) (ImportJob, error) {
+	log.Printf("[GetImportStatus] agencyID=%q jobID=%q", m.agencyID, jobID)
 	entity, err := m.dm.GetEntity(ctx, m.agencyID, jobID)
 	if err != nil {
+		log.Printf("[GetImportStatus] GetEntity error: agencyID=%q jobID=%q err=%v", m.agencyID, jobID, err)
 		if errors.Is(err, entitygraph.ErrEntityNotFound) {
 			return ImportJob{}, ErrImportJobNotFound
 		}
 		return ImportJob{}, fmt.Errorf("GetImportStatus %s: %w", jobID, err)
 	}
+	log.Printf("[GetImportStatus] found entity typeID=%q id=%q", entity.TypeID, entity.ID)
 	return importJobFromEntity(entity), nil
 }
 

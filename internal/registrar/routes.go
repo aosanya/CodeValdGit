@@ -73,21 +73,21 @@ func branchRoutes() []types.RouteInfo {
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}",
 			Capability:   "get_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/GetBranch",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "DELETE",
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}",
 			Capability:   "delete_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteBranch",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "POST",
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/merge",
 			Capability:   "merge_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/MergeBranch",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 	}
 }
@@ -132,7 +132,6 @@ func tagRoutes() []types.RouteInfo {
 // fileRoutes returns routes for file read/write operations on a branch.
 // All routes are nested under /git/{agencyId}/repositories/{repoId}/branches/{branchId}/ (GIT-018).
 func fileRoutes() []types.RouteInfo {
-	rid := types.PathBinding{URLParam: "repoName", Field: "repository_name"}
 	bid := types.PathBinding{URLParam: "branchId", Field: "branch_id"}
 	return []types.RouteInfo{
 		{
@@ -140,28 +139,28 @@ func fileRoutes() []types.RouteInfo {
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/files",
 			Capability:   "write_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/WriteFile",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "GET",
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/files",
 			Capability:   "read_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/ReadFile",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "DELETE",
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/files",
 			Capability:   "delete_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteFile",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "GET",
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/tree",
 			Capability:   "list_directory",
 			GrpcMethod:   "/codevaldgit.v1.GitService/ListDirectory",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 	}
 }
@@ -177,7 +176,7 @@ func historyRoutes() []types.RouteInfo {
 			Pattern:      "/git/{agencyId}/repositories/{repoName}/branches/{branchId}/log",
 			Capability:   "log",
 			GrpcMethod:   "/codevaldgit.v1.GitService/Log",
-			PathBindings: []types.PathBinding{rid, bid},
+			PathBindings: []types.PathBinding{bid},
 		},
 		{
 			Method:       "GET",
