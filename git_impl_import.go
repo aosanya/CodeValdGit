@@ -1,12 +1,21 @@
 // git_impl_import.go implements [GitManager.ImportRepo], [GitManager.GetImportStatus],
 // and [GitManager.CancelImport].
 //
+// GIT-023c — Lazy Import v2 (Phase 1):
+//
 // ImportRepo begins an async background goroutine that:
 //  1. Creates an ImportJob entity (status=pending) and returns immediately.
-//  2. Clones the remote URL via go-git (PlainCloneContext) into a temp directory.
-//  3. Walks all remote branches and their full commit histories.
-//  4. Writes Branch, Commit, Tree, and Blob entities into the entity graph.
-//  5. Creates the Repository entity and transitions the job to completed.
+//  2. Performs a bare shallow clone (Depth=1, Bare=true, NoTags) into a
+//     persistent directory under the agency's clone root.  The directory is
+//     NOT cleaned up — FetchBranch reuses it for on-demand deepening.
+//  3. Iterates remote refs to discover branches.
+//  4. Writes one Repository entity (carrying bare_clone_path) and one stub
+//     Branch entity per ref (status="stub"; no commits, trees, or blobs).
+//  5. Transitions the job to completed.
+//
+// walkBranchCommits is retained for use by FetchBranch (GIT-023d).  It now
+// accepts a seenSHAs set so shared commit history across branches is processed
+// only once.
 //
 // A per-job cancel function is stored in an in-process map so that
 // CancelImport can interrupt a running goroutine.
@@ -41,6 +50,26 @@ const (
 	importStatusFailed    = "failed"
 	importStatusCancelled = "cancelled"
 )
+
+// branchStatus values for the Branch entity "status" property (lazy import v2).
+const (
+	branchStatusStub       = "stub"
+	branchStatusFetching   = "fetching"
+	branchStatusFetched    = "fetched"
+	branchStatusFetchFailed = "fetch_failed"
+)
+
+// cloneRootDir returns the persistent directory that holds all bare clones for
+// this agency.  It is created on first use.  Each import job gets its own
+// sub-directory named after the job ID so that concurrent imports don't
+// interfere.
+func cloneRootDir(agencyID, jobID string) (string, error) {
+	base := filepath.Join(os.TempDir(), "codevaldgit-clones", agencyID, jobID)
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		return "", fmt.Errorf("cloneRootDir %s: %w", base, err)
+	}
+	return base, nil
+}
 
 // importCancelEntry holds the cancel function for an in-flight import goroutine.
 type importCancelEntry struct {
@@ -152,12 +181,18 @@ func (m *gitManager) CancelImport(ctx context.Context, jobID string) error {
 	return m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
 }
 
-// ── background goroutine ─────────────────────────────────────────────────────
-
 // runImport is the background goroutine started by [ImportRepo].
-// It clones the remote URL, walks all branches and commits, writes entity
-// graph entities, creates the Repository entity, and transitions the job to
-// completed, failed, or cancelled.
+//
+// GIT-023c — Phase 1 (lazy import v2):
+//
+//  1. Bare shallow clone (Depth=1, Bare=true, NoTags) into a persistent directory.
+//  2. Iterate remote refs to discover branch names and tip SHAs.
+//  3. Create one Repository entity (with bare_clone_path) and one stub Branch
+//     entity per discovered branch ref (status="stub").
+//  4. Wire has_branch / belongs_to_repository edges.
+//  5. Transition job to completed.
+//
+// No commit, tree, or blob entities are written at this stage.
 func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepoRequest, defaultBranch string) {
 	defer func() {
 		importJobsMu.Lock()
@@ -171,44 +206,45 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 
-	// Clone into a temp directory.
-	tempDir, err := os.MkdirTemp("", "codevaldgit-import-*")
+	// 1. Allocate a persistent directory for the bare clone.
+	// This directory survives the import and is reused by FetchBranch (GIT-023d).
+	cloneDir, err := cloneRootDir(m.agencyID, jobID)
 	if err != nil {
-		m.failImportJob(ctx, jobID, fmt.Sprintf("create temp dir: %v", err))
+		m.failImportJob(ctx, jobID, fmt.Sprintf("allocate clone dir: %v", err))
 		return
 	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
 
+	// 2. Bare shallow clone — one tip commit per branch, no tags, no blobs yet.
 	cloneOpts := &gogit.CloneOptions{
 		URL:          req.SourceURL,
-		Tags:         gogit.AllTags,
+		Depth:        1,
 		SingleBranch: false,
+		Tags:         gogit.NoTags,
 	}
-
-	repo, err := gogit.PlainCloneContext(ctx, tempDir, false, cloneOpts)
+	repo, err := gogit.PlainCloneContext(ctx, cloneDir, true /* isBare */, cloneOpts)
 	if err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
 			_ = m.publishImportEvent(context.Background(), "cross.git.%s.repo.import.cancelled")
 			return
 		}
-
-		m.failImportJob(ctx, jobID, fmt.Sprintf("clone %s: %v", req.SourceURL, err))
+		m.failImportJob(ctx, jobID, fmt.Sprintf("bare shallow clone %s: %v", req.SourceURL, err))
 		return
 	}
 
-	// Create the Repository entity FIRST so that walkBranchCommits can link
-	// branches to it via has_branch and belongs_to_repository edges.
+	// 3. Create the Repository entity with bare_clone_path so FetchBranch can
+	// reuse the local clone without re-downloading.
 	now := time.Now().UTC().Format(time.RFC3339)
 	repoEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Repository",
 		Properties: map[string]any{
-			"name":           req.Name,
-			"description":    req.Description,
-			"default_branch": defaultBranch,
-			"created_at":     now,
-			"updated_at":     now,
+			"name":            req.Name,
+			"description":     req.Description,
+			"default_branch":  defaultBranch,
+			"bare_clone_path": cloneDir,
+			"created_at":      now,
+			"updated_at":      now,
 		},
 	})
 	if err != nil {
@@ -216,15 +252,16 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 	repoID := repoEntity.ID
-	log.Printf("[runImport] created Repository entity repoID=%q agencyID=%q", repoID, m.agencyID)
+	log.Printf("[runImport] created Repository entity repoID=%q agencyID=%q bareCloneDir=%q", repoID, m.agencyID, cloneDir)
 
-	// Walk all remote references (branches).
+	// 4. Iterate remote refs and write a stub Branch entity for each branch ref.
 	refs, err := repo.References()
 	if err != nil {
 		m.failImportJob(ctx, jobID, fmt.Sprintf("list refs: %v", err))
 		return
 	}
 
+	var branchCount int
 	if err := refs.ForEach(func(ref *gogitplumbing.Reference) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -232,7 +269,8 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		if !ref.Name().IsBranch() && !ref.Name().IsRemote() {
 			return nil
 		}
-		return m.walkBranchCommits(ctx, repo, ref, repoID)
+		branchCount++
+		return m.upsertStubBranch(ctx, ref, repoID, req.SourceURL, now)
 	}); err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
@@ -242,20 +280,98 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("walk refs: %v", err))
 		return
 	}
+	log.Printf("[runImport] wrote %d stub branch entities agencyID=%q repoID=%q", branchCount, m.agencyID, repoID)
 
-	// Publish success event and mark completed.
+	// 5. Publish success event and mark completed.
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusCompleted, ""); err != nil {
 		log.Printf("[ERROR] ImportJob %s: transition to completed: %v", jobID, err)
 	}
+}
 
+// upsertStubBranch creates (or updates) a Branch entity with status="stub" for the
+// given remote ref. The branch carries the tip SHA, source_url (for re-clone by
+// FetchBranch if the bare clone is gone), and the stub status sentinel.
+// Edges has_branch (repo→branch) and belongs_to_repository (branch→repo) are
+// created; duplicate-edge errors are logged and ignored.
+func (m *gitManager) upsertStubBranch(ctx context.Context, ref *gogitplumbing.Reference, repoID, sourceURL, now string) error {
+	branchName := ref.Name().Short()
+	tipSHA := ref.Hash().String()
+
+	existing, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   m.agencyID,
+		TypeID:     "Branch",
+		Properties: map[string]any{"name": branchName},
+	})
+	if err != nil {
+		return fmt.Errorf("stub branch %s: list: %w", branchName, err)
+	}
+
+	var branchID string
+	if len(existing) > 0 {
+		branchID = existing[0].ID
+		if _, err := m.dm.UpdateEntity(ctx, m.agencyID, branchID, entitygraph.UpdateEntityRequest{
+			Properties: map[string]any{
+				"sha":        tipSHA,
+				"status":     branchStatusStub,
+				"source_url": sourceURL,
+				"updated_at": now,
+			},
+		}); err != nil {
+			return fmt.Errorf("stub branch %s: update: %w", branchName, err)
+		}
+	} else {
+		branchEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID: m.agencyID,
+			TypeID:   "Branch",
+			Properties: map[string]any{
+				"name":       branchName,
+				"sha":        tipSHA,
+				"status":     branchStatusStub,
+				"source_url": sourceURL,
+				"created_at": now,
+				"updated_at": now,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("stub branch %s: create: %w", branchName, err)
+		}
+		branchID = branchEntity.ID
+	}
+
+	// Wire repo ↔ branch edges (duplicate-safe).
+	if repoID != "" {
+		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "has_branch",
+			FromID:   repoID,
+			ToID:     branchID,
+		}); relErr != nil {
+			log.Printf("[upsertStubBranch] has_branch repoID=%q branchID=%q: %v (continuing)", repoID, branchID, relErr)
+		}
+		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "belongs_to_repository",
+			FromID:   branchID,
+			ToID:     repoID,
+		}); relErr != nil {
+			log.Printf("[upsertStubBranch] belongs_to_repository branchID=%q repoID=%q: %v (continuing)", branchID, repoID, relErr)
+		}
+	}
+	return nil
 }
 
 // walkBranchCommits upserts Branch, Commit, Tree, and Blob entities for every
-// commit reachable from the given reference. repoID is the entitygraph ID of
-// the parent Repository entity; it is used to create has_branch and
-// belongs_to_repository edges so that listBranchesByRepo can find the branch.
-func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Repository, ref *gogitplumbing.Reference, repoID string) error {
+// commit reachable from the given reference that has not already been processed.
+//
+// seenSHAs is a shared dedup set populated by the caller (FetchBranch, GIT-023d).
+// Any commit SHA already present in seenSHAs is skipped; newly processed SHAs
+// are added so that shared history across branches is only walked once.
+//
+// repoID is the entitygraph ID of the parent Repository entity; it is used to
+// create has_branch and belongs_to_repository edges so that listBranchesByRepo
+// can find the branch.
+func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Repository, ref *gogitplumbing.Reference, repoID string, seenSHAs map[string]bool) error {
 	branchName := ref.Name().Short()
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -334,6 +450,11 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		sha := c.Hash.String()
+		if seenSHAs[sha] {
+			return nil // already processed via another branch — skip
+		}
+		seenSHAs[sha] = true
 		commitCount++
 		return m.upsertCommitAndTree(ctx, repo, c)
 	}); err != nil {
