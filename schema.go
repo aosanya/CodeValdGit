@@ -4,16 +4,18 @@
 // for CodeValdGit. cmd/main.go seeds this schema idempotently on startup via
 // GitSchemaManager.SetSchema.
 //
-// The schema declares eight TypeDefinitions:
-//   - Agency     — root entity; one per agency ID (mutable)
-//   - Repository — a versioned codebase owned by an Agency; an Agency can
+// The schema declares nine TypeDefinitions:
+//   - Agency         — root entity; one per agency ID (mutable)
+//   - Repository     — a versioned codebase owned by an Agency; an Agency can
 //     have multiple Repositories (mutable)
-//   - Branch     — named ref pointing to a Commit; owns the branch lifecycle (mutable)
-//   - Tag        — immutable named ref pointing to a Commit (immutable)
-//   - Commit     — immutable snapshot with author, message, and pointer to a Tree (immutable)
-//   - Tree       — immutable directory listing at a specific point in time (immutable)
-//   - Blob       — file content entity; content-addressed by SHA; carries documentation edges
-//   - Keyword    — hierarchical discovery label; forms a taxonomy tree (mutable)
+//   - Branch         — named ref pointing to a Commit; owns the branch lifecycle (mutable);
+//     carries a status field for lazy import v2 (stub/fetching/fetched/fetch_failed)
+//   - Tag            — immutable named ref pointing to a Commit (immutable)
+//   - Commit         — immutable snapshot with author, message, and pointer to a Tree (immutable)
+//   - Tree           — immutable directory listing at a specific point in time (immutable)
+//   - Blob           — file content entity; content-addressed by SHA; carries documentation edges
+//   - Keyword        — hierarchical discovery label; forms a taxonomy tree (mutable)
+//   - FetchBranchJob — tracks the lifecycle of an async on-demand branch fetch (mutable)
 //
 // Graph topology (Git objects):
 //
@@ -33,6 +35,8 @@
 //   - Commit, Tree, Blob   → "git_objects" document collection (immutable, content-addressed by SHA)
 //   - Keyword              → "git_keywords" document collection (mutable; taxonomy labels)
 //   - GitInternalState     → "git_internal" document collection (go-git internal: config, index, shallow)
+//   - ImportJob            → "git_importjobs" document collection (async import lifecycle)
+//   - FetchBranchJob       → "git_fetchjobs" document collection (async on-demand branch fetch lifecycle)
 //   - All edges            → "git_relationships" edge collection
 //
 // Inverse relationships auto-created by [entitygraph.DataManager.CreateRelationship]:
@@ -105,6 +109,16 @@ func DefaultGitSchema() types.Schema {
 					// Written by the go-git storage.Storer on InitRepo and updated on
 					// symbolic-ref changes. Required for Smart HTTP (git clone/fetch).
 					{Name: "head_ref", Type: types.PropertyTypeString},
+					// bare_clone_path is the local filesystem path of the bare shallow
+					// clone created by lazy import v2. FetchBranch reuses this clone
+					// to deepen individual branches without re-downloading the full
+					// packfile. Empty for repositories created via InitRepo.
+					{Name: "bare_clone_path", Type: types.PropertyTypeString},
+					// fetched_commit_shas is a JSON-encoded array of commit SHA strings
+					// that have already been walked and materialised as entities.
+					// Used by FetchBranch to skip shared commits across branches
+					// (seen-SHA deduplication). Persisted so it survives server restarts.
+					{Name: "fetched_commit_shas", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -161,6 +175,18 @@ func DefaultGitSchema() types.Schema {
 					// so that Smart HTTP (git clone/fetch) can resolve refs without
 					// traversing the points_to relationship.
 					{Name: "sha", Type: types.PropertyTypeString},
+					// status tracks the lazy-import state of the branch content.
+					// Valid values: "stub" | "fetching" | "fetched" | "fetch_failed".
+					//   stub        — branch name + tip SHA known; no files/commits stored yet
+					//   fetching    — FetchBranch goroutine is running
+					//   fetched     — full commit history + file tree materialised
+					//   fetch_failed — fetch failed; error_message on the FetchBranchJob entity
+					// Empty for branches created via normal InitRepo / push flows.
+					{Name: "status", Type: types.PropertyTypeString},
+					// source_url is the HTTPS URL of the remote repository this branch
+					// was imported from. Used by FetchBranch to re-clone the bare repo
+					// if bare_clone_path is no longer on disk. Empty for local branches.
+					{Name: "source_url", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -499,6 +525,31 @@ func DefaultGitSchema() types.Schema {
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
+		{
+			Name:              "FetchBranchJob",
+			DisplayName:       "Fetch Branch Job",
+			PathSegment:       "fetch-jobs",
+			EntityIDParam:     "fetchJobId",
+			StorageCollection: "git_fetchjobs",
+			// FetchBranchJob tracks the lifecycle of an async on-demand branch
+			// fetch operation triggered by FetchBranch. One document per call;
+			// keyed by a UUID assigned at call time.
+			// Status transitions: pending → running → completed | failed.
+			Properties: []types.PropertyDefinition{
+				// agency_id scopes this job to the owning agency.
+				{Name: "agency_id", Type: types.PropertyTypeString, Required: true},
+				// repo_id is the entity ID of the Repository being fetched.
+				{Name: "repo_id", Type: types.PropertyTypeString, Required: true},
+				// branch_name is the short branch name being fetched, e.g. "main".
+				{Name: "branch_name", Type: types.PropertyTypeString, Required: true},
+				// status is one of: "pending", "running", "completed", "failed".
+				{Name: "status", Type: types.PropertyTypeString, Required: true},
+				// error_message is populated only when status == "failed".
+				{Name: "error_message", Type: types.PropertyTypeString},
+				{Name: "created_at", Type: types.PropertyTypeString},
+				{Name: "updated_at", Type: types.PropertyTypeString},
+			},
 		},
-	}
+	},
+}
 }

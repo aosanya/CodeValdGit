@@ -357,7 +357,7 @@ deleted on branch delete, migrated on rename, and removed on file delete.
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-023a: Add `status` property to `Branch` TypeDefinition + `FetchBranchJob` TypeDefinition + `git_fetchjobs` collection in `schema.go` | 📋 Not Started | ~~GIT-001~~ ✅ |
+| GIT-023a: Add `status` property to `Branch` TypeDefinition + `FetchBranchJob` TypeDefinition + `git_fetchjobs` collection in `schema.go` | � In Progress | ~~GIT-001~~ ✅ |
 | GIT-023b: Add `FetchBranchRequest`, `FetchBranchJob` to `models.go`; `ErrBranchAlreadyFetched`, `ErrBlobContentUnavailable` to `errors.go`; `FetchBranch` + `GetFetchBranchStatus` to `GitManager` interface | 📋 Not Started | GIT-023a |
 | GIT-023c: Refactor `runImport` — bare shallow clone + `ls-refs` branch listing + stub entity writes; add seen-SHA dedup to `walkBranchCommits` | 📋 Not Started | GIT-023b |
 | GIT-023d: Implement `FetchBranch` — background goroutine; deepen/re-clone; tip-tree-only walk; blob metadata only; branch status transitions | 📋 Not Started | GIT-023b, GIT-023c |
