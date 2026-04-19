@@ -364,7 +364,7 @@ deleted on branch delete, migrated on rename, and removed on file delete.
 | GIT-023e: Update `ReadFile` — lazy blob content: check entity cache → read from bare clone → cache back → `ErrBlobContentUnavailable` fallback | ✅ Done | GIT-023d |
 | GIT-023f: Proto additions — `FetchBranch` RPC + `GetFetchBranchStatus` RPC; `buf generate` | ✅ Done | GIT-023b |
 | GIT-023g: gRPC server handlers for `FetchBranch` + `GetFetchBranchStatus` + HTTP route registration | ✅ Done | GIT-023d, GIT-023f |
-| GIT-023h: Unit tests — stub import < 10 s (mocked remote); `FetchBranch` idempotency; lazy `ReadFile` content cache; `ErrBranchAlreadyFetched` rejection | � In Progress | GIT-023g |
+| GIT-023h: Unit tests — stub import < 10 s (mocked remote); `FetchBranch` idempotency; lazy `ReadFile` content cache; `ErrBranchAlreadyFetched` rejection | ✅ Done | GIT-023g |
 
 **Scope**: The v1 import walks every commit, tree, and blob for every branch — generating
 up to O(commits × files) ArangoDB round-trips before the job completes. The redesign splits
