@@ -230,7 +230,6 @@ type GitManager interface {
 	DeleteEdge(ctx context.Context, req DeleteEdgeRequest) error
 
 	// ── Graph Queries (GIT-020) ───────────────────────────────────────────────
-
 	// GetNeighborhood returns all entities and edges reachable from entityID
 	// within the given depth, bounded by a 100-node hard cap. The starting
 	// entity is always included in the result.
@@ -254,6 +253,28 @@ type GitManager interface {
 	// Returns [ErrBranchNotFound] if req.BranchID does not exist.
 	// Returns an empty [GraphResult] when no entities match (never nil).
 	SearchByKeywords(ctx context.Context, req SearchByKeywordsRequest) (GraphResult, error)
+
+	// ── Lazy Import v2 (GIT-023b) ─────────────────────────────────────────────
+
+	// FetchBranch triggers an async on-demand fetch of the full commit history
+	// and file tree for a stub branch. The branch must currently have
+	// status == "stub" (created by the lazy import v2 runImport path).
+	//
+	// The method returns immediately with a [FetchBranchJob] whose ID can be
+	// passed to [GitManager.GetFetchBranchStatus] to poll for progress. A
+	// background goroutine deepens the bare shallow clone, walks the tip tree,
+	// and materialises Commit, Tree, and Blob entities, transitioning the
+	// branch status through "fetching" → "fetched" | "fetch_failed".
+	//
+	// Returns [ErrBranchNotFound] if no branch with req.BranchID exists.
+	// Returns [ErrBranchAlreadyFetched] if the branch status is "fetching" or
+	// "fetched" — callers should poll the existing job instead.
+	FetchBranch(ctx context.Context, req FetchBranchRequest) (FetchBranchJob, error)
+
+	// GetFetchBranchStatus returns the current state of a fetch job.
+	// Returns [ErrImportJobNotFound] if no job with the given ID exists for
+	// this agency.
+	GetFetchBranchStatus(ctx context.Context, jobID string) (FetchBranchJob, error)
 }
 
 // gitManager is the concrete implementation of [GitManager].

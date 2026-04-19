@@ -269,6 +269,14 @@ func (f *fakeGitManager) SearchByKeywords(_ context.Context, req codevaldgit.Sea
 	return codevaldgit.GraphResult{}, nil
 }
 
+func (f *fakeGitManager) FetchBranch(_ context.Context, req codevaldgit.FetchBranchRequest) (codevaldgit.FetchBranchJob, error) {
+	return codevaldgit.FetchBranchJob{}, nil
+}
+
+func (f *fakeGitManager) GetFetchBranchStatus(_ context.Context, jobID string) (codevaldgit.FetchBranchJob, error) {
+	return codevaldgit.FetchBranchJob{}, nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024

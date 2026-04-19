@@ -545,3 +545,48 @@ type SearchByKeywordsRequest struct {
 	// are used.
 	Cascade bool `json:"cascade,omitempty"`
 }
+
+// ── Lazy Import v2 (GIT-023b) ─────────────────────────────────────────────────
+
+// FetchBranchRequest carries the parameters for [GitManager.FetchBranch].
+// It targets a single stub branch (status == "stub") within a repository and
+// triggers an async on-demand fetch of its full commit history and file tree.
+type FetchBranchRequest struct {
+	// RepoID is the entitygraph ID of the Repository that owns the branch.
+	RepoID string `json:"repo_id"`
+
+	// BranchID is the entitygraph ID of the Branch to fetch.
+	// The branch must currently have status == "stub".
+	BranchID string `json:"branch_id"`
+}
+
+// FetchBranchJob represents the state of an async on-demand branch fetch
+// operation triggered by [GitManager.FetchBranch].
+//
+// Status transitions: "pending" → "running" → "completed" | "failed".
+// Call [GitManager.GetFetchBranchStatus] to poll for progress.
+type FetchBranchJob struct {
+	// ID is the stable job identifier returned by [GitManager.FetchBranch].
+	ID string `json:"id"`
+
+	// AgencyID scopes this job to the owning agency.
+	AgencyID string `json:"agency_id"`
+
+	// RepoID is the entitygraph ID of the Repository being fetched.
+	RepoID string `json:"repo_id"`
+
+	// BranchName is the short name of the branch being fetched (e.g. "main").
+	BranchName string `json:"branch_name"`
+
+	// Status is one of: "pending", "running", "completed", "failed".
+	Status string `json:"status"`
+
+	// ErrorMessage is populated when Status == "failed".
+	ErrorMessage string `json:"error_message,omitempty"`
+
+	// CreatedAt is the ISO 8601 timestamp at which FetchBranch was called.
+	CreatedAt string `json:"created_at"`
+
+	// UpdatedAt is the ISO 8601 timestamp of the last status transition.
+	UpdatedAt string `json:"updated_at"`
+}

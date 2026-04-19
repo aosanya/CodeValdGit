@@ -78,6 +78,20 @@ var ErrKeywordAlreadyExists = errors.New("keyword already exists")
 // edge exists between the specified entities.
 var ErrEdgeNotFound = errors.New("documentation edge not found")
 
+// ── Lazy Import v2 errors (GIT-023b) ─────────────────────────────────────────
+
+// ErrBranchAlreadyFetched is returned by [GitManager.FetchBranch] when the
+// target branch already has status "fetching" or "fetched". Callers should
+// poll [GitManager.GetFetchBranchStatus] instead of issuing a new request.
+var ErrBranchAlreadyFetched = errors.New("branch is already fetched or fetch is in progress")
+
+// ErrBlobContentUnavailable is returned by [GitManager.ReadFile] when the
+// Blob entity exists (metadata is known) but the raw file content has not yet
+// been materialised into the entity graph. The caller should trigger
+// [GitManager.FetchBranch] for the owning branch and retry after the job
+// completes.
+var ErrBlobContentUnavailable = errors.New("blob content not yet available; trigger FetchBranch and retry")
+
 // ErrInvalidRelationship is returned by [GitManager.CreateEdge] or
 // [GitManager.DeleteEdge] when the relationship name is not a valid
 // documentation edge type.
