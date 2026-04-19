@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -260,6 +261,15 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 // ReadFile retrieves the Blob entity for a file at the branch's current HEAD.
 // Returns [ErrBranchNotFound] if the branch does not exist.
 // Returns [ErrFileNotFound] if the path does not exist on the branch.
+// ReadFile returns the content of path at the branch's HEAD commit.
+// It first checks whether the blob entity already carries cached content.
+// If the content field is empty (stub blob created by FetchBranch), it reads
+// the content directly from the bare clone and caches it back into the entity.
+// Returns [ErrBranchNotFound] if the branch does not exist.
+// Returns [ErrFileNotFound] if the path is not present on the branch.
+// Returns [ErrBlobContentUnavailable] if the blob exists as a stub but the
+// bare clone is unavailable; the caller should trigger [GitManager.FetchBranch]
+// and retry.
 func (m *gitManager) ReadFile(ctx context.Context, branchID, path string) (Blob, error) {
 	branch, err := m.GetBranch(ctx, branchID)
 	if err != nil {
@@ -272,6 +282,27 @@ func (m *gitManager) ReadFile(ctx context.Context, branchID, path string) (Blob,
 	if err != nil {
 		return Blob{}, fmt.Errorf("ReadFile: %w", err)
 	}
+
+	// Fast path: content is already cached in the entity graph.
+	if blob.Content != "" {
+		return blob, nil
+	}
+
+	// Lazy path: blob was written as metadata-only by FetchBranch (GIT-023d).
+	// Try to hydrate the content from the bare clone.
+	content, encoding, loadErr := m.loadBlobContentFromBareClone(ctx, branch, blob)
+	if loadErr != nil {
+		log.Printf("[ReadFile] lazy load agencyID=%q blobSHA=%q path=%q: %v", m.agencyID, blob.SHA, path, loadErr)
+		return Blob{}, ErrBlobContentUnavailable
+	}
+
+	// Cache the content back into the entity so subsequent reads are instant.
+	if cacheErr := m.cacheBlobContent(ctx, blob.ID, content, encoding); cacheErr != nil {
+		log.Printf("[ReadFile] cache blob agencyID=%q blobID=%q: %v (continuing)", m.agencyID, blob.ID, cacheErr)
+	}
+
+	blob.Content = content
+	blob.Encoding = encoding
 	return blob, nil
 }
 
