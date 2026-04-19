@@ -111,6 +111,21 @@ func fileDiffToProto(d codevaldgit.FileDiff) *pb.FileDiff {
 	}
 }
 
+// fetchBranchJobToProto converts a domain FetchBranchJob to its proto
+// representation.
+func fetchBranchJobToProto(j codevaldgit.FetchBranchJob) *pb.FetchBranchJob {
+	return &pb.FetchBranchJob{
+		Id:           j.ID,
+		AgencyId:     j.AgencyID,
+		RepoId:       j.RepoID,
+		BranchName:   j.BranchName,
+		Status:       j.Status,
+		ErrorMessage: j.ErrorMessage,
+		CreatedAt:    j.CreatedAt,
+		UpdatedAt:    j.UpdatedAt,
+	}
+}
+
 // parseTimestamp parses an ISO 8601 / RFC 3339 string into a protobuf
 // Timestamp. Returns nil on empty input or parse failure.
 func parseTimestamp(s string) *timestamppb.Timestamp {
