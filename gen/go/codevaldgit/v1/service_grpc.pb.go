@@ -19,40 +19,42 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GitService_InitRepo_FullMethodName            = "/codevaldgit.v1.GitService/InitRepo"
-	GitService_ListRepositories_FullMethodName    = "/codevaldgit.v1.GitService/ListRepositories"
-	GitService_GetRepository_FullMethodName       = "/codevaldgit.v1.GitService/GetRepository"
-	GitService_GetRepositoryByName_FullMethodName = "/codevaldgit.v1.GitService/GetRepositoryByName"
-	GitService_DeleteRepo_FullMethodName          = "/codevaldgit.v1.GitService/DeleteRepo"
-	GitService_PurgeRepo_FullMethodName           = "/codevaldgit.v1.GitService/PurgeRepo"
-	GitService_CreateBranch_FullMethodName        = "/codevaldgit.v1.GitService/CreateBranch"
-	GitService_GetBranch_FullMethodName           = "/codevaldgit.v1.GitService/GetBranch"
-	GitService_ListBranches_FullMethodName        = "/codevaldgit.v1.GitService/ListBranches"
-	GitService_DeleteBranch_FullMethodName        = "/codevaldgit.v1.GitService/DeleteBranch"
-	GitService_MergeBranch_FullMethodName         = "/codevaldgit.v1.GitService/MergeBranch"
-	GitService_CreateTag_FullMethodName           = "/codevaldgit.v1.GitService/CreateTag"
-	GitService_GetTag_FullMethodName              = "/codevaldgit.v1.GitService/GetTag"
-	GitService_ListTags_FullMethodName            = "/codevaldgit.v1.GitService/ListTags"
-	GitService_DeleteTag_FullMethodName           = "/codevaldgit.v1.GitService/DeleteTag"
-	GitService_WriteFile_FullMethodName           = "/codevaldgit.v1.GitService/WriteFile"
-	GitService_ReadFile_FullMethodName            = "/codevaldgit.v1.GitService/ReadFile"
-	GitService_DeleteFile_FullMethodName          = "/codevaldgit.v1.GitService/DeleteFile"
-	GitService_ListDirectory_FullMethodName       = "/codevaldgit.v1.GitService/ListDirectory"
-	GitService_Log_FullMethodName                 = "/codevaldgit.v1.GitService/Log"
-	GitService_Diff_FullMethodName                = "/codevaldgit.v1.GitService/Diff"
-	GitService_ImportRepo_FullMethodName          = "/codevaldgit.v1.GitService/ImportRepo"
-	GitService_GetImportStatus_FullMethodName     = "/codevaldgit.v1.GitService/GetImportStatus"
-	GitService_CancelImport_FullMethodName        = "/codevaldgit.v1.GitService/CancelImport"
-	GitService_CreateKeyword_FullMethodName       = "/codevaldgit.v1.GitService/CreateKeyword"
-	GitService_GetKeyword_FullMethodName          = "/codevaldgit.v1.GitService/GetKeyword"
-	GitService_ListKeywords_FullMethodName        = "/codevaldgit.v1.GitService/ListKeywords"
-	GitService_GetKeywordTree_FullMethodName      = "/codevaldgit.v1.GitService/GetKeywordTree"
-	GitService_UpdateKeyword_FullMethodName       = "/codevaldgit.v1.GitService/UpdateKeyword"
-	GitService_DeleteKeyword_FullMethodName       = "/codevaldgit.v1.GitService/DeleteKeyword"
-	GitService_CreateEdge_FullMethodName          = "/codevaldgit.v1.GitService/CreateEdge"
-	GitService_DeleteEdge_FullMethodName          = "/codevaldgit.v1.GitService/DeleteEdge"
-	GitService_GetNeighborhood_FullMethodName     = "/codevaldgit.v1.GitService/GetNeighborhood"
-	GitService_SearchByKeywords_FullMethodName    = "/codevaldgit.v1.GitService/SearchByKeywords"
+	GitService_InitRepo_FullMethodName             = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_ListRepositories_FullMethodName     = "/codevaldgit.v1.GitService/ListRepositories"
+	GitService_GetRepository_FullMethodName        = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_GetRepositoryByName_FullMethodName  = "/codevaldgit.v1.GitService/GetRepositoryByName"
+	GitService_DeleteRepo_FullMethodName           = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName            = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName         = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName            = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_ListBranches_FullMethodName         = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName         = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName          = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateTag_FullMethodName            = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName               = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName             = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName            = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName            = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName             = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName           = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName        = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName                  = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName                 = "/codevaldgit.v1.GitService/Diff"
+	GitService_ImportRepo_FullMethodName           = "/codevaldgit.v1.GitService/ImportRepo"
+	GitService_GetImportStatus_FullMethodName      = "/codevaldgit.v1.GitService/GetImportStatus"
+	GitService_CancelImport_FullMethodName         = "/codevaldgit.v1.GitService/CancelImport"
+	GitService_FetchBranch_FullMethodName          = "/codevaldgit.v1.GitService/FetchBranch"
+	GitService_GetFetchBranchStatus_FullMethodName = "/codevaldgit.v1.GitService/GetFetchBranchStatus"
+	GitService_CreateKeyword_FullMethodName        = "/codevaldgit.v1.GitService/CreateKeyword"
+	GitService_GetKeyword_FullMethodName           = "/codevaldgit.v1.GitService/GetKeyword"
+	GitService_ListKeywords_FullMethodName         = "/codevaldgit.v1.GitService/ListKeywords"
+	GitService_GetKeywordTree_FullMethodName       = "/codevaldgit.v1.GitService/GetKeywordTree"
+	GitService_UpdateKeyword_FullMethodName        = "/codevaldgit.v1.GitService/UpdateKeyword"
+	GitService_DeleteKeyword_FullMethodName        = "/codevaldgit.v1.GitService/DeleteKeyword"
+	GitService_CreateEdge_FullMethodName           = "/codevaldgit.v1.GitService/CreateEdge"
+	GitService_DeleteEdge_FullMethodName           = "/codevaldgit.v1.GitService/DeleteEdge"
+	GitService_GetNeighborhood_FullMethodName      = "/codevaldgit.v1.GitService/GetNeighborhood"
+	GitService_SearchByKeywords_FullMethodName     = "/codevaldgit.v1.GitService/SearchByKeywords"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -144,6 +146,17 @@ type GitServiceClient interface {
 	// Error: NOT_FOUND if no job with the given ID exists.
 	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
 	CancelImport(ctx context.Context, in *CancelImportRequest, opts ...grpc.CallOption) (*CancelImportResponse, error)
+	// FetchBranch begins an async on-demand fetch for a previously imported
+	// stub branch, materialising its full commit history and file tree.
+	// Returns immediately with a FetchBranchJob; poll GetFetchBranchStatus for
+	// progress.
+	// Error: NOT_FOUND if the repository or branch does not exist.
+	// Error: FAILED_PRECONDITION (ErrBranchAlreadyFetched) if the branch status
+	// is already "fetched".
+	FetchBranch(ctx context.Context, in *FetchBranchRequest, opts ...grpc.CallOption) (*FetchBranchJob, error)
+	// GetFetchBranchStatus returns the current state of a branch fetch job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	GetFetchBranchStatus(ctx context.Context, in *GetFetchBranchStatusRequest, opts ...grpc.CallOption) (*FetchBranchJob, error)
 	// CreateKeyword creates a new Keyword entity in the taxonomy.
 	// Error: ALREADY_EXISTS if a keyword with the same name exists under the same parent.
 	// Error: NOT_FOUND if parent_id is set and does not exist.
@@ -429,6 +442,26 @@ func (c *gitServiceClient) CancelImport(ctx context.Context, in *CancelImportReq
 	return out, nil
 }
 
+func (c *gitServiceClient) FetchBranch(ctx context.Context, in *FetchBranchRequest, opts ...grpc.CallOption) (*FetchBranchJob, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FetchBranchJob)
+	err := c.cc.Invoke(ctx, GitService_FetchBranch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetFetchBranchStatus(ctx context.Context, in *GetFetchBranchStatusRequest, opts ...grpc.CallOption) (*FetchBranchJob, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FetchBranchJob)
+	err := c.cc.Invoke(ctx, GitService_GetFetchBranchStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *gitServiceClient) CreateKeyword(ctx context.Context, in *CreateKeywordRequest, opts ...grpc.CallOption) (*Keyword, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Keyword)
@@ -618,6 +651,17 @@ type GitServiceServer interface {
 	// Error: NOT_FOUND if no job with the given ID exists.
 	// Error: FAILED_PRECONDITION if the job is already in a terminal state.
 	CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error)
+	// FetchBranch begins an async on-demand fetch for a previously imported
+	// stub branch, materialising its full commit history and file tree.
+	// Returns immediately with a FetchBranchJob; poll GetFetchBranchStatus for
+	// progress.
+	// Error: NOT_FOUND if the repository or branch does not exist.
+	// Error: FAILED_PRECONDITION (ErrBranchAlreadyFetched) if the branch status
+	// is already "fetched".
+	FetchBranch(context.Context, *FetchBranchRequest) (*FetchBranchJob, error)
+	// GetFetchBranchStatus returns the current state of a branch fetch job.
+	// Error: NOT_FOUND if no job with the given ID exists.
+	GetFetchBranchStatus(context.Context, *GetFetchBranchStatusRequest) (*FetchBranchJob, error)
 	// CreateKeyword creates a new Keyword entity in the taxonomy.
 	// Error: ALREADY_EXISTS if a keyword with the same name exists under the same parent.
 	// Error: NOT_FOUND if parent_id is set and does not exist.
@@ -734,6 +778,12 @@ func (UnimplementedGitServiceServer) GetImportStatus(context.Context, *GetImport
 }
 func (UnimplementedGitServiceServer) CancelImport(context.Context, *CancelImportRequest) (*CancelImportResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelImport not implemented")
+}
+func (UnimplementedGitServiceServer) FetchBranch(context.Context, *FetchBranchRequest) (*FetchBranchJob, error) {
+	return nil, status.Error(codes.Unimplemented, "method FetchBranch not implemented")
+}
+func (UnimplementedGitServiceServer) GetFetchBranchStatus(context.Context, *GetFetchBranchStatusRequest) (*FetchBranchJob, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFetchBranchStatus not implemented")
 }
 func (UnimplementedGitServiceServer) CreateKeyword(context.Context, *CreateKeywordRequest) (*Keyword, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateKeyword not implemented")
@@ -1218,6 +1268,42 @@ func _GitService_CancelImport_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitService_FetchBranch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchBranchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).FetchBranch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_FetchBranch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).FetchBranch(ctx, req.(*FetchBranchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetFetchBranchStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFetchBranchStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetFetchBranchStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetFetchBranchStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetFetchBranchStatus(ctx, req.(*GetFetchBranchStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GitService_CreateKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateKeywordRequest)
 	if err := dec(in); err != nil {
@@ -1500,6 +1586,14 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelImport",
 			Handler:    _GitService_CancelImport_Handler,
+		},
+		{
+			MethodName: "FetchBranch",
+			Handler:    _GitService_FetchBranch_Handler,
+		},
+		{
+			MethodName: "GetFetchBranchStatus",
+			Handler:    _GitService_GetFetchBranchStatus_Handler,
 		},
 		{
 			MethodName: "CreateKeyword",
