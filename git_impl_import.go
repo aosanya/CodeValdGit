@@ -339,6 +339,24 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 	}); err != nil {
 		return err
 	}
+
+	// Link the branch to its HEAD commit so that ListDirectory, ReadFile, and
+	// Log can resolve files. The HEAD commit is the one whose SHA matches
+	// ref.Hash().
+	headSHA := ref.Hash().String()
+	headCommits, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   m.agencyID,
+		TypeID:     "Commit",
+		Properties: map[string]any{"sha": headSHA},
+	})
+	if err == nil && len(headCommits) > 0 {
+		if _, err := m.advanceBranchHead(ctx, branchID, headCommits[0].ID); err != nil {
+			log.Printf("[walkBranchCommits] advanceBranchHead branch=%q commit=%q: %v (continuing)", branchName, headCommits[0].ID, err)
+		}
+	} else {
+		log.Printf("[walkBranchCommits] could not find HEAD commit entity for branch=%q sha=%q", branchName, headSHA)
+	}
+
 	return nil
 }
 
