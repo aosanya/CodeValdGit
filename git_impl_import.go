@@ -59,12 +59,15 @@ const (
 	branchStatusFetchFailed = "fetch_failed"
 )
 
-// cloneRootDir returns the persistent directory that holds all bare clones for
-// this agency.  It is created on first use.  Each import job gets its own
-// sub-directory named after the job ID so that concurrent imports don't
-// interfere.
+// cloneRootDir returns the persistent directory that holds the bare clone for
+// this import job.  If the directory already exists (e.g., from a previous
+// failed run) it is removed and recreated so that PlainClone always starts
+// with an empty target.
 func cloneRootDir(agencyID, jobID string) (string, error) {
 	base := filepath.Join(os.TempDir(), "codevaldgit-clones", agencyID, jobID)
+	if err := os.RemoveAll(base); err != nil {
+		return "", fmt.Errorf("cloneRootDir remove stale %s: %w", base, err)
+	}
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		return "", fmt.Errorf("cloneRootDir %s: %w", base, err)
 	}
