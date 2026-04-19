@@ -525,31 +525,31 @@ func DefaultGitSchema() types.Schema {
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
 			},
-		{
-			Name:              "FetchBranchJob",
-			DisplayName:       "Fetch Branch Job",
-			PathSegment:       "fetch-jobs",
-			EntityIDParam:     "fetchJobId",
-			StorageCollection: "git_fetchjobs",
-			// FetchBranchJob tracks the lifecycle of an async on-demand branch
-			// fetch operation triggered by FetchBranch. One document per call;
-			// keyed by a UUID assigned at call time.
-			// Status transitions: pending → running → completed | failed.
-			Properties: []types.PropertyDefinition{
-				// agency_id scopes this job to the owning agency.
-				{Name: "agency_id", Type: types.PropertyTypeString, Required: true},
-				// repo_id is the entity ID of the Repository being fetched.
-				{Name: "repo_id", Type: types.PropertyTypeString, Required: true},
-				// branch_name is the short branch name being fetched, e.g. "main".
-				{Name: "branch_name", Type: types.PropertyTypeString, Required: true},
-				// status is one of: "pending", "running", "completed", "failed".
-				{Name: "status", Type: types.PropertyTypeString, Required: true},
-				// error_message is populated only when status == "failed".
-				{Name: "error_message", Type: types.PropertyTypeString},
-				{Name: "created_at", Type: types.PropertyTypeString},
-				{Name: "updated_at", Type: types.PropertyTypeString},
+			{
+				Name:              "FetchBranchJob",
+				DisplayName:       "Fetch Branch Job",
+				PathSegment:       "fetch-jobs",
+				EntityIDParam:     "fetchJobId",
+				StorageCollection: "git_fetchjobs",
+				// FetchBranchJob tracks the lifecycle of an async on-demand branch
+				// fetch operation triggered by FetchBranch. One document per call;
+				// keyed by a UUID assigned at call time.
+				// Status transitions: pending → running → completed | failed.
+				Properties: []types.PropertyDefinition{
+					// agency_id scopes this job to the owning agency.
+					{Name: "agency_id", Type: types.PropertyTypeString, Required: true},
+					// repo_id is the entity ID of the Repository being fetched.
+					{Name: "repo_id", Type: types.PropertyTypeString, Required: true},
+					// branch_name is the short branch name being fetched, e.g. "main".
+					{Name: "branch_name", Type: types.PropertyTypeString, Required: true},
+					// status is one of: "pending", "running", "completed", "failed".
+					{Name: "status", Type: types.PropertyTypeString, Required: true},
+					// error_message is populated only when status == "failed".
+					{Name: "error_message", Type: types.PropertyTypeString},
+					{Name: "created_at", Type: types.PropertyTypeString},
+					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
 			},
 		},
-	},
-}
+	}
 }
