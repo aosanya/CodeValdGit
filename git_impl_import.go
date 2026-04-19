@@ -53,9 +53,9 @@ const (
 
 // branchStatus values for the Branch entity "status" property (lazy import v2).
 const (
-	branchStatusStub       = "stub"
-	branchStatusFetching   = "fetching"
-	branchStatusFetched    = "fetched"
+	branchStatusStub        = "stub"
+	branchStatusFetching    = "fetching"
+	branchStatusFetched     = "fetched"
 	branchStatusFetchFailed = "fetch_failed"
 )
 

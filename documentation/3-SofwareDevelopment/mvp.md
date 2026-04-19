@@ -359,8 +359,8 @@ deleted on branch delete, migrated on rename, and removed on file delete.
 |------|--------|------------|
 | GIT-023a: Add `status` property to `Branch` TypeDefinition + `FetchBranchJob` TypeDefinition + `git_fetchjobs` collection in `schema.go` | ✅ Done | ~~GIT-001~~ ✅ |
 | GIT-023b: Add `FetchBranchRequest`, `FetchBranchJob` to `models.go`; `ErrBranchAlreadyFetched`, `ErrBlobContentUnavailable` to `errors.go`; `FetchBranch` + `GetFetchBranchStatus` to `GitManager` interface | ✅ Done | GIT-023a |
-| GIT-023c: Refactor `runImport` — bare shallow clone + `ls-refs` branch listing + stub entity writes; add seen-SHA dedup to `walkBranchCommits` | 📋 Not Started | GIT-023b |
-| GIT-023d: Implement `FetchBranch` — background goroutine; deepen/re-clone; tip-tree-only walk; blob metadata only; branch status transitions | 📋 Not Started | GIT-023b, GIT-023c |
+| GIT-023c: Refactor `runImport` — bare shallow clone + `ls-refs` branch listing + stub entity writes; add seen-SHA dedup to `walkBranchCommits` | ✅ Done | GIT-023b |
+| GIT-023d: Implement `FetchBranch` — background goroutine; deepen/re-clone; tip-tree-only walk; blob metadata only; branch status transitions | 📋 Not Started | GIT-023b, ~~GIT-023c~~ ✅ |
 | GIT-023e: Update `ReadFile` — lazy blob content: check entity cache → read from bare clone → cache back → `ErrBlobContentUnavailable` fallback | 📋 Not Started | GIT-023d |
 | GIT-023f: Proto additions — `FetchBranch` + `GetFetchBranchStatus` RPCs; `buf generate` | 📋 Not Started | GIT-023b |
 | GIT-023g: gRPC server handlers for `FetchBranch` + `GetFetchBranchStatus` + HTTP route registration | 📋 Not Started | GIT-023d, GIT-023f |
