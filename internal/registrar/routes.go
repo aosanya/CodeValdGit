@@ -242,6 +242,28 @@ func importRoutes() []types.RouteInfo {
 	}
 }
 
+// fetchBranchRoutes returns routes for on-demand branch fetch operations (GIT-023g).
+// FetchBranch starts an async fetch for a stub branch; GetFetchBranchStatus
+// polls the resulting job.
+func fetchBranchRoutes() []types.RouteInfo {
+	jid := []types.PathBinding{{URLParam: "jobId", Field: "job_id"}}
+	return []types.RouteInfo{
+		{
+			Method:     "POST",
+			Pattern:    "/git/{agencyId}/fetch-jobs",
+			Capability: "fetch_branch",
+			GrpcMethod: "/codevaldgit.v1.GitService/FetchBranch",
+		},
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/fetch-jobs/{jobId}",
+			Capability:   "get_fetch_branch_status",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetFetchBranchStatus",
+			PathBindings: jid,
+		},
+	}
+}
+
 // docsRoutes returns routes for the documentation layer (GIT-021c):
 // keyword CRUD, branch-scoped edge CRUD, and graph query operations.
 // All routes are nested under /git/{agencyId}/.

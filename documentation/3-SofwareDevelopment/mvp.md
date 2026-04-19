@@ -362,8 +362,8 @@ deleted on branch delete, migrated on rename, and removed on file delete.
 | GIT-023c: Refactor `runImport` — bare shallow clone + `ls-refs` branch listing + stub entity writes; add seen-SHA dedup to `walkBranchCommits` | ✅ Done | GIT-023b |
 | GIT-023d: Implement `FetchBranch` — background goroutine; deepen/re-clone; tip-tree-only walk; blob metadata only; branch status transitions | ✅ Done | GIT-023b, ~~GIT-023c~~ ✅ |
 | GIT-023e: Update `ReadFile` — lazy blob content: check entity cache → read from bare clone → cache back → `ErrBlobContentUnavailable` fallback | ✅ Done | GIT-023d |
-| GIT-023f: Proto additions — `FetchBranch` RPC + `GetFetchBranchStatus` RPC; `buf generate` | 🚀 In Progress | GIT-023b |
-| GIT-023g: gRPC server handlers for `FetchBranch` + `GetFetchBranchStatus` + HTTP route registration | 📋 Not Started | GIT-023d, GIT-023f |
+| GIT-023f: Proto additions — `FetchBranch` RPC + `GetFetchBranchStatus` RPC; `buf generate` | ✅ Done | GIT-023b |
+| GIT-023g: gRPC server handlers for `FetchBranch` + `GetFetchBranchStatus` + HTTP route registration | � In Progress | GIT-023d, GIT-023f |
 | GIT-023h: Unit tests — stub import < 10 s (mocked remote); `FetchBranch` idempotency; lazy `ReadFile` content cache; `ErrBranchAlreadyFetched` rejection | 📋 Not Started | GIT-023g |
 
 **Scope**: The v1 import walks every commit, tree, and blob for every branch — generating

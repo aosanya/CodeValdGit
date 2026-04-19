@@ -6,6 +6,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
@@ -381,4 +382,51 @@ func importJobToProto(j codevaldgit.ImportJob) *pb.ImportJobResponse {
 		CreatedAt:    j.CreatedAt,
 		UpdatedAt:    j.UpdatedAt,
 	}
+}
+
+// ── On-Demand Branch Fetch (GIT-023g) ────────────────────────────────────────
+
+// FetchBranch implements pb.GitServiceServer. It triggers an async on-demand
+// fetch for a stub branch identified by repo and branch name. The method
+// resolves branch_name → branch entity ID via ListBranches before delegating
+// to [codevaldgit.GitManager.FetchBranch].
+func (s *Server) FetchBranch(ctx context.Context, req *pb.FetchBranchRequest) (*pb.FetchBranchJob, error) {
+	branchID, err := s.resolveBranchID(ctx, req.GetRepoId(), req.GetBranchName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	job, err := s.mgr.FetchBranch(ctx, codevaldgit.FetchBranchRequest{
+		RepoID:   req.GetRepoId(),
+		BranchID: branchID,
+	})
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return fetchBranchJobToProto(job), nil
+}
+
+// GetFetchBranchStatus implements pb.GitServiceServer. It returns the current
+// state of a branch fetch job identified by job_id.
+func (s *Server) GetFetchBranchStatus(ctx context.Context, req *pb.GetFetchBranchStatusRequest) (*pb.FetchBranchJob, error) {
+	job, err := s.mgr.GetFetchBranchStatus(ctx, req.GetJobId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return fetchBranchJobToProto(job), nil
+}
+
+// resolveBranchID finds the entity ID of a branch by its human-readable name
+// within the given repository. It calls ListBranches and returns the ID of the
+// first branch whose name matches branchName.
+func (s *Server) resolveBranchID(ctx context.Context, repoID, branchName string) (string, error) {
+	branches, err := s.mgr.ListBranches(ctx, repoID)
+	if err != nil {
+		return "", fmt.Errorf("resolveBranchID: list branches: %w", err)
+	}
+	for _, b := range branches {
+		if b.Name == branchName {
+			return b.ID, nil
+		}
+	}
+	return "", codevaldgit.ErrBranchNotFound
 }
