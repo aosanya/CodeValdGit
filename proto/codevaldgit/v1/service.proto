@@ -227,6 +227,21 @@ service GitService {
   // Error: FAILED_PRECONDITION if the job is already in a terminal state.
   rpc CancelImport (CancelImportRequest) returns (CancelImportResponse);
 
+  // ── On-Demand Branch Fetch (GIT-023f) ────────────────────────────────────
+
+  // FetchBranch begins an async on-demand fetch for a previously imported
+  // stub branch, materialising its full commit history and file tree.
+  // Returns immediately with a FetchBranchJob; poll GetFetchBranchStatus for
+  // progress.
+  // Error: NOT_FOUND if the repository or branch does not exist.
+  // Error: FAILED_PRECONDITION (ErrBranchAlreadyFetched) if the branch status
+  // is already "fetched".
+  rpc FetchBranch (FetchBranchRequest) returns (FetchBranchJob);
+
+  // GetFetchBranchStatus returns the current state of a branch fetch job.
+  // Error: NOT_FOUND if no job with the given ID exists.
+  rpc GetFetchBranchStatus (GetFetchBranchStatusRequest) returns (FetchBranchJob);
+
   // ── Keyword CRUD (GIT-021a) ───────────────────────────────────────────────
 
   // CreateKeyword creates a new Keyword entity in the taxonomy.
@@ -456,6 +471,34 @@ message ImportJobResponse {
   string error_message = 5;
   string created_at    = 6;
   string updated_at    = 7;
+}
+
+// On-demand branch fetch (GIT-023f)
+
+// FetchBranchRequest carries the parameters for an on-demand branch fetch.
+message FetchBranchRequest {
+  string agency_id    = 1;
+  string repo_id      = 2;
+  string branch_name  = 3;
+}
+
+// FetchBranchJob represents the state of an async branch fetch operation.
+// Status values: "pending" | "running" | "completed" | "failed".
+message FetchBranchJob {
+  string id            = 1;
+  string agency_id     = 2;
+  string repo_id       = 3;
+  string branch_name   = 4;
+  string status        = 5;
+  string error_message = 6;
+  string created_at    = 7;
+  string updated_at    = 8;
+}
+
+// GetFetchBranchStatusRequest retrieves the current state of a branch fetch job.
+message GetFetchBranchStatusRequest {
+  string agency_id = 1;
+  string job_id    = 2;
 }
 
 // ── Keyword messages (GIT-021a) ───────────────────────────────────────────────
