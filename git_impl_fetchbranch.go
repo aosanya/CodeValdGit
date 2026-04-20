@@ -436,7 +436,9 @@ func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogi
 		} else {
 			subTree, err := repo.TreeObject(entry.Hash)
 			if err != nil {
-				return treeID, fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
+				// Subtree has no raw data (import-job metadata-only entity) —
+				// skip recursive walk; it will be deepened by FetchBranch later.
+				continue
 			}
 			subTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, subTree, entryPath, now)
 			if err != nil {
@@ -461,10 +463,17 @@ func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogi
 // ErrEntityAlreadyExists is skipped.
 func (m *gitManager) upsertBlobMetadataWithID(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) (string, error) {
 	blobSHA := entry.Hash.String()
+
+	// Size: read from the storer only when the raw object bytes are available
+	// (i.e. objects that were pushed, not import-job metadata-only entities).
+	// For metadata-only blobs we use size 0 — it will be backfilled lazily.
+	var blobSize int64
 	t0 := time.Now()
-	blobObj, err := repo.BlobObject(entry.Hash)
-	if err != nil {
-		return "", fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
+	if err := repo.Storer.HasEncodedObject(entry.Hash); err == nil {
+		blobObj, blobErr := repo.BlobObject(entry.Hash)
+		if blobErr == nil {
+			blobSize = blobObj.Size
+		}
 	}
 	if elapsed := time.Since(t0); elapsed > 100*time.Millisecond {
 		log.Printf("[fetchbranch][%s] SLOW BlobObject(%s path=%q) took %s", m.agencyID, blobSHA[:8], fullPath, elapsed)
@@ -482,7 +491,7 @@ func (m *gitManager) upsertBlobMetadataWithID(ctx context.Context, repo *gogit.R
 			"path":       fullPath,
 			"name":       name,
 			"extension":  ext,
-			"size":       blobObj.Size,
+			"size":       blobSize,
 			"encoding":   "",
 			"content":    "",
 			"created_at": now,

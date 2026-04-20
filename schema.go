@@ -261,6 +261,8 @@ func DefaultGitSchema() types.Schema {
 				PathSegment:       "commits",
 				EntityIDParam:     "commitId",
 				StorageCollection: "git_commits",
+				// sha is the natural unique key — content-addressed by SHA.
+				UniqueKey: []string{"sha"},
 				// Commits are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -313,6 +315,8 @@ func DefaultGitSchema() types.Schema {
 				PathSegment:       "trees",
 				EntityIDParam:     "treeId",
 				StorageCollection: "git_trees",
+				// sha is the natural unique key — content-addressed by SHA.
+				UniqueKey: []string{"sha"},
 				// Trees are content-addressed git objects — immutable once written.
 				Immutable: true,
 				Properties: []types.PropertyDefinition{
@@ -363,6 +367,8 @@ func DefaultGitSchema() types.Schema {
 				PathSegment:       "blobs",
 				EntityIDParam:     "blobId",
 				StorageCollection: "git_blobs",
+				// sha is the natural unique key — content-addressed by SHA.
+				UniqueKey: []string{"sha"},
 				// Blobs are content-addressed by SHA — the data/sha/size fields never
 				// change once written. Metadata fields (name, path, extension) are
 				// backfilled after commit time via UpdateEntity, so Immutable is not set.

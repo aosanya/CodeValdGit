@@ -39,11 +39,13 @@ type GitHTTPHandler struct {
 // It is called asynchronously after a successful receive-pack so that the
 // HTTP response is not delayed by the indexing work.
 type PushIndexer interface {
-	// IndexPushedBranch walks newly pushed commits and materialises Commit,
+	// IndexPushedBranch indexes newly pushed commits and materialises Commit,
 	// Tree, and Blob entities, then advances the branch HEAD pointer.
 	// repoName is the human-readable repository name.
 	// branchRef is the full ref name, e.g. "refs/heads/main".
-	IndexPushedBranch(ctx context.Context, repoName, branchRef, newSHA string) error
+	// oldSHA is the previous branch tip (all-zeros string for a new branch).
+	// newSHA is the new branch tip.
+	IndexPushedBranch(ctx context.Context, repoName, branchRef, oldSHA, newSHA string) error
 }
 
 // NewGitHTTPHandler constructs a GitHTTPHandler backed by the given Backend.
@@ -242,12 +244,13 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 			if cmd.New.IsZero() {
 				continue
 			}
+			oldSHA := cmd.Old.String()
 			newSHA := cmd.New.String()
 			refName := cmd.Name.String()
 			log.Printf("[receive-pack][%s/%s] scheduling index for ref=%s sha=%s", agencyID, repoName, refName, newSHA[:8])
 			indexer := h.indexer
 			go func() {
-				if idxErr := indexer.IndexPushedBranch(context.Background(), repoName, refName, newSHA); idxErr != nil {
+				if idxErr := indexer.IndexPushedBranch(context.Background(), repoName, refName, oldSHA, newSHA); idxErr != nil {
 					log.Printf("[receive-pack][%s/%s] IndexPushedBranch ref=%s sha=%s error: %v", agencyID, repoName, refName, newSHA[:8], idxErr)
 				}
 			}()

@@ -1,12 +1,14 @@
 // git_impl_push.go — IndexPushedBranch implementation.
 //
-// After a successful git-receive-pack, this method walks the newly pushed
-// commits and materialises Commit, Tree, and Blob entities in the entity
-// graph, then advances the branch HEAD pointer to the new tip SHA.
+// After a successful git-receive-pack, this method indexes only the commits
+// that were actually pushed (walking backwards from newSHA until it hits
+// oldSHA or a commit whose raw object bytes are not stored — i.e. commits
+// that were already indexed by the import job with metadata-only entities).
 package codevaldgit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,46 +16,107 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/storage"
+	gogitobject "github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
 
-// IndexPushedBranch walks the newly pushed commits reachable from newSHA and
-// materialises Commit, Tree, and Blob entities in the entity graph, then
-// advances the branch HEAD pointer to the new tip SHA.
+// IndexPushedBranch indexes the commits that were just pushed and materialises
+// Commit, Tree, and Blob entities in the entity graph, then advances the
+// branch HEAD pointer.
 //
-// It opens the git object store directly from the Backend storer — no network
-// clone is required because receive-pack has already stored all objects.
-func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef, newSHA string) error {
+// oldSHA is the previous branch tip (all-zeros string for a new branch).
+// newSHA is the new branch tip written by the push.
+//
+// Only commits between oldSHA and newSHA are walked; ancestors already held by
+// the server (import-job metadata entities) are skipped gracefully.
+func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef, oldSHA, newSHA string) error {
 	log.Printf("[push-index][%s] repo=%s ref=%s sha=%s: start", m.agencyID, repoName, branchRef, newSHA[:8])
 	start := time.Now()
 
-	// ── 1. Open the go-git repository via the ArangoDB storer ────────────────
+	// ── 1. Open the raw storer so we can read pushed objects directly ─────────
 	sto, fs, err := m.backend.OpenStorer(ctx, m.agencyID, repoName)
 	if err != nil {
 		return fmt.Errorf("IndexPushedBranch %s/%s: open storer: %w", repoName, branchRef, err)
 	}
-	// Use gogit.NewRepository to bypass the config-existence check that
-	// gogit.Open performs — the ArangoDB storer has no on-disk .git/config.
-	repo, err := gogit.Open(sto, fs)
-	if err != nil {
-		// Fallback: construct repo directly from storer without config validation.
-		repo = gogit.NewRepository(sto, fs)
-		log.Printf("[push-index][%s] repo=%s: gogit.Open failed (%v), using NewRepository", m.agencyID, repoName, err)
+
+	// Set HEAD so that gogit.Open can resolve references for tree walking.
+	headRef := gogitplumbing.NewSymbolicReference(gogitplumbing.HEAD, gogitplumbing.ReferenceName(branchRef))
+	if setErr := sto.SetReference(headRef); setErr != nil {
+		log.Printf("[push-index][%s] repo=%s: WARNING SetReference(HEAD) failed: %v", m.agencyID, repoName, setErr)
 	}
 
 	newHash := gogitplumbing.NewHash(newSHA)
 
-	// ── 2. Walk and upsert all commits reachable from newSHA ─────────────────
-	dummyRef := gogitplumbing.NewHashReference(gogitplumbing.ReferenceName(branchRef), newHash)
+	// ── 2. BFS from newSHA — stop at oldSHA or commits without raw data ───────
+	//
+	// receive-pack only stores raw object bytes for objects the client sent
+	// (i.e. objects not already on the server). Old parent commits were
+	// imported with metadata-only entities (no "data" field) so EncodedObject
+	// returns ErrObjectNotFound for them. We stop traversal at that boundary.
 	seenSHAs := make(map[string]bool)
-	if err := m.walkCommitsOnly(ctx, repo, dummyRef, seenSHAs); err != nil {
-		return fmt.Errorf("IndexPushedBranch %s/%s: walk commits: %w", repoName, branchRef, err)
+	now := time.Now().UTC().Format(time.RFC3339)
+	oldHash := gogitplumbing.NewHash(oldSHA)
+	queue := []gogitplumbing.Hash{newHash}
+	var commitCount int
+	for len(queue) > 0 {
+		h := queue[0]
+		queue = queue[1:]
+		sha := h.String()
+		if seenSHAs[sha] || h == oldHash {
+			continue
+		}
+
+		// Try to read the raw encoded object — fails for import-job metadata
+		// entities that have no "data" field.
+		encObj, objErr := sto.EncodedObject(gogitplumbing.CommitObject, h)
+		if objErr != nil {
+			// Commit exists as a metadata entity only — already indexed, stop here.
+			continue
+		}
+
+		c, decErr := gogitobject.DecodeCommit(sto.(storer.EncodedObjectStorer), encObj)
+		if decErr != nil {
+			log.Printf("[push-index][%s] repo=%s: WARNING decode commit %s: %v", m.agencyID, repoName, sha[:8], decErr)
+			continue
+		}
+
+		seenSHAs[sha] = true
+		commitCount++
+
+		_, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID: m.agencyID,
+			TypeID:   "Commit",
+			Properties: map[string]any{
+				"sha":             sha,
+				"message":         c.Message,
+				"author_name":     c.Author.Name,
+				"author_email":    c.Author.Email,
+				"author_at":       c.Author.When.UTC().Format(time.RFC3339),
+				"committer_name":  c.Committer.Name,
+				"committer_email": c.Committer.Email,
+				"committed_at":    c.Committer.When.UTC().Format(time.RFC3339),
+				"created_at":      now,
+			},
+		})
+		if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+			return fmt.Errorf("IndexPushedBranch %s/%s: create commit %s: %w", repoName, branchRef, sha[:8], createErr)
+		}
+
+		for _, p := range c.ParentHashes {
+			if !seenSHAs[p.String()] {
+				queue = append(queue, p)
+			}
+		}
 	}
-	log.Printf("[push-index][%s] repo=%s ref=%s: walked %d commit(s)", m.agencyID, repoName, branchRef, len(seenSHAs))
+	log.Printf("[push-index][%s] repo=%s ref=%s: indexed %d new commit(s)", m.agencyID, repoName, branchRef, commitCount)
 
 	// ── 3. Walk the tip tree and upsert Tree + Blob entities ─────────────────
+	repo, err := gogit.Open(sto, fs)
+	if err != nil {
+		return fmt.Errorf("IndexPushedBranch %s/%s: open repo for tree walk: %w", repoName, branchRef, err)
+	}
 	tipCommit, err := repo.CommitObject(newHash)
 	if err != nil {
 		return fmt.Errorf("IndexPushedBranch %s/%s: resolve tip commit %s: %w", repoName, branchRef, newSHA[:8], err)
@@ -62,7 +125,6 @@ func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef,
 	if err != nil {
 		return fmt.Errorf("IndexPushedBranch %s/%s: resolve tip tree: %w", repoName, branchRef, err)
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
 	rootTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, tipTree, "", now)
 	if err != nil {
 		return fmt.Errorf("IndexPushedBranch %s/%s: upsert tree: %w", repoName, branchRef, err)

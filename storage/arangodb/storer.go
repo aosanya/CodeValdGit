@@ -11,7 +11,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -124,23 +123,16 @@ func (s *arangoStorer) NewEncodedObject() plumbing.EncodedObject {
 	return &plumbing.MemoryObject{}
 }
 
-// SetEncodedObject reads raw bytes from obj, base64-encodes them, and creates
-// an entitygraph entity of the matching TypeID. Idempotent: if an entity with
-// the same sha already exists for this agency, the call is a no-op.
+// SetEncodedObject reads raw bytes from obj, base64-encodes them, and upserts
+// an entitygraph entity of the matching TypeID, keyed by sha. This is
+// idempotent: if a same-sha entity already exists (e.g. stored by the import
+// job with only metadata), the raw data bytes are merged in so that
+// EncodedObject can later reconstruct the plumbing.EncodedObject.
 func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Hash, error) {
 	ctx := context.Background()
 	hash := obj.Hash()
 	typeID := typeIDForObject(obj.Type())
 
-	// Idempotent: skip if already stored.
-	existing, err := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
-		AgencyID:   s.agencyID,
-		TypeID:     typeID,
-		Properties: map[string]any{"sha": hash.String()},
-	})
-	if err == nil && len(existing) > 0 {
-		return hash, nil
-	}
 	r, err := obj.Reader()
 	if err != nil {
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: reader: %w", err)
@@ -151,7 +143,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: read: %w", err)
 	}
 
-	_, createErr := s.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	_, upsertErr := s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: s.agencyID,
 		TypeID:   typeID,
 		Properties: map[string]any{
@@ -160,8 +152,8 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 			"size": obj.Size(),
 		},
 	})
-	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
-		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: create %s: %w", typeID, createErr)
+	if upsertErr != nil {
+		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: upsert %s: %w", typeID, upsertErr)
 	}
 
 	return hash, nil
