@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -246,14 +245,11 @@ func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
 
 	// Auto-create the repository on first access and retry.
 	if errors.Is(err, codevaldgit.ErrRepoNotFound) {
-		log.Printf("[INFO] backendLoader: repo %s/%s not found — auto-creating", agencyID, repoName)
 		if initErr := l.b.InitRepo(ctx, agencyID, repoName); initErr != nil && !errors.Is(initErr, codevaldgit.ErrRepoAlreadyExists) {
-			log.Printf("[ERROR] backendLoader: InitRepo %s/%s: %v", agencyID, repoName, initErr)
 			return nil, transport.ErrRepositoryNotFound
 		}
 		sto, _, err = l.b.OpenStorer(ctx, agencyID, repoName)
 		if err != nil {
-			log.Printf("[ERROR] backendLoader: OpenStorer after init %s/%s: %v", agencyID, repoName, err)
 			return nil, transport.ErrRepositoryNotFound
 		}
 		return sto, nil

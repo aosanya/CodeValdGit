@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -292,13 +291,7 @@ func (m *gitManager) ReadFile(ctx context.Context, branchID, path string) (Blob,
 	// Try to hydrate the content from the bare clone.
 	content, encoding, loadErr := m.loadBlobContentFromBareClone(ctx, branch, blob)
 	if loadErr != nil {
-		log.Printf("[ReadFile] lazy load agencyID=%q blobSHA=%q path=%q: %v", m.agencyID, blob.SHA, path, loadErr)
 		return Blob{}, ErrBlobContentUnavailable
-	}
-
-	// Cache the content back into the entity so subsequent reads are instant.
-	if cacheErr := m.cacheBlobContent(ctx, blob.ID, content, encoding); cacheErr != nil {
-		log.Printf("[ReadFile] cache blob agencyID=%q blobID=%q: %v (continuing)", m.agencyID, blob.ID, cacheErr)
 	}
 
 	blob.Content = content

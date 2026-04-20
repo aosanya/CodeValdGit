@@ -9,7 +9,6 @@ package codevaldgit
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
@@ -114,35 +113,28 @@ func (m *gitManager) ListRepositories(ctx context.Context) ([]Repository, error)
 // GetRepository retrieves a Repository entity by its ID.
 // Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 func (m *gitManager) GetRepository(ctx context.Context, repoID string) (Repository, error) {
-	log.Printf("[GetRepository] agencyID=%q repoID=%q", m.agencyID, repoID)
 	e, err := m.dm.GetEntity(ctx, m.agencyID, repoID)
 	if err != nil {
-		log.Printf("[GetRepository] GetEntity error: agencyID=%q repoID=%q err=%v", m.agencyID, repoID, err)
 		return Repository{}, ErrRepoNotInitialised
 	}
 	if e.TypeID != "Repository" {
-		log.Printf("[GetRepository] wrong TypeID: agencyID=%q repoID=%q typeID=%q (expected \"Repository\")", m.agencyID, repoID, e.TypeID)
 		return Repository{}, ErrRepoNotInitialised
 	}
-	log.Printf("[GetRepository] found: agencyID=%q repoID=%q name=%q", m.agencyID, repoID, e.Properties["name"])
 	return entityToRepository(e, m.agencyID), nil
 }
 
 // GetRepositoryByName retrieves a Repository entity by its human-readable name.
 // Returns [ErrRepoNotInitialised] if no repository with that name exists.
 func (m *gitManager) GetRepositoryByName(ctx context.Context, repoName string) (Repository, error) {
-	log.Printf("[GetRepositoryByName] agencyID=%q repoName=%q", m.agencyID, repoName)
 	entities, err := m.listRepositories(ctx)
 	if err != nil {
 		return Repository{}, fmt.Errorf("GetRepositoryByName: %w", err)
 	}
 	for _, e := range entities {
 		if strProp(e.Properties, "name") == repoName {
-			log.Printf("[GetRepositoryByName] found: agencyID=%q repoName=%q id=%q", m.agencyID, repoName, e.ID)
 			return entityToRepository(e, m.agencyID), nil
 		}
 	}
-	log.Printf("[GetRepositoryByName] not found: agencyID=%q repoName=%q", m.agencyID, repoName)
 	return Repository{}, ErrRepoNotInitialised
 }
 
@@ -280,13 +272,13 @@ func (m *gitManager) GetBranch(ctx context.Context, branchID string) (Branch, er
 		return Branch{}, ErrBranchNotFound
 	}
 	repoID := m.resolveParentID(ctx, branchID, "belongs_to_repository")
-	return entityToBranch(e, repoID), nil
+	branch := entityToBranch(e, repoID)
+	return branch, nil
 }
 
 // ListBranches returns all Branch entities for the specified repository.
 // Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch, error) {
-	log.Printf("[ListBranches] agencyID=%q repoID=%q", m.agencyID, repoID)
 	if _, err := m.GetRepository(ctx, repoID); err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
@@ -294,7 +286,6 @@ func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch,
 	if err != nil {
 		return nil, fmt.Errorf("ListBranches: %w", err)
 	}
-	log.Printf("[ListBranches] agencyID=%q repoID=%q — found %d branch(es)", m.agencyID, repoID, len(entities))
 	out := make([]Branch, len(entities))
 	for i, e := range entities {
 		out[i] = entityToBranch(e, repoID)
@@ -494,7 +485,6 @@ func (m *gitManager) listBranchesByRepo(ctx context.Context, repositoryID string
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q has_branch edges=%d", m.agencyID, repositoryID, len(forwardRels))
 
 	if len(forwardRels) > 0 {
 		out := make([]entitygraph.Entity, 0, len(forwardRels))
@@ -510,7 +500,6 @@ func (m *gitManager) listBranchesByRepo(ctx context.Context, repositoryID string
 
 	// Fallback: reverse belongs_to_repository edges (branch → repo).
 	// Used for repos that were imported before the has_branch edge was written.
-	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q — no has_branch edges; falling back to belongs_to_repository", m.agencyID, repositoryID)
 	reverseRels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
 		AgencyID: m.agencyID,
 		Name:     "belongs_to_repository",
@@ -519,7 +508,6 @@ func (m *gitManager) listBranchesByRepo(ctx context.Context, repositoryID string
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("[listBranchesByRepo] agencyID=%q repoID=%q belongs_to_repository edges=%d", m.agencyID, repositoryID, len(reverseRels))
 	out := make([]entitygraph.Entity, 0, len(reverseRels))
 	for _, r := range reverseRels {
 		e, err := m.dm.GetEntity(ctx, m.agencyID, r.FromID)
@@ -664,7 +652,8 @@ func (m *gitManager) advanceBranchHead(ctx context.Context, branchID, newCommitI
 		return Branch{}, fmt.Errorf("advanceBranchHead: update entity: %w", err)
 	}
 	repoID := m.resolveParentID(ctx, branchID, "belongs_to_repository")
-	return entityToBranch(updated, repoID), nil
+	result := entityToBranch(updated, repoID)
+	return result, nil
 }
 
 // ── Entity → domain converters ────────────────────────────────────────────────

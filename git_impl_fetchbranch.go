@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,10 +21,8 @@ import (
 	"time"
 
 	gogit "github.com/go-git/go-git/v5"
-	gogitconfig "github.com/go-git/go-git/v5/config"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
 	gogitobject "github.com/go-git/go-git/v5/plumbing/object"
-	gogittransport "github.com/go-git/go-git/v5/plumbing/transport"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
@@ -54,8 +51,6 @@ var fetchJobs = make(map[string]fetchCancelEntry)
 // Returns immediately with a [FetchBranchJob]. Returns [ErrBranchAlreadyFetched]
 // if the branch status is "fetching" or "fetched".
 func (m *gitManager) FetchBranch(ctx context.Context, req FetchBranchRequest) (FetchBranchJob, error) {
-	log.Printf("[FetchBranch] agencyID=%q repoID=%q branchID=%q", m.agencyID, req.RepoID, req.BranchID)
-
 	// 1. Fetch the Branch entity by ID.
 	branchEntity, err := m.dm.GetEntity(ctx, m.agencyID, req.BranchID)
 	if err != nil {
@@ -117,7 +112,6 @@ func (m *gitManager) FetchBranch(ctx context.Context, req FetchBranchRequest) (F
 // GetFetchBranchStatus returns the current state of a fetch job.
 // Returns [ErrImportJobNotFound] if no job with the given ID exists.
 func (m *gitManager) GetFetchBranchStatus(ctx context.Context, jobID string) (FetchBranchJob, error) {
-	log.Printf("[GetFetchBranchStatus] agencyID=%q jobID=%q", m.agencyID, jobID)
 	entity, err := m.dm.GetEntity(ctx, m.agencyID, jobID)
 	if err != nil {
 		if errors.Is(err, entitygraph.ErrEntityNotFound) {
@@ -148,14 +142,12 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 	}()
 
 	fail := func(msg string) {
-		log.Printf("[ERROR] FetchBranchJob %s failed: %s", jobID, msg)
 		bg := context.Background()
 		_ = m.updateFetchJobStatus(bg, jobID, fetchJobStatusFailed, msg)
 		_ = m.updateBranchFetchStatus(bg, branchID, branchStatusFetchFailed, msg)
 	}
 
 	if err := m.updateFetchJobStatus(ctx, jobID, fetchJobStatusRunning, ""); err != nil {
-		log.Printf("[ERROR] FetchBranchJob %s: transition to running: %v", jobID, err)
 		return
 	}
 
@@ -164,7 +156,6 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 		fail(fmt.Sprintf("get repo entity %s: %v", repoID, err))
 		return
 	}
-	bareClonePath, _ := repoEntity.Properties["bare_clone_path"].(string)
 	sourceURL, _ := repoEntity.Properties["source_url"].(string)
 
 	if sourceURL == "" {
@@ -174,25 +165,11 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 		}
 	}
 
-	repo, newClonePath, err := m.openOrRecloneBare(ctx, bareClonePath, sourceURL, jobID)
+	// Perform a fresh full single-branch clone so we have the complete commit
+	// history without shallow-object problems.
+	repo, err := m.deepenClone(ctx, nil, branchName, sourceURL)
 	if err != nil {
-		fail(fmt.Sprintf("open/re-clone bare repo: %v", err))
-		return
-	}
-
-	if newClonePath != bareClonePath && newClonePath != "" {
-		if _, uerr := m.dm.UpdateEntity(ctx, m.agencyID, repoID, entitygraph.UpdateEntityRequest{
-			Properties: map[string]any{
-				"bare_clone_path": newClonePath,
-				"updated_at":      time.Now().UTC().Format(time.RFC3339),
-			},
-		}); uerr != nil {
-			log.Printf("[runFetchBranch] update bare_clone_path: %v (continuing)", uerr)
-		}
-	}
-
-	if err := m.deepenClone(ctx, repo, branchName, sourceURL); err != nil {
-		fail(fmt.Sprintf("deepen clone branch=%q: %v", branchName, err))
+		fail(fmt.Sprintf("full clone branch=%q: %v", branchName, err))
 		return
 	}
 
@@ -225,7 +202,8 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err := m.upsertTreeMetadata(ctx, repo, tipTree, "", now); err != nil {
+	rootTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, tipTree, "", now)
+	if err != nil {
 		fail(fmt.Sprintf("walk tip tree branch=%q: %v", branchName, err))
 		return
 	}
@@ -237,25 +215,19 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 		Properties: map[string]any{"sha": tipSHA},
 	})
 	if len(headCommits) > 0 {
-		if _, advErr := m.advanceBranchHead(ctx, branchID, headCommits[0].ID); advErr != nil {
-			log.Printf("[runFetchBranch] advanceBranchHead branch=%q: %v (continuing)", branchName, advErr)
+		commitID := headCommits[0].ID
+		// Wire commit → has_tree → root tree edge.
+		if rootTreeID != "" {
+			_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+				AgencyID: m.agencyID,
+				Name:     "has_tree",
+				FromID:   commitID,
+				ToID:     rootTreeID,
+			})
 		}
+
 	}
 
-	if err := m.updateBranchFetchStatus(ctx, branchID, branchStatusFetched, ""); err != nil {
-		log.Printf("[ERROR] runFetchBranch: transition branch to fetched: %v", err)
-	}
-	if err := m.updateFetchJobStatus(ctx, jobID, fetchJobStatusCompleted, ""); err != nil {
-		log.Printf("[ERROR] runFetchBranch: transition job to completed: %v", err)
-	}
-
-	if m.publisher != nil {
-		topic := fmt.Sprintf("cross.git.%s.branch.fetched", m.agencyID)
-		if pubErr := m.publisher.Publish(ctx, topic, m.agencyID); pubErr != nil {
-			log.Printf("[runFetchBranch] publish branch.fetched: %v (continuing)", pubErr)
-		}
-	}
-	log.Printf("[runFetchBranch] done agencyID=%q branch=%q jobID=%q", m.agencyID, branchName, jobID)
 }
 
 // openOrRecloneBare opens the existing bare clone at bareClonePath. If the
@@ -268,7 +240,6 @@ func (m *gitManager) openOrRecloneBare(ctx context.Context, bareClonePath, sourc
 			if openErr == nil {
 				return repo, bareClonePath, nil
 			}
-			log.Printf("[openOrRecloneBare] PlainOpen %q failed (%v); will re-clone", bareClonePath, openErr)
 		}
 	}
 	if sourceURL == "" {
@@ -290,26 +261,36 @@ func (m *gitManager) openOrRecloneBare(ctx context.Context, bareClonePath, sourc
 	return repo, dir, nil
 }
 
-// deepenClone fetches the full history for branchName from the remote.
-// Non-fatal errors (already-up-to-date, empty remote) are logged and ignored.
-func (m *gitManager) deepenClone(ctx context.Context, repo *gogit.Repository, branchName, sourceURL string) error {
-	refSpec := fmt.Sprintf("refs/heads/%s:refs/heads/%s", branchName, branchName)
-	fetchOpts := &gogit.FetchOptions{
-		RemoteName: "origin",
-		RefSpecs:   []gogitconfig.RefSpec{gogitconfig.RefSpec(refSpec)},
-		Depth:      0,
-		Force:      true,
+// deepenClone performs a fresh full (non-shallow) single-branch clone of
+// branchName from sourceURL into a new temp directory and returns the opened
+// repository. The caller should use this repo for all subsequent operations on
+// the branch.
+//
+// A fresh clone is used instead of deepening the existing shallow clone because
+// go-git v5 has no reliable Unshallow option: fetching into a shallow repo
+// where the tip SHA already exists returns NoErrAlreadyUpToDate without
+// fetching parent commits, leaving the object store incomplete.
+func (m *gitManager) deepenClone(ctx context.Context, _ *gogit.Repository, branchName, sourceURL string) (*gogit.Repository, error) {
+	if sourceURL == "" {
+		return nil, fmt.Errorf("deepenClone: source_url is empty for branch %q", branchName)
 	}
-	if sourceURL != "" {
-		fetchOpts.RemoteURL = sourceURL
+	dir, err := cloneRootDir(m.agencyID, branchName+"-full")
+	if err != nil {
+		return nil, fmt.Errorf("deepenClone: create temp dir: %w", err)
 	}
-	err := repo.FetchContext(ctx, fetchOpts)
-	if err != nil &&
-		!errors.Is(err, gogit.NoErrAlreadyUpToDate) &&
-		!errors.Is(err, gogittransport.ErrEmptyRemoteRepository) {
-		log.Printf("[deepenClone] FetchContext branch=%q: %v (continuing)", branchName, err)
+	cloneRef := gogitplumbing.ReferenceName("refs/heads/" + branchName)
+	repo, err := gogit.PlainCloneContext(ctx, dir, true, &gogit.CloneOptions{
+		URL:           sourceURL,
+		SingleBranch:  true,
+		ReferenceName: cloneRef,
+		Tags:          gogit.NoTags,
+	})
+	if err != nil {
+		// Clean up temp dir on failure.
+		_ = os.RemoveAll(dir)
+		return nil, fmt.Errorf("deepenClone: clone branch %q: %w", branchName, err)
 	}
-	return nil
+	return repo, nil
 }
 
 // walkCommitsOnly walks all commits reachable from ref and upserts Commit entities.
@@ -356,11 +337,14 @@ func (m *gitManager) walkCommitsOnly(ctx context.Context, repo *gogit.Repository
 	})
 }
 
-// upsertTreeMetadata upserts Tree and Blob entities (metadata only, no content).
+// upsertTreeMetadataWithEdges upserts Tree and Blob entities (metadata only, no content)
+// and creates has_blob / has_subtree edges so that allBlobsAtCommit can traverse them.
+// Returns the entity ID of the created/existing tree.
 // Recursive for subdirectories. ErrEntityAlreadyExists is skipped.
-func (m *gitManager) upsertTreeMetadata(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) error {
+func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) (string, error) {
 	treeSHA := tree.Hash.String()
-	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+
+	treeEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Tree",
 		Properties: map[string]any{
@@ -368,13 +352,27 @@ func (m *gitManager) upsertTreeMetadata(ctx context.Context, repo *gogit.Reposit
 			"path":       pathPrefix,
 			"created_at": now,
 		},
-	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
-		return fmt.Errorf("create tree %s path=%q: %w", treeSHA, pathPrefix, err)
+	})
+	var treeID string
+	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		return "", fmt.Errorf("create tree %s path=%q: %w", treeSHA, pathPrefix, createErr)
+	}
+	if createErr == nil {
+		treeID = treeEntity.ID
+	} else {
+		existing, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   m.agencyID,
+			TypeID:     "Tree",
+			Properties: map[string]any{"sha": treeSHA},
+		})
+		if listErr == nil && len(existing) > 0 {
+			treeID = existing[0].ID
+		}
 	}
 
 	for _, entry := range tree.Entries {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return treeID, ctx.Err()
 		}
 		var entryPath string
 		if pathPrefix == "" {
@@ -383,34 +381,53 @@ func (m *gitManager) upsertTreeMetadata(ctx context.Context, repo *gogit.Reposit
 			entryPath = pathPrefix + "/" + entry.Name
 		}
 		if entry.Mode.IsFile() {
-			if err := m.upsertBlobMetadata(ctx, repo, entry, entryPath, now); err != nil {
-				return err
+			blobID, err := m.upsertBlobMetadataWithID(ctx, repo, entry, entryPath, now)
+			if err != nil {
+				return treeID, err
+			}
+			if treeID != "" && blobID != "" {
+				_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "has_blob",
+					FromID:   treeID,
+					ToID:     blobID,
+				})
 			}
 		} else {
 			subTree, err := repo.TreeObject(entry.Hash)
 			if err != nil {
-				return fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
+				return treeID, fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
 			}
-			if err := m.upsertTreeMetadata(ctx, repo, subTree, entryPath, now); err != nil {
-				return err
+			subTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, subTree, entryPath, now)
+			if err != nil {
+				return treeID, err
+			}
+			if treeID != "" && subTreeID != "" {
+				_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "has_subtree",
+					FromID:   treeID,
+					ToID:     subTreeID,
+				})
 			}
 		}
 	}
-	return nil
+	return treeID, nil
 }
 
-// upsertBlobMetadata creates a Blob entity with sha, path, name, extension,
+// upsertBlobMetadataWithID creates a Blob entity with sha, path, name, extension,
 // and size — content is omitted for lazy population by ReadFile (GIT-023e).
+// Returns the entity ID of the created/existing blob.
 // ErrEntityAlreadyExists is skipped.
-func (m *gitManager) upsertBlobMetadata(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) error {
+func (m *gitManager) upsertBlobMetadataWithID(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) (string, error) {
 	blobSHA := entry.Hash.String()
 	blobObj, err := repo.BlobObject(entry.Hash)
 	if err != nil {
-		return fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
+		return "", fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
 	}
 	r, readErr := blobObj.Reader()
 	if readErr != nil {
-		return fmt.Errorf("open blob reader %s path=%q: %w", blobSHA, fullPath, readErr)
+		return "", fmt.Errorf("open blob reader %s path=%q: %w", blobSHA, fullPath, readErr)
 	}
 	_, _ = io.Copy(io.Discard, r)
 	_ = r.Close()
@@ -418,7 +435,7 @@ func (m *gitManager) upsertBlobMetadata(ctx context.Context, repo *gogit.Reposit
 	ext := strings.TrimPrefix(filepath.Ext(entry.Name), ".")
 	name := filepath.Base(fullPath)
 
-	if _, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	blobEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Blob",
 		Properties: map[string]any{
@@ -431,10 +448,24 @@ func (m *gitManager) upsertBlobMetadata(ctx context.Context, repo *gogit.Reposit
 			"content":    "",
 			"created_at": now,
 		},
-	}); createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
-		return fmt.Errorf("create blob metadata %s path=%q: %w", blobSHA, fullPath, createErr)
+	})
+	var blobID string
+	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		return "", fmt.Errorf("create blob metadata %s path=%q: %w", blobSHA, fullPath, createErr)
 	}
-	return nil
+	if createErr == nil {
+		blobID = blobEntity.ID
+	} else {
+		existing, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   m.agencyID,
+			TypeID:     "Blob",
+			Properties: map[string]any{"sha": blobSHA},
+		})
+		if listErr == nil && len(existing) > 0 {
+			blobID = existing[0].ID
+		}
+	}
+	return blobID, nil
 }
 
 // updateFetchJobStatus transitions a FetchBranchJob entity to the given status.

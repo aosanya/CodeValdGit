@@ -39,9 +39,17 @@ func (m *gitManager) GetNeighborhood(ctx context.Context, branchID, entityID str
 
 	depth = clampDepth(depth)
 
+	// Resolve entityID: callers may pass a file path (e.g. "README.md") instead
+	// of the actual entity graph ID. Try the raw ID first; on ErrEntityNotFound
+	// fall back to a Blob lookup by path property.
+	resolvedID, err := m.resolveEntityID(ctx, entityID)
+	if err != nil {
+		return GraphResult{}, fmt.Errorf("GetNeighborhood %s: resolve entity: %w", entityID, err)
+	}
+
 	result, err := m.dm.TraverseGraph(ctx, entitygraph.TraverseGraphRequest{
 		AgencyID:  m.agencyID,
-		StartID:   entityID,
+		StartID:   resolvedID,
 		Direction: "any",
 		Depth:     depth,
 	})
@@ -53,6 +61,31 @@ func (m *gitManager) GetNeighborhood(ctx context.Context, branchID, entityID str
 	}
 
 	return buildGraphResult(result, neighborhoodMaxNodes), nil
+}
+
+// resolveEntityID returns the canonical entity graph ID. If entityID is already
+// a valid entity key it is returned as-is. Otherwise, the method attempts to
+// find a Blob entity whose "path" property matches entityID and returns that
+// entity's ID.
+func (m *gitManager) resolveEntityID(ctx context.Context, entityID string) (string, error) {
+	// Fast path: check if entityID is a direct entity key.
+	if _, err := m.dm.GetEntity(ctx, m.agencyID, entityID); err == nil {
+		return entityID, nil
+	}
+
+	// Slow path: look up Blob by "path" property.
+	entities, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   m.agencyID,
+		TypeID:     "Blob",
+		Properties: map[string]any{"path": entityID},
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolveEntityID: list blobs by path %q: %w", entityID, err)
+	}
+	if len(entities) == 0 {
+		return "", entitygraph.ErrEntityNotFound
+	}
+	return entities[0].ID, nil
 }
 
 // clampDepth enforces the range [1, 3] for traversal depth.

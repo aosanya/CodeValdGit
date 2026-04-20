@@ -7,7 +7,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
@@ -157,13 +156,10 @@ func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) 
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
-	log.Printf("[ListBranches] repository_id=%q", repoID)
 	branches, err := s.mgr.ListBranches(ctx, repoID)
 	if err != nil {
-		log.Printf("[ListBranches] error for repository_id=%q: %v", repoID, err)
 		return nil, toGRPCError(err)
 	}
-	log.Printf("[ListBranches] repository_id=%q — found %d branch(es)", repoID, len(branches))
 	out := make([]*pb.Branch, len(branches))
 	for i, b := range branches {
 		out[i] = branchToProto(b)
@@ -288,13 +284,10 @@ func (s *Server) DeleteFile(ctx context.Context, req *pb.DeleteFileRequest) (*pb
 
 // ListDirectory implements pb.GitServiceServer.
 func (s *Server) ListDirectory(ctx context.Context, req *pb.ListDirectoryRequest) (*pb.ListDirectoryResponse, error) {
-	log.Printf("[ListDirectory] branchId=%q path=%q", req.GetBranchId(), req.GetPath())
 	entries, err := s.mgr.ListDirectory(ctx, req.GetBranchId(), req.GetPath())
 	if err != nil {
-		log.Printf("[ListDirectory] error: %v", err)
 		return nil, toGRPCError(err)
 	}
-	log.Printf("[ListDirectory] success — %d entries", len(entries))
 	out := make([]*pb.FileEntry, len(entries))
 	for i, e := range entries {
 		out[i] = fileEntryToProto(e)
@@ -354,7 +347,6 @@ func (s *Server) ImportRepo(ctx context.Context, req *pb.ImportRepoRequest) (*pb
 // GetImportStatus implements pb.GitServiceServer. It returns the current state
 // of an import job identified by job_id.
 func (s *Server) GetImportStatus(ctx context.Context, req *pb.GetImportStatusRequest) (*pb.ImportJobResponse, error) {
-	log.Printf("[Server.GetImportStatus] job_id=%q", req.GetJobId())
 	job, err := s.mgr.GetImportStatus(ctx, req.GetJobId())
 	if err != nil {
 		return nil, toGRPCError(err)

@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"time"
 	"unicode/utf8"
 
@@ -94,6 +93,5 @@ func (m *gitManager) cacheBlobContent(ctx context.Context, blobID, content, enco
 	if err != nil {
 		return fmt.Errorf("cacheBlobContent %s: %w", blobID, err)
 	}
-	log.Printf("[cacheBlobContent] cached content for blobID=%q encoding=%q", blobID, encoding)
 	return nil
 }

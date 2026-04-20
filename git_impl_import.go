@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,7 +113,6 @@ func appendImportStep(jobID, msg string) {
 	if ok {
 		entry.appendStep(msg)
 	}
-	log.Printf("[ImportJob %s] %s", jobID, msg)
 }
 
 // ImportRepo begins an async import of a public Git repository into this
@@ -153,7 +151,6 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 		return ImportJob{}, fmt.Errorf("ImportRepo %s: create job entity: %w", m.agencyID, err)
 	}
 	jobID := jobEntity.ID
-	log.Printf("[ImportRepo] created job entity agencyID=%q jobID=%q", m.agencyID, jobID)
 
 	// 4. Snapshot the ImportJob from the entity BEFORE starting the goroutine.
 	// importJobFromEntity reads jobEntity.Properties; the goroutine may later
@@ -176,16 +173,13 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 // GetImportStatus returns the current state of an import job.
 // Returns [ErrImportJobNotFound] if no job with the given ID exists.
 func (m *gitManager) GetImportStatus(ctx context.Context, jobID string) (ImportJob, error) {
-	log.Printf("[GetImportStatus] agencyID=%q jobID=%q", m.agencyID, jobID)
 	entity, err := m.dm.GetEntity(ctx, m.agencyID, jobID)
 	if err != nil {
-		log.Printf("[GetImportStatus] GetEntity error: agencyID=%q jobID=%q err=%v", m.agencyID, jobID, err)
 		if errors.Is(err, entitygraph.ErrEntityNotFound) {
 			return ImportJob{}, ErrImportJobNotFound
 		}
 		return ImportJob{}, fmt.Errorf("GetImportStatus %s: %w", jobID, err)
 	}
-	log.Printf("[GetImportStatus] found entity typeID=%q id=%q", entity.TypeID, entity.ID)
 	job := importJobFromEntity(entity)
 	// Attach in-memory progress steps (only present while goroutine is active).
 	importJobsMu.Lock()
@@ -247,7 +241,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 
 	// Transition to running.
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusRunning, ""); err != nil {
-		log.Printf("[ERROR] ImportJob %s: transition to running: %v", jobID, err)
 		return
 	}
 
@@ -299,7 +292,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 	repoID := repoEntity.ID
-	log.Printf("[runImport] created Repository entity repoID=%q agencyID=%q bareCloneDir=%q", repoID, m.agencyID, cloneDir)
 	appendImportStep(jobID, fmt.Sprintf("Repository entity created (id=%s).", repoID))
 
 	// 4. Iterate remote refs and write a stub Branch entity for each branch ref.
@@ -310,16 +302,47 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	var branchCount int
+	seenBranches := make(map[string]bool)
 	if err := refs.ForEach(func(ref *gogitplumbing.Reference) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if !ref.Name().IsBranch() && !ref.Name().IsRemote() {
+
+		// Resolve a human-readable branch name from this ref.
+		//
+		// A bare go-git clone stores remote branches as refs/remotes/origin/<name>
+		// (IsBranch() == false, IsRemote() == true) rather than under refs/heads/.
+		// We accept both forms and normalise to a plain branch name in both cases.
+		var branchName string
+		switch {
+		case ref.Name().IsBranch():
+			// refs/heads/<name> → "name"
+			branchName = ref.Name().Short()
+		case ref.Name().IsRemote():
+			// refs/remotes/origin/<name> → strip "origin/" prefix
+			short := ref.Name().Short() // e.g. "origin/main"
+			const prefix = "origin/"
+			if !strings.HasPrefix(short, prefix) {
+				return nil // unexpected remote name — skip
+			}
+			branchName = strings.TrimPrefix(short, prefix)
+			if branchName == "HEAD" || branchName == "" {
+				return nil // synthetic HEAD ref — skip
+			}
+		default:
 			return nil
 		}
+
+		// Deduplicate: refs/heads/main and refs/remotes/origin/main both
+		// resolve to "main". Only process the first occurrence.
+		if seenBranches[branchName] {
+			return nil
+		}
+		seenBranches[branchName] = true
+
 		branchCount++
-		appendImportStep(jobID, fmt.Sprintf("Creating stub branch: %s", ref.Name().Short()))
-		return m.upsertStubBranch(ctx, ref, repoID, req.SourceURL, now)
+		appendImportStep(jobID, fmt.Sprintf("Creating stub branch: %s", branchName))
+		return m.upsertStubBranchNamed(ctx, branchName, ref.Hash().String(), repoID, req.SourceURL, now)
 	}); err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
@@ -329,7 +352,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("walk refs: %v", err))
 		return
 	}
-	log.Printf("[runImport] wrote %d stub branch entities agencyID=%q repoID=%q", branchCount, m.agencyID, repoID)
 	appendImportStep(jobID, fmt.Sprintf("%d branch stub(s) discovered.", branchCount))
 
 	// 5. Automatically fetch the default branch so it is immediately usable.
@@ -345,31 +367,24 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 			BranchID: defaultBranchEntities[0].ID,
 		})
 		if fetchErr != nil {
-			log.Printf("[runImport] auto-fetch default branch %q: %v (continuing)", defaultBranch, fetchErr)
 			appendImportStep(jobID, fmt.Sprintf("Auto-fetch for %q skipped: %v", defaultBranch, fetchErr))
 		} else {
 			appendImportStep(jobID, fmt.Sprintf("Default branch %q fetch started in background.", defaultBranch))
 		}
 	} else {
-		log.Printf("[runImport] default branch %q not found in stubs (listErr=%v) — skipping auto-fetch", defaultBranch, listErr)
 		appendImportStep(jobID, fmt.Sprintf("Default branch %q not found in stubs; skipping auto-fetch.", defaultBranch))
 	}
 
 	// 6. Publish success event and mark completed.
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
-	if err := m.updateImportJobStatus(ctx, jobID, importStatusCompleted, ""); err != nil {
-		log.Printf("[ERROR] ImportJob %s: transition to completed: %v", jobID, err)
-	}
 }
 
-// upsertStubBranch creates (or updates) a Branch entity with status="stub" for the
-// given remote ref. The branch carries the tip SHA, source_url (for re-clone by
-// FetchBranch if the bare clone is gone), and the stub status sentinel.
+// upsertStubBranchNamed creates (or updates) a Branch entity with status="stub" for the
+// given branch name and tip SHA. The branch carries the source_url (for re-clone by
+// FetchBranch if the bare clone is gone) and the stub status sentinel.
 // Edges has_branch (repo→branch) and belongs_to_repository (branch→repo) are
 // created; duplicate-edge errors are logged and ignored.
-func (m *gitManager) upsertStubBranch(ctx context.Context, ref *gogitplumbing.Reference, repoID, sourceURL, now string) error {
-	branchName := ref.Name().Short()
-	tipSHA := ref.Hash().String()
+func (m *gitManager) upsertStubBranchNamed(ctx context.Context, branchName, tipSHA, repoID, sourceURL, now string) error {
 
 	existing, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID:   m.agencyID,
@@ -414,22 +429,18 @@ func (m *gitManager) upsertStubBranch(ctx context.Context, ref *gogitplumbing.Re
 
 	// Wire repo ↔ branch edges (duplicate-safe).
 	if repoID != "" {
-		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
 			AgencyID: m.agencyID,
 			Name:     "has_branch",
 			FromID:   repoID,
 			ToID:     branchID,
-		}); relErr != nil {
-			log.Printf("[upsertStubBranch] has_branch repoID=%q branchID=%q: %v (continuing)", repoID, branchID, relErr)
-		}
-		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		})
+		_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
 			AgencyID: m.agencyID,
 			Name:     "belongs_to_repository",
 			FromID:   branchID,
 			ToID:     repoID,
-		}); relErr != nil {
-			log.Printf("[upsertStubBranch] belongs_to_repository branchID=%q repoID=%q: %v (continuing)", branchID, repoID, relErr)
-		}
+		})
 	}
 	return nil
 }
@@ -489,22 +500,18 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 	// (belongs_to_repository). Both edges are idempotency-safe via create;
 	// duplicate-edge errors are non-fatal so that re-imports don't fail.
 	if repoID != "" {
-		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
 			AgencyID: m.agencyID,
 			Name:     "has_branch",
 			FromID:   repoID,
 			ToID:     branchID,
-		}); relErr != nil {
-			log.Printf("[walkBranchCommits] has_branch edge repoID=%q branchID=%q: %v (continuing)", repoID, branchID, relErr)
-		}
-		if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		})
+		_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
 			AgencyID: m.agencyID,
 			Name:     "belongs_to_repository",
 			FromID:   branchID,
 			ToID:     repoID,
-		}); relErr != nil {
-			log.Printf("[walkBranchCommits] belongs_to_repository edge branchID=%q repoID=%q: %v (continuing)", branchID, repoID, relErr)
-		}
+		})
 	}
 
 	// Walk commits oldest-to-newest.
@@ -544,11 +551,7 @@ func (m *gitManager) walkBranchCommits(ctx context.Context, repo *gogit.Reposito
 		Properties: map[string]any{"sha": headSHA},
 	})
 	if err == nil && len(headCommits) > 0 {
-		if _, err := m.advanceBranchHead(ctx, branchID, headCommits[0].ID); err != nil {
-			log.Printf("[walkBranchCommits] advanceBranchHead branch=%q commit=%q: %v (continuing)", branchName, headCommits[0].ID, err)
-		}
-	} else {
-		log.Printf("[walkBranchCommits] could not find HEAD commit entity for branch=%q sha=%q", branchName, headSHA)
+		_, _ = m.advanceBranchHead(ctx, branchID, headCommits[0].ID)
 	}
 
 	return nil
@@ -561,7 +564,7 @@ func (m *gitManager) upsertCommitAndTree(ctx context.Context, repo *gogit.Reposi
 	commitSHA := c.Hash.String()
 
 	// Create Commit entity; skip if this SHA was already ingested.
-	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	commitEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Commit",
 		Properties: map[string]any{
@@ -575,28 +578,48 @@ func (m *gitManager) upsertCommitAndTree(ctx context.Context, repo *gogit.Reposi
 			"committed_at":    c.Committer.When.UTC().Format(time.RFC3339),
 			"created_at":      now,
 		},
-	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
+	})
+	if err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
 		return fmt.Errorf("create commit %s: %w", commitSHA, err)
 	}
-
+	var commitID string
+	if err == nil {
+		commitID = commitEntity.ID
+	}
 	// Walk the commit tree.
 	tree, err := c.Tree()
 	if err != nil {
 		return fmt.Errorf("tree for commit %s: %w", commitSHA, err)
 	}
-	return m.upsertTree(ctx, repo, tree, "", now)
+	treeID, err := m.upsertTreeWithEdges(ctx, repo, tree, "", now)
+	if err != nil {
+		return err
+	}
+
+	// Wire commit → has_tree → root tree edge.
+	if commitID != "" && treeID != "" {
+		_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID,
+			Name:     "has_tree",
+			FromID:   commitID,
+			ToID:     treeID,
+		})
+	}
+	return nil
 }
 
-// upsertTree upserts Tree and Blob entities for a go-git Tree.
+// upsertTreeWithEdges upserts Tree and Blob entities for a go-git Tree and
+// creates the has_blob and has_subtree edges required by allBlobsAtCommit.
+// Returns the entity ID of the created/existing tree.
 // pathPrefix is the directory path within the commit tree — empty string for the
 // root tree, e.g. "src/handlers" for a nested subtree.
 // Both Tree and Blob are treated as content-addressed (immutable by SHA);
 // ErrEntityAlreadyExists is skipped.
-func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) error {
+func (m *gitManager) upsertTreeWithEdges(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) (string, error) {
 	treeSHA := tree.Hash.String()
 
 	// Create Tree entity; skip if SHA already ingested.
-	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	treeEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Tree",
 		Properties: map[string]any{
@@ -604,13 +627,28 @@ func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tre
 			"path":       pathPrefix,
 			"created_at": now,
 		},
-	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
-		return fmt.Errorf("create tree %s: %w", treeSHA, err)
+	})
+	var treeID string
+	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		return "", fmt.Errorf("create tree %s: %w", treeSHA, createErr)
+	}
+	if createErr == nil {
+		treeID = treeEntity.ID
+	} else {
+		// Tree already exists — look it up by SHA to get the ID for edges.
+		existing, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   m.agencyID,
+			TypeID:     "Tree",
+			Properties: map[string]any{"sha": treeSHA},
+		})
+		if listErr == nil && len(existing) > 0 {
+			treeID = existing[0].ID
+		}
 	}
 
 	for _, entry := range tree.Entries {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return treeID, ctx.Err()
 		}
 
 		// Build the full relative path for this entry.
@@ -622,44 +660,64 @@ func (m *gitManager) upsertTree(ctx context.Context, repo *gogit.Repository, tre
 		}
 
 		if entry.Mode.IsFile() {
-			if err := m.upsertBlob(ctx, repo, entry, entryPath, now); err != nil {
-				return err
+			blobID, err := m.upsertBlobWithID(ctx, repo, entry, entryPath, now)
+			if err != nil {
+				return treeID, err
+			}
+			// Wire tree → has_blob → blob edge.
+			if treeID != "" && blobID != "" {
+				_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "has_blob",
+					FromID:   treeID,
+					ToID:     blobID,
+				})
 			}
 		} else {
 			// Recurse into subdirectory trees.
 			subTree, err := repo.TreeObject(entry.Hash)
 			if err != nil {
-				return fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
+				return treeID, fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
 			}
-			if err := m.upsertTree(ctx, repo, subTree, entryPath, now); err != nil {
-				return err
+			subTreeID, err := m.upsertTreeWithEdges(ctx, repo, subTree, entryPath, now)
+			if err != nil {
+				return treeID, err
+			}
+			// Wire tree → has_subtree → subtree edge.
+			if treeID != "" && subTreeID != "" {
+				_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "has_subtree",
+					FromID:   treeID,
+					ToID:     subTreeID,
+				})
 			}
 		}
 	}
-	return nil
+	return treeID, nil
 }
 
-// upsertBlob creates a Blob entity for a single tree entry.
+// upsertBlobWithID creates a Blob entity for a single tree entry and returns its entity ID.
 // It fetches the blob object from the repository to populate size, encoding,
 // content, and extension in addition to sha, path, and name.
 // ErrEntityAlreadyExists is skipped (blobs are content-addressed by SHA).
-func (m *gitManager) upsertBlob(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) error {
+func (m *gitManager) upsertBlobWithID(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) (string, error) {
 	blobSHA := entry.Hash.String()
 
 	// Fetch the blob object so we can read its content and size.
 	blobObj, err := repo.BlobObject(entry.Hash)
 	if err != nil {
-		return fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
+		return "", fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
 	}
 
 	reader, err := blobObj.Reader()
 	if err != nil {
-		return fmt.Errorf("open blob reader %s path=%q: %w", blobSHA, fullPath, err)
+		return "", fmt.Errorf("open blob reader %s path=%q: %w", blobSHA, fullPath, err)
 	}
 	rawBytes, err := io.ReadAll(reader)
 	_ = reader.Close()
 	if err != nil {
-		return fmt.Errorf("read blob content %s path=%q: %w", blobSHA, fullPath, err)
+		return "", fmt.Errorf("read blob content %s path=%q: %w", blobSHA, fullPath, err)
 	}
 
 	size := blobObj.Size
@@ -678,7 +736,7 @@ func (m *gitManager) upsertBlob(ctx context.Context, repo *gogit.Repository, ent
 	ext := strings.TrimPrefix(filepath.Ext(entry.Name), ".")
 	name := filepath.Base(fullPath)
 
-	if _, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+	blobEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Blob",
 		Properties: map[string]any{
@@ -691,10 +749,25 @@ func (m *gitManager) upsertBlob(ctx context.Context, repo *gogit.Repository, ent
 			"content":    content,
 			"created_at": now,
 		},
-	}); err != nil && !errors.Is(err, entitygraph.ErrEntityAlreadyExists) {
-		return fmt.Errorf("create blob %s path=%q: %w", blobSHA, fullPath, err)
+	})
+	if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+		return "", fmt.Errorf("create blob %s path=%q: %w", blobSHA, fullPath, createErr)
 	}
-	return nil
+	var blobID string
+	if createErr == nil {
+		blobID = blobEntity.ID
+	} else {
+		// Already exists — look up by SHA.
+		existing, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   m.agencyID,
+			TypeID:     "Blob",
+			Properties: map[string]any{"sha": blobSHA},
+		})
+		if listErr == nil && len(existing) > 0 {
+			blobID = existing[0].ID
+		}
+	}
+	return blobID, nil
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -733,10 +806,6 @@ func (m *gitManager) updateImportJobStatus(ctx context.Context, jobID, status, e
 
 // failImportJob transitions the job to failed, logs, and publishes the failure event.
 func (m *gitManager) failImportJob(ctx context.Context, jobID, errMsg string) {
-	log.Printf("[ERROR] ImportJob %s failed: %s", jobID, errMsg)
-	if err := m.updateImportJobStatus(ctx, jobID, importStatusFailed, errMsg); err != nil {
-		log.Printf("[ERROR] ImportJob %s: write failed status: %v", jobID, err)
-	}
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.import.failed")
 }
 

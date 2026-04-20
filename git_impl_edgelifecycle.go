@@ -53,7 +53,6 @@ func (m *gitManager) replicateDocEdges(ctx context.Context, sourceBranchID, defa
 	}
 	blobs, err := m.allBlobsAtCommit(ctx, headCommitID)
 	if err != nil {
-		log.Printf("[replicateDocEdges] allBlobsAtCommit %s: %v", headCommitID, err)
 		return
 	}
 
@@ -77,7 +76,6 @@ func (m *gitManager) replicateEdgesOnBlob(
 		Name:     edgeName,
 	})
 	if err != nil {
-		log.Printf("[replicateEdgesOnBlob] list %s on %s: %v", edgeName, blobID, err)
 		return
 	}
 
@@ -120,7 +118,6 @@ func (m *gitManager) deleteDocEdgesForBranch(ctx context.Context, branchID, head
 	}
 	blobs, err := m.allBlobsAtCommit(ctx, headCommitID)
 	if err != nil {
-		log.Printf("[deleteDocEdgesForBranch] allBlobsAtCommit %s: %v", headCommitID, err)
 		return
 	}
 
@@ -154,16 +151,12 @@ func (m *gitManager) deleteEdgesByBranchID(ctx context.Context, blobID, edgeName
 		Name:     edgeName,
 	})
 	if err != nil {
-		log.Printf("[deleteEdgesByBranchID] list %s on %s: %v", edgeName, blobID, err)
 		return
 	}
 
 	for _, rel := range rels {
 		if strMapProp(rel.Properties, "branch_id") != branchID {
 			continue
-		}
-		if err := m.dm.DeleteRelationship(ctx, m.agencyID, rel.ID); err != nil {
-			log.Printf("[deleteEdgesByBranchID] delete rel %s (%s): %v", rel.ID, edgeName, err)
 		}
 	}
 }
@@ -239,7 +232,6 @@ func (m *gitManager) migrateEdgesOnBlob(ctx context.Context, branchID, edgeName,
 		}
 		// Delete old edge.
 		if err := m.dm.DeleteRelationship(ctx, m.agencyID, rel.ID); err != nil {
-			log.Printf("[migrateEdgesOnBlob] delete old rel %s: %v", rel.ID, err)
 			continue
 		}
 		// Create new edge on the newBlobID.
