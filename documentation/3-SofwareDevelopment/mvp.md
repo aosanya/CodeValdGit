@@ -365,12 +365,15 @@ deleted on branch delete, migrated on rename, and removed on file delete.
 | GIT-023f: Proto additions — `FetchBranch` RPC + `GetFetchBranchStatus` RPC; `buf generate` | ✅ Done | GIT-023b |
 | GIT-023g: gRPC server handlers for `FetchBranch` + `GetFetchBranchStatus` + HTTP route registration | ✅ Done | GIT-023d, GIT-023f |
 | GIT-023h: Unit tests — stub import < 10 s (mocked remote); `FetchBranch` idempotency; lazy `ReadFile` content cache; `ErrBranchAlreadyFetched` rejection | ✅ Done | GIT-023g |
+| GIT-023i: Auto-fetch default branch during import — after stub entities are written, `runImport` calls `FetchBranch` for `req.DefaultBranch`; auto-fetch is best-effort (skipped with a log warning if the stub is not found) | ✅ Done | GIT-023c, GIT-023d |
 
 **Scope**: The v1 import walks every commit, tree, and blob for every branch — generating
 up to O(commits × files) ArangoDB round-trips before the job completes. The redesign splits
 import into two phases: Phase 1 (quick — bare shallow clone + branch stub entities, completes
 in seconds) and Phase 2 (on-demand — `FetchBranch` deepens the clone and materialises a single
 branch's content when the user navigates to it). Blob content is cached lazily on first `ReadFile`.
+The default branch is **automatically fetched** in the background immediately after Phase 1
+completes — the user can browse its files without any manual "Load Branch" action.
 
 **Performance target**: Import completes in < 10 seconds for any public GitHub repo.
 

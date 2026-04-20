@@ -233,9 +233,9 @@ func (m *gitManager) CancelImport(ctx context.Context, jobID string) error {
 //  3. Create one Repository entity (with bare_clone_path) and one stub Branch
 //     entity per discovered branch ref (status="stub").
 //  4. Wire has_branch / belongs_to_repository edges.
-//  5. Transition job to completed.
-//
-// No commit, tree, or blob entities are written at this stage.
+//  5. Automatically trigger [FetchBranch] for the default branch so it is
+//     fully populated (commits, trees, blobs) without user interaction.
+//  6. Transition job to completed.
 func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepoRequest, defaultBranch string) {
 	defer func() {
 		importJobsMu.Lock()
@@ -330,9 +330,32 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 	log.Printf("[runImport] wrote %d stub branch entities agencyID=%q repoID=%q", branchCount, m.agencyID, repoID)
-	appendImportStep(jobID, fmt.Sprintf("Import complete. %d branch(es) ready.", branchCount))
+	appendImportStep(jobID, fmt.Sprintf("%d branch stub(s) discovered.", branchCount))
 
-	// 5. Publish success event and mark completed.
+	// 5. Automatically fetch the default branch so it is immediately usable.
+	appendImportStep(jobID, fmt.Sprintf("Auto-fetching default branch %q…", defaultBranch))
+	defaultBranchEntities, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   m.agencyID,
+		TypeID:     "Branch",
+		Properties: map[string]any{"name": defaultBranch},
+	})
+	if listErr == nil && len(defaultBranchEntities) > 0 {
+		_, fetchErr := m.FetchBranch(ctx, FetchBranchRequest{
+			RepoID:   repoID,
+			BranchID: defaultBranchEntities[0].ID,
+		})
+		if fetchErr != nil {
+			log.Printf("[runImport] auto-fetch default branch %q: %v (continuing)", defaultBranch, fetchErr)
+			appendImportStep(jobID, fmt.Sprintf("Auto-fetch for %q skipped: %v", defaultBranch, fetchErr))
+		} else {
+			appendImportStep(jobID, fmt.Sprintf("Default branch %q fetch started in background.", defaultBranch))
+		}
+	} else {
+		log.Printf("[runImport] default branch %q not found in stubs (listErr=%v) — skipping auto-fetch", defaultBranch, listErr)
+		appendImportStep(jobID, fmt.Sprintf("Default branch %q not found in stubs; skipping auto-fetch.", defaultBranch))
+	}
+
+	// 6. Publish success event and mark completed.
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusCompleted, ""); err != nil {
 		log.Printf("[ERROR] ImportJob %s: transition to completed: %v", jobID, err)

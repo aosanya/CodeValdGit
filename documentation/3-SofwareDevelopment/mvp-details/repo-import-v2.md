@@ -61,10 +61,24 @@ seconds.
 4. **Persist bare clone path** on the `Repository` entity (`bare_clone_path`
    property) so `FetchBranch` can reuse the local clone without re-downloading.
 
-5. **Mark job `completed`** and publish `cross.git.{agencyID}.repo.imported`.
+5. **Auto-fetch the default branch** — immediately after all stub entities are
+   written, `runImport` looks up the stub `Branch` entity whose `name` matches
+   `req.DefaultBranch` and calls `FetchBranch` for it. This starts a background
+   goroutine (the same one used by the on-demand fetch path) that deepens the
+   bare clone and materialises the full commit history, tip-commit tree, and
+   blob metadata for that branch. The import job itself transitions to
+   `completed` without waiting for the fetch goroutine — the UI can poll
+   `GetFetchBranchStatus` on the returned `FetchBranchJob` ID.
+
+   If the default branch stub is not found (e.g. the name was wrong or the
+   remote has no matching ref) the auto-fetch is skipped with a log warning;
+   the import still completes successfully.
+
+6. **Mark job `completed`** and publish `cross.git.{agencyID}.repo.imported`.
 
 **Result**: Import finishes in seconds. The UI immediately shows all branch
-names. No commit history, no files, no blobs are stored at this stage.
+names. The default branch content is already being populated in the background
+without any user action required.
 
 ---
 
@@ -172,6 +186,7 @@ stub  ──FetchBranch──►  fetching  ──success──►  fetched
 | GIT-023a | Add `status` property (`stub`/`fetching`/`fetched`/`fetch_failed`) to `Branch` TypeDefinition in `schema.go`; add `FetchBranchJob` TypeDefinition to schema; add `git_fetchjobs` collection | ~~GIT-001~~ ✅ | 📋 Not Started |
 | GIT-023b | Add `FetchBranchRequest`, `FetchBranchJob` types to `models.go`; add `ErrBranchAlreadyFetched`, `ErrBlobContentUnavailable` to `errors.go`; add `FetchBranch` to `GitManager` interface in `git.go` | GIT-023a | 📋 Not Started |
 | GIT-023c | Refactor `runImport` — replace full `PlainClone` + all-branch-walk with bare shallow clone + `ls-refs` branch listing + stub entity writes; update `walkBranchCommits` to accept a `seenSHAs` set | GIT-023b | 📋 Not Started |
+| GIT-023i | Auto-fetch default branch during import — after stub entities are written, `runImport` calls `FetchBranch` for the default branch so it is populated without user interaction | GIT-023c, GIT-023d | ✅ Done |
 | GIT-023d | Implement `FetchBranch` — background goroutine; deepen clone or re-clone; walk commits (tip-tree only, seen-SHA dedupe); store blob metadata only; transition branch status | GIT-023b, GIT-023c | 📋 Not Started |
 | GIT-023e | Update `ReadFile` — lazy blob content: check `Blob.content` → read from bare clone → cache back to entity → `ErrBlobContentUnavailable` fallback | GIT-023d | 📋 Not Started |
 | GIT-023f | Proto additions — `FetchBranch` RPC + `GetFetchBranchStatus` RPC; `buf generate` | GIT-023b | 📋 Not Started |
@@ -264,6 +279,8 @@ Registered in `internal/registrar/routes.go`:
 - [ ] `FetchBranch` returns `ErrBranchAlreadyFetched` if status is `"fetched"` or `"fetching"`
 - [ ] `FetchBranch` transitions branch through `fetching → fetched` (or `fetch_failed`)
 - [ ] `ReadFile` caches blob content lazily; returns `ErrBlobContentUnavailable` when bare clone is absent
+- [ ] Default branch is automatically fetched (commits + tip-tree + blob metadata) during import — no user action required
+- [ ] If the default branch stub is not found the import still completes (auto-fetch is best-effort)
 - [ ] `cross.git.{agencyID}.repo.imported` published after Phase 1 import (stub branches)
 - [ ] `cross.git.{agencyID}.branch.fetched` published after Phase 2 fetch completes
 - [ ] Seen-SHA deduplication: shared commits between branches are not re-walked
