@@ -58,6 +58,10 @@ type Repository struct {
 
 	// UpdatedAt is the ISO 8601 timestamp when the repository was last modified.
 	UpdatedAt string `json:"updated_at"`
+
+	// SourceURL is the remote Git URL the repository was imported from.
+	// Empty for repositories created locally via InitRepo.
+	SourceURL string `json:"source_url,omitempty"`
 }
 
 // Branch is a named ref pointing to a [Commit]. The target commit is linked

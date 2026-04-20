@@ -36,6 +36,7 @@ type Repository struct {
 	DefaultBranch string                 `protobuf:"bytes,5,opt,name=default_branch,json=defaultBranch,proto3" json:"default_branch,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SourceUrl     string                 `protobuf:"bytes,8,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,6 +118,13 @@ func (x *Repository) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Repository) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
 }
 
 // Branch is a named ref pointing to a Commit entity.
@@ -4049,7 +4057,7 @@ var File_codevaldgit_v1_service_proto protoreflect.FileDescriptor
 
 const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccodevaldgit/v1/service.proto\x12\x0ecodevaldgit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8c\x02\n" +
+	"\x1ccodevaldgit/v1/service.proto\x12\x0ecodevaldgit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xab\x02\n" +
 	"\n" +
 	"Repository\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
@@ -4060,7 +4068,9 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x8c\x02\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\b \x01(\tR\tsourceUrl\"\x8c\x02\n" +
 	"\x06Branch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\rrepository_id\x18\x02 \x01(\tR\frepositoryId\x12\x12\n" +

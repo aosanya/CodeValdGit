@@ -21,6 +21,7 @@ message Repository {
   string                    default_branch = 5;
   google.protobuf.Timestamp created_at     = 6;
   google.protobuf.Timestamp updated_at     = 7;
+  string                    source_url     = 8;
 }
 
 // Branch is a named ref pointing to a Commit entity.

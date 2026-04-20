@@ -669,6 +669,7 @@ func entityToRepository(e entitygraph.Entity, agencyID string) Repository {
 		DefaultBranch: strProp(p, "default_branch"),
 		CreatedAt:     strProp(p, "created_at"),
 		UpdatedAt:     strProp(p, "updated_at"),
+		SourceURL:     strProp(p, "source_url"),
 	}
 }
 

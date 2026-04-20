@@ -19,6 +19,7 @@ func repoToProto(r codevaldgit.Repository) *pb.Repository {
 		DefaultBranch: r.DefaultBranch,
 		CreatedAt:     parseTimestamp(r.CreatedAt),
 		UpdatedAt:     parseTimestamp(r.UpdatedAt),
+		SourceUrl:     r.SourceURL,
 	}
 }
 
