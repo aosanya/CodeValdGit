@@ -114,6 +114,9 @@ func DefaultGitSchema() types.Schema {
 					// to deepen individual branches without re-downloading the full
 					// packfile. Empty for repositories created via InitRepo.
 					{Name: "bare_clone_path", Type: types.PropertyTypeString},
+					// source_url is the public HTTPS URL of the remote repository
+					// this repo was imported from. Empty for repos created via InitRepo.
+					{Name: "source_url", Type: types.PropertyTypeString},
 					// fetched_commit_shas is a JSON-encoded array of commit SHA strings
 					// that have already been walked and materialised as entities.
 					// Used by FetchBranch to skip shared commits across branches

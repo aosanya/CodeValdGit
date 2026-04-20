@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,6 +238,8 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		importJobsMu.Unlock()
 	}()
 
+	runStart := time.Now()
+	log.Printf("[import][%s] job=%s url=%s: starting", m.agencyID, jobID, req.SourceURL)
 	appendImportStep(jobID, "Starting import…")
 
 	// Transition to running.
@@ -246,14 +249,18 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 
 	// 1. Allocate a persistent directory for the bare clone.
 	// This directory survives the import and is reused by FetchBranch (GIT-023d).
+	t0 := time.Now()
 	cloneDir, err := cloneRootDir(m.agencyID, jobID)
 	if err != nil {
 		m.failImportJob(ctx, jobID, fmt.Sprintf("allocate clone dir: %v", err))
 		return
 	}
+	log.Printf("[import][%s] job=%s: clone dir allocated in %s → %s", m.agencyID, jobID, time.Since(t0), cloneDir)
 
 	// 2. Bare shallow clone — one tip commit per branch, no tags, no blobs yet.
 	appendImportStep(jobID, fmt.Sprintf("Cloning %s (shallow, all branches)…", req.SourceURL))
+	t0 = time.Now()
+	log.Printf("[import][%s] job=%s: starting bare shallow clone of %s", m.agencyID, jobID, req.SourceURL)
 	cloneOpts := &gogit.CloneOptions{
 		URL:          req.SourceURL,
 		Depth:        1,
@@ -270,11 +277,13 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("bare shallow clone %s: %v", req.SourceURL, err))
 		return
 	}
+	log.Printf("[import][%s] job=%s: bare shallow clone done in %s", m.agencyID, jobID, time.Since(t0))
 	appendImportStep(jobID, "Clone complete. Discovering branches…")
 
 	// 3. Create the Repository entity with bare_clone_path so FetchBranch can
 	// reuse the local clone without re-downloading.
 	now := time.Now().UTC().Format(time.RFC3339)
+	t0 = time.Now()
 	repoEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Repository",
@@ -283,6 +292,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 			"description":     req.Description,
 			"default_branch":  defaultBranch,
 			"bare_clone_path": cloneDir,
+			"source_url":      req.SourceURL,
 			"created_at":      now,
 			"updated_at":      now,
 		},
@@ -292,9 +302,11 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 	repoID := repoEntity.ID
+	log.Printf("[import][%s] job=%s: Repository entity created (id=%s) in %s", m.agencyID, jobID, repoID, time.Since(t0))
 	appendImportStep(jobID, fmt.Sprintf("Repository entity created (id=%s).", repoID))
 
 	// 4. Iterate remote refs and write a stub Branch entity for each branch ref.
+	t0 = time.Now()
 	refs, err := repo.References()
 	if err != nil {
 		m.failImportJob(ctx, jobID, fmt.Sprintf("list refs: %v", err))
@@ -342,7 +354,10 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 
 		branchCount++
 		appendImportStep(jobID, fmt.Sprintf("Creating stub branch: %s", branchName))
-		return m.upsertStubBranchNamed(ctx, branchName, ref.Hash().String(), repoID, req.SourceURL, now)
+		t1 := time.Now()
+		err := m.upsertStubBranchNamed(ctx, branchName, ref.Hash().String(), repoID, req.SourceURL, now)
+		log.Printf("[import][%s] job=%s: upsertStubBranch %q done in %s err=%v", m.agencyID, jobID, branchName, time.Since(t1), err)
+		return err
 	}); err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
@@ -352,20 +367,25 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("walk refs: %v", err))
 		return
 	}
+	log.Printf("[import][%s] job=%s: refs walk done in %s — %d branch stub(s) discovered", m.agencyID, jobID, time.Since(t0), branchCount)
 	appendImportStep(jobID, fmt.Sprintf("%d branch stub(s) discovered.", branchCount))
 
 	// 5. Automatically fetch the default branch so it is immediately usable.
 	appendImportStep(jobID, fmt.Sprintf("Auto-fetching default branch %q…", defaultBranch))
+	t0 = time.Now()
 	defaultBranchEntities, listErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
 		AgencyID:   m.agencyID,
 		TypeID:     "Branch",
 		Properties: map[string]any{"name": defaultBranch},
 	})
+	log.Printf("[import][%s] job=%s: ListEntities for default branch %q took %s (found=%d err=%v)", m.agencyID, jobID, defaultBranch, time.Since(t0), len(defaultBranchEntities), listErr)
 	if listErr == nil && len(defaultBranchEntities) > 0 {
+		t0 = time.Now()
 		_, fetchErr := m.FetchBranch(ctx, FetchBranchRequest{
 			RepoID:   repoID,
 			BranchID: defaultBranchEntities[0].ID,
 		})
+		log.Printf("[import][%s] job=%s: FetchBranch(%q) returned in %s err=%v (runs in background)", m.agencyID, jobID, defaultBranch, time.Since(t0), fetchErr)
 		if fetchErr != nil {
 			appendImportStep(jobID, fmt.Sprintf("Auto-fetch for %q skipped: %v", defaultBranch, fetchErr))
 		} else {
@@ -377,6 +397,10 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 
 	// 6. Publish success event and mark completed.
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
+	if err := m.updateImportJobStatus(context.Background(), jobID, importStatusCompleted, ""); err != nil {
+		log.Printf("[import][%s] job=%s: WARNING failed to mark import completed: %v", m.agencyID, jobID, err)
+	}
+	log.Printf("[import][%s] job=%s: import phase done (stub+auto-fetch triggered) — total elapsed %s", m.agencyID, jobID, time.Since(runStart))
 }
 
 // upsertStubBranchNamed creates (or updates) a Branch entity with status="stub" for the
@@ -806,6 +830,8 @@ func (m *gitManager) updateImportJobStatus(ctx context.Context, jobID, status, e
 
 // failImportJob transitions the job to failed, logs, and publishes the failure event.
 func (m *gitManager) failImportJob(ctx context.Context, jobID, errMsg string) {
+	log.Printf("[import][%s] job=%s: FAILED — %s", m.agencyID, jobID, errMsg)
+	_ = m.updateImportJobStatus(context.Background(), jobID, importStatusFailed, errMsg)
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.import.failed")
 }
 
