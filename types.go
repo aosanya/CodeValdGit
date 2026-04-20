@@ -107,14 +107,25 @@ type ImportJob struct {
 	// AgencyID scopes this job to the owning agency.
 	AgencyID string
 
+	// Name is the human-readable repository name being imported.
+	Name string
+
 	// SourceURL is the remote URL being imported.
 	SourceURL string
+
+	// DefaultBranch is the default branch of the repository (e.g. "main").
+	DefaultBranch string
 
 	// Status is one of: "pending", "running", "completed", "failed", "cancelled".
 	Status string
 
 	// ErrorMessage is populated when Status == "failed".
 	ErrorMessage string
+
+	// ProgressSteps is an ordered list of human-readable progress messages
+	// appended as the import goroutine executes. Only populated for in-flight
+	// jobs (removed from memory once the job reaches a terminal state).
+	ProgressSteps []string
 
 	// CreatedAt is the ISO 8601 timestamp at which ImportRepo was called.
 	CreatedAt string

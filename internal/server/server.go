@@ -374,13 +374,16 @@ func (s *Server) CancelImport(ctx context.Context, req *pb.CancelImportRequest) 
 // importJobToProto converts a domain ImportJob to its proto representation.
 func importJobToProto(j codevaldgit.ImportJob) *pb.ImportJobResponse {
 	return &pb.ImportJobResponse{
-		JobId:        j.ID,
-		AgencyId:     j.AgencyID,
-		SourceUrl:    j.SourceURL,
-		Status:       j.Status,
-		ErrorMessage: j.ErrorMessage,
-		CreatedAt:    j.CreatedAt,
-		UpdatedAt:    j.UpdatedAt,
+		JobId:         j.ID,
+		AgencyId:      j.AgencyID,
+		Name:          j.Name,
+		SourceUrl:     j.SourceURL,
+		DefaultBranch: j.DefaultBranch,
+		Status:        j.Status,
+		ErrorMessage:  j.ErrorMessage,
+		ProgressSteps: j.ProgressSteps,
+		CreatedAt:     j.CreatedAt,
+		UpdatedAt:     j.UpdatedAt,
 	}
 }
 

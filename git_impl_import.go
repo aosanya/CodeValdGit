@@ -74,9 +74,29 @@ func cloneRootDir(agencyID, jobID string) (string, error) {
 	return base, nil
 }
 
-// importCancelEntry holds the cancel function for an in-flight import goroutine.
+// importCancelEntry holds the cancel function and in-memory progress log for an
+// in-flight import goroutine. A pointer is stored in importJobs so that step
+// messages can be appended without replacing the map entry.
 type importCancelEntry struct {
 	cancel context.CancelFunc
+	mu     sync.Mutex
+	steps  []string
+}
+
+// appendStep adds a progress message to the entry.
+func (e *importCancelEntry) appendStep(msg string) {
+	e.mu.Lock()
+	e.steps = append(e.steps, msg)
+	e.mu.Unlock()
+}
+
+// getSteps returns a copy of the current progress steps.
+func (e *importCancelEntry) getSteps() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]string, len(e.steps))
+	copy(out, e.steps)
+	return out
 }
 
 // importJobsMu guards importJobs.
@@ -84,7 +104,18 @@ var importJobsMu sync.Mutex
 
 // importJobs maps jobID → cancel entry for all active (pending/running) import goroutines.
 // Goroutines remove their entry on completion, failure, or cancellation.
-var importJobs = make(map[string]importCancelEntry)
+var importJobs = make(map[string]*importCancelEntry)
+
+// appendImportStep appends a progress message for the given job (no-op if terminal).
+func appendImportStep(jobID, msg string) {
+	importJobsMu.Lock()
+	entry, ok := importJobs[jobID]
+	importJobsMu.Unlock()
+	if ok {
+		entry.appendStep(msg)
+	}
+	log.Printf("[ImportJob %s] %s", jobID, msg)
+}
 
 // ImportRepo begins an async import of a public Git repository into this
 // agency's entity graph. It returns immediately with an ImportJob whose
@@ -101,16 +132,21 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 
 	// 3. Create the ImportJob entity; capture the auto-assigned ID as jobID.
 	now := time.Now().UTC().Format(time.RFC3339)
+	if req.DefaultBranch == "" {
+		req.DefaultBranch = "main"
+	}
 	jobEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "ImportJob",
 		Properties: map[string]any{
-			"agency_id":     m.agencyID,
-			"source_url":    req.SourceURL,
-			"status":        importStatusPending,
-			"error_message": "",
-			"created_at":    now,
-			"updated_at":    now,
+			"agency_id":      m.agencyID,
+			"name":           req.Name,
+			"source_url":     req.SourceURL,
+			"default_branch": req.DefaultBranch,
+			"status":         importStatusPending,
+			"error_message":  "",
+			"created_at":     now,
+			"updated_at":     now,
 		},
 	})
 	if err != nil {
@@ -127,16 +163,12 @@ func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (Imp
 
 	// 5. Start the background goroutine with its own cancellable context.
 	jobCtx, cancel := context.WithCancel(context.Background())
+	entry := &importCancelEntry{cancel: cancel}
 	importJobsMu.Lock()
-	importJobs[jobID] = importCancelEntry{cancel: cancel}
+	importJobs[jobID] = entry
 	importJobsMu.Unlock()
 
-	defaultBranch := req.DefaultBranch
-	if defaultBranch == "" {
-		defaultBranch = "main"
-	}
-
-	go m.runImport(jobCtx, jobID, req, defaultBranch)
+	go m.runImport(jobCtx, jobID, req, req.DefaultBranch)
 
 	return job, nil
 }
@@ -154,7 +186,15 @@ func (m *gitManager) GetImportStatus(ctx context.Context, jobID string) (ImportJ
 		return ImportJob{}, fmt.Errorf("GetImportStatus %s: %w", jobID, err)
 	}
 	log.Printf("[GetImportStatus] found entity typeID=%q id=%q", entity.TypeID, entity.ID)
-	return importJobFromEntity(entity), nil
+	job := importJobFromEntity(entity)
+	// Attach in-memory progress steps (only present while goroutine is active).
+	importJobsMu.Lock()
+	entry, ok := importJobs[jobID]
+	importJobsMu.Unlock()
+	if ok {
+		job.ProgressSteps = entry.getSteps()
+	}
+	return job, nil
 }
 
 // CancelImport cancels a pending or running import job.
@@ -203,6 +243,8 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		importJobsMu.Unlock()
 	}()
 
+	appendImportStep(jobID, "Starting import…")
+
 	// Transition to running.
 	if err := m.updateImportJobStatus(ctx, jobID, importStatusRunning, ""); err != nil {
 		log.Printf("[ERROR] ImportJob %s: transition to running: %v", jobID, err)
@@ -218,6 +260,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// 2. Bare shallow clone — one tip commit per branch, no tags, no blobs yet.
+	appendImportStep(jobID, fmt.Sprintf("Cloning %s (shallow, all branches)…", req.SourceURL))
 	cloneOpts := &gogit.CloneOptions{
 		URL:          req.SourceURL,
 		Depth:        1,
@@ -234,6 +277,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("bare shallow clone %s: %v", req.SourceURL, err))
 		return
 	}
+	appendImportStep(jobID, "Clone complete. Discovering branches…")
 
 	// 3. Create the Repository entity with bare_clone_path so FetchBranch can
 	// reuse the local clone without re-downloading.
@@ -256,6 +300,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 	repoID := repoEntity.ID
 	log.Printf("[runImport] created Repository entity repoID=%q agencyID=%q bareCloneDir=%q", repoID, m.agencyID, cloneDir)
+	appendImportStep(jobID, fmt.Sprintf("Repository entity created (id=%s).", repoID))
 
 	// 4. Iterate remote refs and write a stub Branch entity for each branch ref.
 	refs, err := repo.References()
@@ -273,6 +318,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 			return nil
 		}
 		branchCount++
+		appendImportStep(jobID, fmt.Sprintf("Creating stub branch: %s", ref.Name().Short()))
 		return m.upsertStubBranch(ctx, ref, repoID, req.SourceURL, now)
 	}); err != nil {
 		if ctx.Err() != nil {
@@ -284,6 +330,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		return
 	}
 	log.Printf("[runImport] wrote %d stub branch entities agencyID=%q repoID=%q", branchCount, m.agencyID, repoID)
+	appendImportStep(jobID, fmt.Sprintf("Import complete. %d branch(es) ready.", branchCount))
 
 	// 5. Publish success event and mark completed.
 	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
@@ -687,12 +734,14 @@ func importJobFromEntity(e entitygraph.Entity) ImportJob {
 		return v
 	}
 	return ImportJob{
-		ID:           e.ID,
-		AgencyID:     str("agency_id"),
-		SourceURL:    str("source_url"),
-		Status:       str("status"),
-		ErrorMessage: str("error_message"),
-		CreatedAt:    str("created_at"),
-		UpdatedAt:    str("updated_at"),
+		ID:            e.ID,
+		AgencyID:      str("agency_id"),
+		Name:          str("name"),
+		SourceURL:     str("source_url"),
+		DefaultBranch: str("default_branch"),
+		Status:        str("status"),
+		ErrorMessage:  str("error_message"),
+		CreatedAt:     str("created_at"),
+		UpdatedAt:     str("updated_at"),
 	}
 }

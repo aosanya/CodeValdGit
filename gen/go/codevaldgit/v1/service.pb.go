@@ -2594,6 +2594,9 @@ type ImportJobResponse struct {
 	ErrorMessage  string                 `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Name          string                 `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
+	DefaultBranch string                 `protobuf:"bytes,9,opt,name=default_branch,json=defaultBranch,proto3" json:"default_branch,omitempty"`
+	ProgressSteps []string               `protobuf:"bytes,10,rep,name=progress_steps,json=progressSteps,proto3" json:"progress_steps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2675,6 +2678,27 @@ func (x *ImportJobResponse) GetUpdatedAt() string {
 		return x.UpdatedAt
 	}
 	return ""
+}
+
+func (x *ImportJobResponse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetDefaultBranch() string {
+	if x != nil {
+		return x.DefaultBranch
+	}
+	return ""
+}
+
+func (x *ImportJobResponse) GetProgressSteps() []string {
+	if x != nil {
+		return x.ProgressSteps
+	}
+	return nil
 }
 
 // FetchBranchRequest carries the parameters for an on-demand branch fetch.
@@ -4207,7 +4231,7 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\x13CancelImportRequest\x12\x1b\n" +
 	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\"\x16\n" +
-	"\x14CancelImportResponse\"\xe1\x01\n" +
+	"\x14CancelImportResponse\"\xc3\x02\n" +
 	"\x11ImportJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1b\n" +
 	"\tagency_id\x18\x02 \x01(\tR\bagencyId\x12\x1d\n" +
@@ -4218,7 +4242,11 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\tR\tupdatedAt\"k\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt\x12\x12\n" +
+	"\x04name\x18\b \x01(\tR\x04name\x12%\n" +
+	"\x0edefault_branch\x18\t \x01(\tR\rdefaultBranch\x12%\n" +
+	"\x0eprogress_steps\x18\n" +
+	" \x03(\tR\rprogressSteps\"k\n" +
 	"\x12FetchBranchRequest\x12\x1b\n" +
 	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x17\n" +
 	"\arepo_id\x18\x02 \x01(\tR\x06repoId\x12\x1f\n" +

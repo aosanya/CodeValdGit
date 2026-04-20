@@ -464,13 +464,16 @@ message CancelImportRequest {
 message CancelImportResponse {}
 
 message ImportJobResponse {
-  string job_id        = 1;
-  string agency_id     = 2;
-  string source_url    = 3;
-  string status        = 4;
-  string error_message = 5;
-  string created_at    = 6;
-  string updated_at    = 7;
+  string job_id           = 1;
+  string agency_id        = 2;
+  string source_url       = 3;
+  string status           = 4;
+  string error_message    = 5;
+  string created_at       = 6;
+  string updated_at       = 7;
+  string name             = 8;
+  string default_branch   = 9;
+  repeated string progress_steps = 10;
 }
 
 // On-demand branch fetch (GIT-023f)
