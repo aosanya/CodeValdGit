@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -30,15 +31,28 @@ import (
 // The handler is designed to be served via cmux alongside the gRPC server on a
 // single port (see GIT-009 / cmd/main.go).
 type GitHTTPHandler struct {
-	srv transport.Transport
+	srv     transport.Transport
+	indexer PushIndexer // nil = skip post-receive graph indexing
+}
+
+// PushIndexer builds the entity graph for commits received via git push.
+// It is called asynchronously after a successful receive-pack so that the
+// HTTP response is not delayed by the indexing work.
+type PushIndexer interface {
+	// IndexPushedBranch walks newly pushed commits and materialises Commit,
+	// Tree, and Blob entities, then advances the branch HEAD pointer.
+	// repoName is the human-readable repository name.
+	// branchRef is the full ref name, e.g. "refs/heads/main".
+	IndexPushedBranch(ctx context.Context, repoName, branchRef, newSHA string) error
 }
 
 // NewGitHTTPHandler constructs a GitHTTPHandler backed by the given Backend.
 // b must be a filesystem backend (or any Backend whose OpenStorer returns a
 // go-git storage.Storer backed by a real .git object store).
-func NewGitHTTPHandler(b codevaldgit.Backend) *GitHTTPHandler {
+// indexer may be nil — post-receive graph indexing is skipped when nil.
+func NewGitHTTPHandler(b codevaldgit.Backend, indexer PushIndexer) *GitHTTPHandler {
 	loader := &backendLoader{b: b}
-	return &GitHTTPHandler{srv: gogitserver.NewServer(loader)}
+	return &GitHTTPHandler{srv: gogitserver.NewServer(loader), indexer: indexer}
 }
 
 // ServeHTTP implements http.Handler.
@@ -172,14 +186,18 @@ func (h *GitHTTPHandler) uploadPack(w http.ResponseWriter, r *http.Request, agen
 
 // receivePack handles POST /{agencyID}/{repoName}/git-receive-pack (push).
 func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, agencyID, repoName string) {
+	log.Printf("[receive-pack][%s/%s] push request received", agencyID, repoName)
+
 	ep, err := endpointFor(agencyID, repoName)
 	if err != nil {
+		log.Printf("[receive-pack][%s/%s] bad endpoint: %v", agencyID, repoName, err)
 		http.Error(w, "bad endpoint", http.StatusInternalServerError)
 		return
 	}
 
 	sess, err := h.srv.NewReceivePackSession(ep, nil)
 	if err != nil {
+		log.Printf("[receive-pack][%s/%s] NewReceivePackSession error: %v", agencyID, repoName, err)
 		httpErrorFromTransport(w, err)
 		return
 	}
@@ -187,20 +205,55 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 
 	// AdvertisedReferencesContext must be called before ReceivePack.
 	if _, err := sess.AdvertisedReferencesContext(r.Context()); err != nil {
+		log.Printf("[receive-pack][%s/%s] AdvertisedReferencesContext error: %v", agencyID, repoName, err)
 		httpErrorFromTransport(w, err)
 		return
 	}
 
 	req := packp.NewReferenceUpdateRequest()
 	if err := req.Decode(r.Body); err != nil {
+		log.Printf("[receive-pack][%s/%s] Decode error: %v", agencyID, repoName, err)
 		http.Error(w, "malformed receive-pack request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("[receive-pack][%s/%s] decoded %d command(s)", agencyID, repoName, len(req.Commands))
+	for _, cmd := range req.Commands {
+		if cmd != nil {
+			log.Printf("[receive-pack][%s/%s]   ref=%s old=%s new=%s", agencyID, repoName, cmd.Name, cmd.Old, cmd.New)
+		}
+	}
+
 	status, err := sess.ReceivePack(r.Context(), req)
 	if err != nil {
+		log.Printf("[receive-pack][%s/%s] ReceivePack error: %v", agencyID, repoName, err)
 		httpErrorFromTransport(w, err)
 		return
+	}
+	log.Printf("[receive-pack][%s/%s] ReceivePack succeeded", agencyID, repoName)
+
+	// Trigger async graph indexing for each successfully updated branch.
+	if h.indexer != nil {
+		for _, cmd := range req.Commands {
+			if cmd == nil {
+				continue
+			}
+			// Zero hash means delete — skip.
+			if cmd.New.IsZero() {
+				continue
+			}
+			newSHA := cmd.New.String()
+			refName := cmd.Name.String()
+			log.Printf("[receive-pack][%s/%s] scheduling index for ref=%s sha=%s", agencyID, repoName, refName, newSHA[:8])
+			indexer := h.indexer
+			go func() {
+				if idxErr := indexer.IndexPushedBranch(context.Background(), repoName, refName, newSHA); idxErr != nil {
+					log.Printf("[receive-pack][%s/%s] IndexPushedBranch ref=%s sha=%s error: %v", agencyID, repoName, refName, newSHA[:8], idxErr)
+				}
+			}()
+		}
+	} else {
+		log.Printf("[receive-pack][%s/%s] WARNING: indexer is nil — push graph indexing skipped", agencyID, repoName)
 	}
 
 	setNoCacheHeaders(w)
