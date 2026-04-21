@@ -36,7 +36,7 @@ func newTestHandler(t *testing.T, agencyID string) *server.GitHTTPHandler {
 		t.Fatalf("InitRepo: %v", err)
 	}
 
-	return server.NewGitHTTPHandler(b)
+	return server.NewGitHTTPHandler(b, nil)
 }
 
 // testRepoName is the repository name used across all githttp tests.
@@ -103,7 +103,7 @@ func TestInfoRefs_UnknownRepo_AutoCreates(t *testing.T) {
 		t.Fatalf("NewFilesystemBackend: %v", err)
 	}
 
-	h := server.NewGitHTTPHandler(b)
+	h := server.NewGitHTTPHandler(b, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/no-such-agency/no-such-repo/info/refs?service=git-upload-pack", nil)
 	w := httptest.NewRecorder()

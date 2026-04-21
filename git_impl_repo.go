@@ -293,6 +293,22 @@ func (m *gitManager) ListBranches(ctx context.Context, repoID string) ([]Branch,
 	return out, nil
 }
 
+// GetBranchByName retrieves a Branch entity by its human-readable name.
+// Returns [ErrBranchNotFound] if no branch with that name exists for the
+// specified repository.
+func (m *gitManager) GetBranchByName(ctx context.Context, repoID string, branchName string) (Branch, error) {
+	entities, err := m.listBranchesByRepo(ctx, repoID)
+	if err != nil {
+		return Branch{}, fmt.Errorf("GetBranchByName: %w", err)
+	}
+	for _, e := range entities {
+		if strProp(e.Properties, "name") == branchName {
+			return entityToBranch(e, repoID), nil
+		}
+	}
+	return Branch{}, ErrBranchNotFound
+}
+
 // DeleteBranch removes a Branch entity.
 // Returns [ErrBranchNotFound] if no branch with that ID exists.
 // Returns an error if branchID refers to the repository's default branch.

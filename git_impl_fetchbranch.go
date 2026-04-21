@@ -277,37 +277,6 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 	log.Printf("[fetchbranch][%s] job=%s branch=%q: ALL DONE — total elapsed %s", m.agencyID, jobID, branchName, time.Since(runStart))
 }
 
-// openOrRecloneBare opens the existing bare clone at bareClonePath. If the
-// path is missing or gone, it performs a fresh bare shallow clone from sourceURL.
-// Returns the Repository and the (possibly new) bare clone path.
-func (m *gitManager) openOrRecloneBare(ctx context.Context, bareClonePath, sourceURL, jobID string) (*gogit.Repository, string, error) {
-	if bareClonePath != "" {
-		if _, statErr := os.Stat(bareClonePath); statErr == nil {
-			repo, openErr := gogit.PlainOpen(bareClonePath)
-			if openErr == nil {
-				return repo, bareClonePath, nil
-			}
-		}
-	}
-	if sourceURL == "" {
-		return nil, "", fmt.Errorf("bare_clone_path missing or gone and source_url is empty")
-	}
-	dir, err := cloneRootDir(m.agencyID, jobID+"-refetch")
-	if err != nil {
-		return nil, "", err
-	}
-	repo, err := gogit.PlainCloneContext(ctx, dir, true, &gogit.CloneOptions{
-		URL:          sourceURL,
-		Depth:        1,
-		SingleBranch: false,
-		Tags:         gogit.NoTags,
-	})
-	if err != nil {
-		return nil, "", fmt.Errorf("re-clone %s: %w", sourceURL, err)
-	}
-	return repo, dir, nil
-}
-
 // deepenClone performs a fresh full (non-shallow) single-branch clone of
 // branchName from sourceURL into a new temp directory and returns the opened
 // repository. The caller should use this repo for all subsequent operations on

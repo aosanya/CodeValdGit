@@ -361,7 +361,7 @@ func newTestManager(t *testing.T) (codevaldgit.GitManager, *fakeDataManager, *fa
 	t.Helper()
 	fdm := newFakeDataManager()
 	pub := &fakePublisher{}
-	mgr := codevaldgit.NewGitManager(fdm, &fakeSchemaManager{}, pub, testAgencyID)
+	mgr := codevaldgit.NewGitManager(fdm, &fakeSchemaManager{}, pub, testAgencyID, nil)
 	return mgr, fdm, pub
 }
 

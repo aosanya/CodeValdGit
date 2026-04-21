@@ -20,13 +20,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 	"unicode/utf8"
 
 	gogit "github.com/go-git/go-git/v5"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
-
-	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
 
 // loadBlobContentFromStorer reads the raw content of blob from the backend
@@ -92,21 +89,4 @@ func (m *gitManager) loadBlobContentFromStorer(ctx context.Context, branch Branc
 	}
 	log.Printf("[loadBlobContentFromStorer] encoding=utf-8")
 	return string(raw), "utf-8", nil
-}
-
-// cacheBlobContent persists content and encoding back into the Blob entity so
-// that subsequent ReadFile calls are served directly from the entity graph
-// without hitting the storer again.
-func (m *gitManager) cacheBlobContent(ctx context.Context, blobID, content, encoding string) error {
-	_, err := m.dm.UpdateEntity(ctx, m.agencyID, blobID, entitygraph.UpdateEntityRequest{
-		Properties: map[string]any{
-			"content":    content,
-			"encoding":   encoding,
-			"updated_at": time.Now().UTC().Format(time.RFC3339),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("cacheBlobContent %s: %w", blobID, err)
-	}
-	return nil
 }

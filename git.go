@@ -62,6 +62,10 @@ type GitManager interface {
 	// exists for this agency.
 	GetRepositoryByName(ctx context.Context, repoName string) (Repository, error)
 
+	// GetBranchByName retrieves a Branch entity by its human-readable name.
+	// Returns [ErrBranchNotFound] if no branch with that name exists for this agency.
+	GetBranchByName(ctx context.Context, repoID string, branchName string) (Branch, error)
+
 	// DeleteRepo marks the specified repository entity as archived (soft delete).
 	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 	DeleteRepo(ctx context.Context, repoID string) error

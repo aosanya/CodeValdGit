@@ -277,6 +277,14 @@ func (f *fakeGitManager) GetFetchBranchStatus(_ context.Context, jobID string) (
 	return codevaldgit.FetchBranchJob{}, nil
 }
 
+func (f *fakeGitManager) GetBranchByName(_ context.Context, _ string, _ string) (codevaldgit.Branch, error) {
+	return codevaldgit.Branch{}, nil
+}
+
+func (f *fakeGitManager) IndexPushedBranch(_ context.Context, _, _, _, _ string) error {
+	return nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024
