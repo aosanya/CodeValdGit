@@ -139,8 +139,8 @@ func main() {
 	// ── HTTP server (git Smart HTTP) ─────────────────────────────────────────
 	httpServer := &http.Server{
 		Handler:      gitHTTPHandler,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  10 * time.Minute,
+			WriteTimeout: 10 * time.Minute,
 	}
 
 	// ── Signal handling ───────────────────────────────────────────────────────

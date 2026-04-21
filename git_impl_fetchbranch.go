@@ -365,6 +365,7 @@ func (m *gitManager) walkCommitsOnly(ctx context.Context, repo *gogit.Repository
 // Recursive for subdirectories. ErrEntityAlreadyExists is skipped.
 func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) (string, error) {
 	treeSHA := tree.Hash.String()
+	log.Printf("[upsertTree][%s] path=%q sha=%s entries=%d", m.agencyID, pathPrefix, treeSHA[:8], len(tree.Entries))
 
 	treeEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
@@ -420,6 +421,7 @@ func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogi
 			if err != nil {
 				// Subtree has no raw data (import-job metadata-only entity) —
 				// skip recursive walk; it will be deepened by FetchBranch later.
+				log.Printf("[upsertTree][%s] SKIP subtree path=%q sha=%s: TreeObject err=%v", m.agencyID, entryPath, entry.Hash.String()[:8], err)
 				continue
 			}
 			subTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, subTree, entryPath, now)

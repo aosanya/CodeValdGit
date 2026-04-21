@@ -147,20 +147,59 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: read: %w", err)
 	}
 
-	_, upsertErr := s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
-		AgencyID: s.agencyID,
-		TypeID:   typeID,
-		Properties: map[string]any{
-			"sha":  hash.String(),
-			"data": base64.StdEncoding.EncodeToString(raw),
-			"size": obj.Size(),
-		},
-	})
-	if upsertErr != nil {
-		log.Printf("[storer] SetEncodedObject: upsert FAILED type=%s sha=%s: %v", typeID, hash.String()[:8], upsertErr)
-		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: upsert %s: %w", typeID, upsertErr)
+	dataB64 := base64.StdEncoding.EncodeToString(raw)
+	patch := map[string]any{
+		"sha":  hash.String(),
+		"data": dataB64,
+		"size": obj.Size(),
 	}
-	log.Printf("[storer] SetEncodedObject: upsert OK type=%s sha=%s", typeID, hash.String()[:8])
+
+	// Find ALL entities with this sha (import job may have created duplicates).
+	list, listErr := s.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID:   s.agencyID,
+		TypeID:     typeID,
+		Properties: map[string]any{"sha": hash.String()},
+	})
+	if listErr != nil || len(list) == 0 {
+		// No existing entity — create a new one via UpsertEntity.
+		_, upsertErr := s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID:   s.agencyID,
+			TypeID:     typeID,
+			Properties: patch,
+		})
+		if upsertErr != nil {
+			log.Printf("[storer] SetEncodedObject: upsert FAILED type=%s sha=%s: %v", typeID, hash.String()[:8], upsertErr)
+			return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: upsert %s: %w", typeID, upsertErr)
+		}
+		log.Printf("[storer] SetEncodedObject: upsert OK type=%s sha=%s", typeID, hash.String()[:8])
+		return hash, nil
+	}
+
+	// Patch data onto ALL matching entities (handles duplicates from import job).
+	updated := 0
+	for _, e := range list {
+		if _, hasData := e.Properties["data"]; hasData {
+			continue // already has data, skip
+		}
+		// Merge patch properties into the entity's existing properties.
+		merged := make(map[string]any, len(e.Properties)+3)
+		for k, v := range e.Properties {
+			merged[k] = v
+		}
+		for k, v := range patch {
+			merged[k] = v
+		}
+		_, updateErr := s.dm.UpsertEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID:   s.agencyID,
+			TypeID:     typeID,
+			Properties: merged,
+		})
+		if updateErr != nil {
+			log.Printf("[storer] SetEncodedObject: patch entity %s FAILED: %v", e.ID, updateErr)
+		}
+		updated++
+	}
+	log.Printf("[storer] SetEncodedObject: patched %d/%d entities type=%s sha=%s", updated, len(list), typeID, hash.String()[:8])
 
 	return hash, nil
 }
@@ -184,14 +223,18 @@ func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (pl
 		if len(list) == 0 {
 			return nil, plumbing.ErrObjectNotFound
 		}
-		obj, decErr := decodeEntityToObject(list[0])
-		if decErr != nil {
-			// Entity exists but has no raw data — metadata-only (imported without bytes).
-			log.Printf("[storer] EncodedObject: entity found but no raw data type=%s sha=%.8s: %v", typeID, sha, decErr)
-			return nil, plumbing.ErrObjectNotFound
+		// Scan all matching entities — import job may have created duplicates;
+		// return the first one that has raw data.
+		for _, candidate := range list {
+			obj, decErr := decodeEntityToObject(candidate)
+			if decErr == nil {
+				log.Printf("[storer] EncodedObject: HIT type=%s sha=%.8s size=%d", typeID, sha, obj.Size())
+				return obj, nil
+			}
 		}
-		log.Printf("[storer] EncodedObject: HIT type=%s sha=%.8s size=%d", typeID, sha, obj.Size())
-		return obj, nil
+		// All matching entities are metadata-only.
+		log.Printf("[storer] EncodedObject: all %d entities for sha=%.8s are metadata-only", len(list), sha)
+		return nil, plumbing.ErrObjectNotFound
 	}
 
 	if t != plumbing.AnyObject {
@@ -263,12 +306,22 @@ func (s *arangoStorer) HasEncodedObject(h plumbing.Hash) error {
 			Properties: map[string]any{"sha": sha},
 		})
 		if err == nil && len(list) > 0 {
+			// Scan all matches — import job may have created duplicates.
 			hasData := false
-			if _, ok := list[0].Properties["data"]; ok {
-				hasData = true
+			for _, e := range list {
+				if _, ok := e.Properties["data"]; ok {
+					hasData = true
+					break
+				}
 			}
-			log.Printf("[storer] HasEncodedObject: FOUND type=%s sha=%.8s hasData=%v agency=%s", typeID, sha, hasData, s.agencyID)
-			return nil
+			if hasData {
+				log.Printf("[storer] HasEncodedObject: FOUND type=%s sha=%.8s agency=%s", typeID, sha, s.agencyID)
+				return nil
+			}
+			// All matching entities are metadata-only: report as MISS so git
+			// sends a full object instead of a thin delta the parser cannot resolve.
+			log.Printf("[storer] HasEncodedObject: metadata-only type=%s sha=%.8s — reporting as MISS", typeID, sha)
+			continue
 		}
 	}
 	log.Printf("[storer] HasEncodedObject: MISS sha=%.8s agency=%s", sha, s.agencyID)
@@ -307,6 +360,7 @@ func (s *arangoStorer) AddAlternate(_ string) error { return nil }
 func (s *arangoStorer) SetReference(ref *plumbing.Reference) error {
 	ctx := context.Background()
 	name := ref.Name()
+	log.Printf("[storer] SetReference: name=%s type=%v hash=%s", name, ref.Type(), ref.Hash().String()[:8])
 	switch {
 	case name == plumbing.HEAD:
 		target := ref.Target().String()
@@ -344,7 +398,23 @@ func (s *arangoStorer) CheckAndSetReference(new, old *plumbing.Reference) error 
 	if err != nil || len(branches) == 0 {
 		return fmt.Errorf("CheckAndSetReference: branch %q not found", branchName)
 	}
-	currentSHA, _ := branches[0].Properties["sha"].(string)
+	// Scan all duplicates for a non-empty sha.
+	var currentSHA string
+	for _, b := range branches {
+		if s, _ := b.Properties["sha"].(string); s != "" && s != plumbing.ZeroHash.String() {
+			currentSHA = s
+			break
+		}
+	}
+	expStr := old.Hash().String()
+	if len(expStr) > 8 {
+		expStr = expStr[:8]
+	}
+	curStr := currentSHA
+	if len(curStr) > 8 {
+		curStr = curStr[:8]
+	}
+	log.Printf("[storer] CheckAndSetReference: branch=%q stored=%s expected=%s", branchName, curStr, expStr)
 	if currentSHA != old.Hash().String() {
 		return storage.ErrReferenceHasChanged
 	}
@@ -381,9 +451,19 @@ func (s *arangoStorer) Reference(name plumbing.ReferenceName) (*plumbing.Referen
 			Properties: map[string]any{"name": branchName},
 		})
 		if err != nil || len(branches) == 0 {
+			log.Printf("[storer] Reference: branch=%q not found (err=%v, count=%d)", branchName, err, len(branches))
 			return nil, plumbing.ErrReferenceNotFound
 		}
-		sha, _ := branches[0].Properties["sha"].(string)
+		// There may be duplicate Branch entities (e.g. from import jobs).
+		// Scan all of them and return the first with a non-empty, non-zero SHA.
+		var sha string
+		for _, b := range branches {
+			if s, _ := b.Properties["sha"].(string); s != "" && s != plumbing.ZeroHash.String() {
+				sha = s
+				break
+			}
+		}
+		log.Printf("[storer] Reference: branch=%q sha=%q (from %d entities)", branchName, sha, len(branches))
 		// A branch with no commits (empty or zero SHA) is treated as
 		// non-existent so that referenceExists returns false and go-git
 		// allows a Create-action push to succeed on the first push.
@@ -440,13 +520,24 @@ func (s *arangoStorer) IterReferences() (storer.ReferenceIter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("IterReferences: list branches: %w", err)
 	}
+	// There may be duplicate Branch entities for the same name (e.g. from
+	// import jobs). Deduplicate by name, preferring any entity with a sha.
+	branchSHA := make(map[string]string)
 	for _, b := range branches {
 		bname, _ := b.Properties["name"].(string)
 		sha, _ := b.Properties["sha"].(string)
+		if bname == "" {
+			continue
+		}
+		if existing, ok := branchSHA[bname]; !ok || existing == "" || existing == plumbing.ZeroHash.String() {
+			branchSHA[bname] = sha
+		}
+	}
+	for bname, sha := range branchSHA {
 		// Skip branches with no commits yet (zero/empty SHA). Advertising
 		// a zero-SHA ref causes go-git's server to reject the first push
 		// with ErrUpdateReference (Create + exists == true conflict).
-		if bname == "" || sha == "" || sha == plumbing.ZeroHash.String() {
+		if sha == "" || sha == plumbing.ZeroHash.String() {
 			continue
 		}
 		refs = append(refs, plumbing.NewHashReference(
@@ -898,11 +989,17 @@ func (s *arangoStorer) setBranchSHA(ctx context.Context, branchName, sha string)
 		s.backfillBlobsFromSHA(ctx, sha)
 		return nil
 	}
-	_, err = s.dm.UpdateEntity(ctx, s.agencyID, branches[0].ID, entitygraph.UpdateEntityRequest{
-		Properties: map[string]any{"sha": sha},
-	})
+	// Update ALL duplicate Branch entities so every copy has the correct sha.
+	for _, b := range branches {
+		if _, uerr := s.dm.UpdateEntity(ctx, s.agencyID, b.ID, entitygraph.UpdateEntityRequest{
+			Properties: map[string]any{"sha": sha},
+		}); uerr != nil {
+			log.Printf("[storer] setBranchSHA: UpdateEntity branch=%q id=%s err=%v", branchName, b.ID, uerr)
+			err = fmt.Errorf("SetReference refs/heads/%s: update branch: %w", branchName, uerr)
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("SetReference refs/heads/%s: update branch: %w", branchName, err)
+		return err
 	}
 
 	// All packfile objects are now in the store — backfill blob metadata.

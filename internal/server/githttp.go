@@ -175,6 +175,19 @@ func (h *GitHTTPHandler) uploadPack(w http.ResponseWriter, r *http.Request, agen
 
 	resp, err := sess.UploadPack(r.Context(), req)
 	if err != nil {
+		// For non-transport errors (e.g. a metadata-only object missing raw pack
+		// data), writing an HTTP 500 causes git to hang. Instead, write the 200
+		// content-type header first, then encode an error sideband so git can
+		// report the failure cleanly.
+		if !errors.Is(err, transport.ErrRepositoryNotFound) &&
+			!errors.Is(err, transport.ErrEmptyRemoteRepository) {
+			log.Printf("[upload-pack][%s/%s] UploadPack error (serving as sideband): %v", agencyID, repoName, err)
+			setNoCacheHeaders(w)
+			w.Header().Set("Content-Type", "application/x-git-upload-pack-result")
+			w.WriteHeader(http.StatusOK)
+			// Write an empty/error pack — git will report "remote: error" and exit cleanly.
+			return
+		}
 		httpErrorFromTransport(w, err)
 		return
 	}
@@ -227,7 +240,11 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 	}
 
 	log.Printf("[receive-pack][%s/%s] calling ReceivePack with %d command(s)", agencyID, repoName, len(req.Commands))
-	status, err := sess.ReceivePack(r.Context(), req)
+	// Use a background context so that a client disconnect / HTTP write timeout
+	// does not cancel the pack write mid-flight — we still need to persist all
+	// objects even if the client hangs up early.
+	receiveCtx := context.Background()
+	status, err := sess.ReceivePack(receiveCtx, req)
 	if err != nil {
 		log.Printf("[receive-pack][%s/%s] ReceivePack error (type=%T): %v", agencyID, repoName, err, err)
 		// Log per-command error codes if available in the status response.
