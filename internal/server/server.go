@@ -7,6 +7,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
@@ -260,10 +261,13 @@ func (s *Server) WriteFile(ctx context.Context, req *pb.WriteFileRequest) (*pb.C
 
 // ReadFile implements pb.GitServiceServer.
 func (s *Server) ReadFile(ctx context.Context, req *pb.ReadFileRequest) (*pb.Blob, error) {
+	log.Printf("[gRPC ReadFile] branchID=%s path=%q", req.GetBranchId(), req.GetPath())
 	blob, err := s.mgr.ReadFile(ctx, req.GetBranchId(), req.GetPath())
 	if err != nil {
+		log.Printf("[gRPC ReadFile] error branchID=%s path=%q: %v", req.GetBranchId(), req.GetPath(), err)
 		return nil, toGRPCError(err)
 	}
+	log.Printf("[gRPC ReadFile] OK branchID=%s path=%q blobID=%s encoding=%s contentLen=%d", req.GetBranchId(), req.GetPath(), blob.ID, blob.Encoding, len(blob.Content))
 	return blobToProto(blob), nil
 }
 

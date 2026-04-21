@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -99,6 +100,8 @@ func int64StorerProp(props map[string]any, key string) int64 {
 func decodeEntityToObject(e entitygraph.Entity) (plumbing.EncodedObject, error) {
 	dataRaw, ok := e.Properties["data"]
 	if !ok {
+		sha, _ := e.Properties["sha"].(string)
+		log.Printf("[storer] decodeEntityToObject: entity id=%s typeID=%s sha=%s has NO data field — metadata-only entity", e.ID, e.TypeID, sha)
 		return nil, fmt.Errorf("entity %s has no data property", e.ID)
 	}
 	// dataStr is "" for an empty blob (e.g. e69de29b…) — that is valid.
@@ -132,6 +135,7 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 	ctx := context.Background()
 	hash := obj.Hash()
 	typeID := typeIDForObject(obj.Type())
+	log.Printf("[storer] SetEncodedObject: type=%s sha=%s size=%d agency=%s", typeID, hash.String()[:8], obj.Size(), s.agencyID)
 
 	r, err := obj.Reader()
 	if err != nil {
@@ -153,8 +157,10 @@ func (s *arangoStorer) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Ha
 		},
 	})
 	if upsertErr != nil {
+		log.Printf("[storer] SetEncodedObject: upsert FAILED type=%s sha=%s: %v", typeID, hash.String()[:8], upsertErr)
 		return plumbing.ZeroHash, fmt.Errorf("SetEncodedObject: upsert %s: %w", typeID, upsertErr)
 	}
+	log.Printf("[storer] SetEncodedObject: upsert OK type=%s sha=%s", typeID, hash.String()[:8])
 
 	return hash, nil
 }
@@ -172,6 +178,7 @@ func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (pl
 			Properties: map[string]any{"sha": sha},
 		})
 		if err != nil {
+			log.Printf("[storer] EncodedObject: ListEntities error type=%s sha=%.8s: %v", typeID, sha, err)
 			return nil, plumbing.ErrObjectNotFound
 		}
 		if len(list) == 0 {
@@ -179,19 +186,27 @@ func (s *arangoStorer) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (pl
 		}
 		obj, decErr := decodeEntityToObject(list[0])
 		if decErr != nil {
+			// Entity exists but has no raw data — metadata-only (imported without bytes).
+			log.Printf("[storer] EncodedObject: entity found but no raw data type=%s sha=%.8s: %v", typeID, sha, decErr)
 			return nil, plumbing.ErrObjectNotFound
 		}
+		log.Printf("[storer] EncodedObject: HIT type=%s sha=%.8s size=%d", typeID, sha, obj.Size())
 		return obj, nil
 	}
 
 	if t != plumbing.AnyObject {
-		return search(typeIDForObject(t))
+		obj, err := search(typeIDForObject(t))
+		if err != nil {
+			log.Printf("[storer] EncodedObject: MISS type=%s sha=%.8s agency=%s", typeIDForObject(t), sha, s.agencyID)
+		}
+		return obj, err
 	}
 	for _, typeID := range gitObjectTypeIDs {
 		if obj, err := search(typeID); err == nil {
 			return obj, nil
 		}
 	}
+	log.Printf("[storer] EncodedObject: MISS AnyObject sha=%.8s agency=%s", sha, s.agencyID)
 	return nil, plumbing.ErrObjectNotFound
 }
 
@@ -248,9 +263,15 @@ func (s *arangoStorer) HasEncodedObject(h plumbing.Hash) error {
 			Properties: map[string]any{"sha": sha},
 		})
 		if err == nil && len(list) > 0 {
+			hasData := false
+			if _, ok := list[0].Properties["data"]; ok {
+				hasData = true
+			}
+			log.Printf("[storer] HasEncodedObject: FOUND type=%s sha=%.8s hasData=%v agency=%s", typeID, sha, hasData, s.agencyID)
 			return nil
 		}
 	}
+	log.Printf("[storer] HasEncodedObject: MISS sha=%.8s agency=%s", sha, s.agencyID)
 	return plumbing.ErrObjectNotFound
 }
 

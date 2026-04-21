@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -270,29 +271,39 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 // bare clone is unavailable; the caller should trigger [GitManager.FetchBranch]
 // and retry.
 func (m *gitManager) ReadFile(ctx context.Context, branchID, path string) (Blob, error) {
+	log.Printf("[ReadFile] branchID=%s path=%q", branchID, path)
 	branch, err := m.GetBranch(ctx, branchID)
 	if err != nil {
+		log.Printf("[ReadFile] GetBranch error: %v", err)
 		return Blob{}, fmt.Errorf("ReadFile: %w", err)
 	}
+	log.Printf("[ReadFile] branch name=%q headCommitID=%q repoID=%q", branch.Name, branch.HeadCommitID, branch.RepositoryID)
 	if branch.HeadCommitID == "" {
+		log.Printf("[ReadFile] branch has no headCommitID — returning ErrFileNotFound")
 		return Blob{}, ErrFileNotFound
 	}
 	blob, err := m.findBlobAtCommit(ctx, branch.HeadCommitID, path)
 	if err != nil {
+		log.Printf("[ReadFile] findBlobAtCommit error: %v", err)
 		return Blob{}, fmt.Errorf("ReadFile: %w", err)
 	}
+	log.Printf("[ReadFile] found blob id=%s sha=%q contentLen=%d", blob.ID, blob.SHA, len(blob.Content))
 
 	// Fast path: content is already cached in the entity graph.
 	if blob.Content != "" {
+		log.Printf("[ReadFile] fast path — content already cached")
 		return blob, nil
 	}
 
-	// Lazy path: blob was written as metadata-only by FetchBranch (GIT-023d).
-	// Try to hydrate the content from the bare clone.
-	content, encoding, loadErr := m.loadBlobContentFromBareClone(ctx, branch, blob)
+	// Lazy path: blob was written as metadata-only (no content field).
+	// Hydrate from the backend storer (ArangoDB or filesystem).
+	log.Printf("[ReadFile] lazy path — blob content empty, hydrating from storer (sha=%s)", blob.SHA)
+	content, encoding, loadErr := m.loadBlobContentFromStorer(ctx, branch, blob)
 	if loadErr != nil {
+		log.Printf("[ReadFile] loadBlobContentFromStorer error: %v", loadErr)
 		return Blob{}, ErrBlobContentUnavailable
 	}
+	log.Printf("[ReadFile] hydrated blob sha=%s encoding=%q contentLen=%d", blob.SHA, encoding, len(content))
 
 	blob.Content = content
 	blob.Encoding = encoding
@@ -480,15 +491,20 @@ func (m *gitManager) Diff(ctx context.Context, fromRef, toRef string) ([]FileDif
 
 // findBlobAtCommit traverses the commit's tree(s) to find a blob matching path.
 func (m *gitManager) findBlobAtCommit(ctx context.Context, commitID, path string) (Blob, error) {
+	log.Printf("[findBlobAtCommit] commitID=%s path=%q", commitID, path)
 	blobs, err := m.allBlobsAtCommit(ctx, commitID)
 	if err != nil {
+		log.Printf("[findBlobAtCommit] allBlobsAtCommit error: %v", err)
 		return Blob{}, err
 	}
+	log.Printf("[findBlobAtCommit] %d blobs found at commit", len(blobs))
 	for _, b := range blobs {
 		if b.Path == path {
+			log.Printf("[findBlobAtCommit] matched blob id=%s sha=%s", b.ID, b.SHA)
 			return b, nil
 		}
 	}
+	log.Printf("[findBlobAtCommit] path %q not found among blobs", path)
 	return Blob{}, ErrFileNotFound
 }
 

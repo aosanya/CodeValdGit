@@ -226,13 +226,31 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 		}
 	}
 
+	log.Printf("[receive-pack][%s/%s] calling ReceivePack with %d command(s)", agencyID, repoName, len(req.Commands))
 	status, err := sess.ReceivePack(r.Context(), req)
 	if err != nil {
-		log.Printf("[receive-pack][%s/%s] ReceivePack error: %v", agencyID, repoName, err)
+		log.Printf("[receive-pack][%s/%s] ReceivePack error (type=%T): %v", agencyID, repoName, err, err)
+		// Log per-command error codes if available in the status response.
+		if status != nil {
+			for _, ce := range status.CommandStatuses {
+				if ce != nil {
+					log.Printf("[receive-pack][%s/%s]   cmd-status ref=%s err=%q", agencyID, repoName, ce.ReferenceName, ce.Error())
+				}
+			}
+		}
 		httpErrorFromTransport(w, err)
 		return
 	}
 	log.Printf("[receive-pack][%s/%s] ReceivePack succeeded", agencyID, repoName)
+
+	// Log status for each command.
+	if status != nil {
+		for _, ce := range status.CommandStatuses {
+			if ce != nil {
+				log.Printf("[receive-pack][%s/%s]   cmd-ok ref=%s err=%q", agencyID, repoName, ce.ReferenceName, ce.Error())
+			}
+		}
+	}
 
 	// Trigger async graph indexing for each successfully updated branch.
 	if h.indexer != nil {
@@ -258,6 +276,7 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 	} else {
 		log.Printf("[receive-pack][%s/%s] WARNING: indexer is nil — push graph indexing skipped", agencyID, repoName)
 	}
+	log.Printf("[receive-pack][%s/%s] handler complete", agencyID, repoName)
 
 	setNoCacheHeaders(w)
 	w.Header().Set("Content-Type", "application/x-git-receive-pack-result")
@@ -283,12 +302,15 @@ type backendLoader struct {
 // Returns transport.ErrRepositoryNotFound only when OpenStorer fails after
 // the auto-create attempt.
 func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
+	log.Printf("[loader] Load called: ep.Path=%q ep.Host=%q", ep.Path, ep.Host)
 	trimmed := strings.Trim(ep.Path, "/")
 	if trimmed == "" {
+		log.Printf("[loader] empty path — ErrRepositoryNotFound")
 		return nil, transport.ErrRepositoryNotFound
 	}
 	parts := strings.SplitN(trimmed, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		log.Printf("[loader] bad path segments=%v — ErrRepositoryNotFound", parts)
 		return nil, transport.ErrRepositoryNotFound
 	}
 	agencyID, repoName := parts[0], parts[1]
@@ -296,21 +318,28 @@ func (l *backendLoader) Load(ep *transport.Endpoint) (storer.Storer, error) {
 	ctx := context.Background()
 	sto, _, err := l.b.OpenStorer(ctx, agencyID, repoName)
 	if err == nil {
+		log.Printf("[loader] OpenStorer OK agency=%s repo=%s", agencyID, repoName)
 		return sto, nil
 	}
+	log.Printf("[loader] OpenStorer error agency=%s repo=%s: %v", agencyID, repoName, err)
 
 	// Auto-create the repository on first access and retry.
 	if errors.Is(err, codevaldgit.ErrRepoNotFound) {
+		log.Printf("[loader] repo not found — auto-creating agency=%s repo=%s", agencyID, repoName)
 		if initErr := l.b.InitRepo(ctx, agencyID, repoName); initErr != nil && !errors.Is(initErr, codevaldgit.ErrRepoAlreadyExists) {
+			log.Printf("[loader] InitRepo failed agency=%s repo=%s: %v", agencyID, repoName, initErr)
 			return nil, transport.ErrRepositoryNotFound
 		}
 		sto, _, err = l.b.OpenStorer(ctx, agencyID, repoName)
 		if err != nil {
+			log.Printf("[loader] OpenStorer after init failed agency=%s repo=%s: %v", agencyID, repoName, err)
 			return nil, transport.ErrRepositoryNotFound
 		}
+		log.Printf("[loader] OpenStorer after init OK agency=%s repo=%s", agencyID, repoName)
 		return sto, nil
 	}
 
+	log.Printf("[loader] unhandled error — ErrRepositoryNotFound agency=%s repo=%s: %v", agencyID, repoName, err)
 	return nil, transport.ErrRepositoryNotFound
 }
 
