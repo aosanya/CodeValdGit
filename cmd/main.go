@@ -140,7 +140,7 @@ func main() {
 	httpServer := &http.Server{
 		Handler:      gitHTTPHandler,
 		ReadTimeout:  10 * time.Minute,
-			WriteTimeout: 10 * time.Minute,
+		WriteTimeout: 10 * time.Minute,
 	}
 
 	// ── Signal handling ───────────────────────────────────────────────────────
