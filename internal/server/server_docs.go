@@ -140,6 +140,24 @@ func (s *Server) SearchByKeywords(ctx context.Context, req *pb.SearchByKeywordsR
 	return graphResultToProto(result), nil
 }
 
+// QueryGraph implements pb.GitServiceServer.
+func (s *Server) QueryGraph(ctx context.Context, req *pb.QueryGraphRequest) (*pb.GraphResult, error) {
+	result, err := s.mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
+		BranchID:      req.GetBranchId(),
+		Limit:         int(req.GetLimit()),
+		SortBy:        req.GetSortBy(),
+		Signals:       req.GetSignals(),
+		KeywordIDs:    req.GetKeywordIds(),
+		FileTypes:     req.GetFileTypes(),
+		Folders:       req.GetFolders(),
+		Relationships: req.GetRelationships(),
+	})
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return graphResultToProto(result), nil
+}
+
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 // keywordToProto converts a domain Keyword to its proto representation.

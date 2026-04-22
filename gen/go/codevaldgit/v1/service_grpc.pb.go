@@ -56,6 +56,7 @@ const (
 	GitService_DeleteEdge_FullMethodName           = "/codevaldgit.v1.GitService/DeleteEdge"
 	GitService_GetNeighborhood_FullMethodName      = "/codevaldgit.v1.GitService/GetNeighborhood"
 	GitService_SearchByKeywords_FullMethodName     = "/codevaldgit.v1.GitService/SearchByKeywords"
+	GitService_QueryGraph_FullMethodName           = "/codevaldgit.v1.GitService/QueryGraph"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -198,6 +199,11 @@ type GitServiceClient interface {
 	// optionally cascading down the keyword hierarchy.
 	// Error: NOT_FOUND if the branch does not exist.
 	SearchByKeywords(ctx context.Context, in *SearchByKeywordsRequest, opts ...grpc.CallOption) (*GraphResult, error)
+	// QueryGraph returns up to limit Blob nodes filtered across five dimensions
+	// (signals, keyword_ids, file_types, folders, relationships) and sorted by
+	// descending signal layer. An empty body returns the top 50 highest-signal nodes.
+	// Error: NOT_FOUND if the branch does not exist.
+	QueryGraph(ctx context.Context, in *QueryGraphRequest, opts ...grpc.CallOption) (*GraphResult, error)
 }
 
 type gitServiceClient struct {
@@ -578,6 +584,16 @@ func (c *gitServiceClient) SearchByKeywords(ctx context.Context, in *SearchByKey
 	return out, nil
 }
 
+func (c *gitServiceClient) QueryGraph(ctx context.Context, in *QueryGraphRequest, opts ...grpc.CallOption) (*GraphResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GraphResult)
+	err := c.cc.Invoke(ctx, GitService_QueryGraph_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GitServiceServer is the server API for GitService service.
 // All implementations must embed UnimplementedGitServiceServer
 // for forward compatibility.
@@ -718,6 +734,11 @@ type GitServiceServer interface {
 	// optionally cascading down the keyword hierarchy.
 	// Error: NOT_FOUND if the branch does not exist.
 	SearchByKeywords(context.Context, *SearchByKeywordsRequest) (*GraphResult, error)
+	// QueryGraph returns up to limit Blob nodes filtered across five dimensions
+	// (signals, keyword_ids, file_types, folders, relationships) and sorted by
+	// descending signal layer. An empty body returns the top 50 highest-signal nodes.
+	// Error: NOT_FOUND if the branch does not exist.
+	QueryGraph(context.Context, *QueryGraphRequest) (*GraphResult, error)
 	mustEmbedUnimplementedGitServiceServer()
 }
 
@@ -838,6 +859,9 @@ func (UnimplementedGitServiceServer) GetNeighborhood(context.Context, *GetNeighb
 }
 func (UnimplementedGitServiceServer) SearchByKeywords(context.Context, *SearchByKeywordsRequest) (*GraphResult, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchByKeywords not implemented")
+}
+func (UnimplementedGitServiceServer) QueryGraph(context.Context, *QueryGraphRequest) (*GraphResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method QueryGraph not implemented")
 }
 func (UnimplementedGitServiceServer) mustEmbedUnimplementedGitServiceServer() {}
 func (UnimplementedGitServiceServer) testEmbeddedByValue()                    {}
@@ -1526,6 +1550,24 @@ func _GitService_SearchByKeywords_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitService_QueryGraph_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryGraphRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).QueryGraph(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_QueryGraph_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).QueryGraph(ctx, req.(*QueryGraphRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GitService_ServiceDesc is the grpc.ServiceDesc for GitService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1680,6 +1722,10 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchByKeywords",
 			Handler:    _GitService_SearchByKeywords_Handler,
+		},
+		{
+			MethodName: "QueryGraph",
+			Handler:    _GitService_QueryGraph_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

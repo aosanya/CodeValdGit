@@ -6,18 +6,33 @@
 //   - [GitManager.SearchByKeywords] — keyword-driven entity discovery with
 //     optional taxonomy cascade and AND/OR match modes.
 //
-// Both methods delegate to [entitygraph.DataManager.TraverseGraph] and
-// [entitygraph.DataManager.ListRelationships] — no direct AQL is issued from
-// this layer.
+//   - [GitManager.QueryGraph] — multi-filter, signal-sorted Blob graph query.
+//
+// All methods delegate to [entitygraph.DataManager] — no direct AQL is issued
+// from this layer.
 package codevaldgit
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
+
+// defaultSignalLayers maps the built-in signal names to their rank.
+// Used when no Signal entities have been persisted to the store yet.
+var defaultSignalLayers = map[string]int{
+	"surface":     1,
+	"index":       2,
+	"structural":  3,
+	"contributor": 4,
+	"authority":   5,
+}
+
+const queryGraphDefaultLimit = 50
 
 // neighborhoodMaxNodes is the hard cap on vertices returned by GetNeighborhood.
 const neighborhoodMaxNodes = 100
@@ -316,6 +331,239 @@ func unionSets(sets []map[string]bool) map[string]bool {
 	}
 	return result
 }
+
+// ── QueryGraph ────────────────────────────────────────────────────────────────
+
+// QueryGraph returns up to req.Limit Blob nodes filtered across five dimensions
+// and sorted by descending signal layer. An empty request returns the top 50
+// highest-signal Blob nodes with all their inter-node edges.
+func (m *gitManager) QueryGraph(ctx context.Context, req QueryGraphRequest) (GraphResult, error) {
+	if _, err := m.GetBranch(ctx, req.BranchID); err != nil {
+		if errors.Is(err, ErrBranchNotFound) {
+			return GraphResult{}, ErrBranchNotFound
+		}
+		return GraphResult{}, fmt.Errorf("QueryGraph: get branch: %w", err)
+	}
+
+	limit := req.Limit
+	if limit <= 0 {
+		limit = queryGraphDefaultLimit
+	}
+
+	signalLayers, err := m.loadSignalLayers(ctx)
+	if err != nil {
+		return GraphResult{}, fmt.Errorf("QueryGraph: load signals: %w", err)
+	}
+
+	blobs, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: m.agencyID,
+		TypeID:   "Blob",
+	})
+	if err != nil {
+		return GraphResult{}, fmt.Errorf("QueryGraph: list blobs: %w", err)
+	}
+	blobs = filterBlobsByPath(blobs, req.FileTypes, req.Folders)
+
+	tagEdges, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
+		AgencyID: m.agencyID,
+		Name:     "tagged_with",
+	})
+	if err != nil {
+		return GraphResult{}, fmt.Errorf("QueryGraph: list tagged_with edges: %w", err)
+	}
+
+	type tagInfo struct {
+		keywordID string
+		signal    string
+	}
+	blobTags := make(map[string][]tagInfo, len(tagEdges))
+	for _, e := range tagEdges {
+		sig, _ := e.Properties["signal"].(string)
+		blobTags[e.FromID] = append(blobTags[e.FromID], tagInfo{keywordID: e.ToID, signal: sig})
+	}
+
+	signalSet := toStringSet(req.Signals)
+	kwSet := toStringSet(req.KeywordIDs)
+
+	type scored struct {
+		entity   entitygraph.Entity
+		maxLayer int
+	}
+	var candidates []scored
+	for _, blob := range blobs {
+		tags := blobTags[blob.ID]
+		if len(kwSet) > 0 {
+			found := false
+			for _, t := range tags {
+				if kwSet[t.keywordID] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		maxLayer := 0
+		hasMatchingSignal := len(signalSet) == 0
+		for _, t := range tags {
+			if layer := signalLayers[t.signal]; layer > maxLayer {
+				maxLayer = layer
+			}
+			if signalSet[t.signal] {
+				hasMatchingSignal = true
+			}
+		}
+		if !hasMatchingSignal {
+			continue
+		}
+		candidates = append(candidates, scored{entity: blob, maxLayer: maxLayer})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].maxLayer > candidates[j].maxLayer
+	})
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+
+	nodeIDs := make(map[string]bool, len(candidates))
+	nodes := make([]GraphNode, 0, len(candidates))
+	for _, c := range candidates {
+		nodeIDs[c.entity.ID] = true
+		nodes = append(nodes, GraphNode{
+			ID:         c.entity.ID,
+			TypeID:     c.entity.TypeID,
+			Properties: c.entity.Properties,
+		})
+	}
+
+	relSet := toStringSet(req.Relationships)
+	edges, err := m.queryGraphEdges(ctx, nodeIDs, relSet)
+	if err != nil {
+		return GraphResult{}, fmt.Errorf("QueryGraph: collect edges: %w", err)
+	}
+
+	return GraphResult{Nodes: nodes, Edges: edges}, nil
+}
+
+// loadSignalLayers lists Signal entities and returns a name→layer map.
+// Falls back to defaultSignalLayers when the store is empty.
+func (m *gitManager) loadSignalLayers(ctx context.Context) (map[string]int, error) {
+	signals, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: m.agencyID,
+		TypeID:   "Signal",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("loadSignalLayers: %w", err)
+	}
+	if len(signals) == 0 {
+		return defaultSignalLayers, nil
+	}
+	layers := make(map[string]int, len(signals))
+	for _, s := range signals {
+		name, _ := s.Properties["name"].(string)
+		var layer int
+		switch v := s.Properties["layer"].(type) {
+		case int:
+			layer = v
+		case float64:
+			layer = int(v)
+		}
+		if name != "" {
+			layers[name] = layer
+		}
+	}
+	return layers, nil
+}
+
+// filterBlobsByPath applies file_types (suffix) and folders (prefix) filters
+// in-memory, returning only blobs whose path matches all active filters.
+func filterBlobsByPath(blobs []entitygraph.Entity, fileTypes, folders []string) []entitygraph.Entity {
+	if len(fileTypes) == 0 && len(folders) == 0 {
+		return blobs
+	}
+	out := blobs[:0]
+	for _, b := range blobs {
+		path, _ := b.Properties["path"].(string)
+		if len(fileTypes) > 0 {
+			matched := false
+			for _, ft := range fileTypes {
+				if strings.HasSuffix(path, ft) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		if len(folders) > 0 {
+			matched := false
+			for _, f := range folders {
+				if strings.HasPrefix(path, f) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// queryGraphEdges collects all relationships between nodes in the given ID set,
+// filtered by relSet (edge name or descriptor property). An empty relSet passes
+// all edges through.
+func (m *gitManager) queryGraphEdges(ctx context.Context, nodeIDs map[string]bool, relSet map[string]bool) ([]GraphEdge, error) {
+	seen := make(map[string]bool)
+	var edges []GraphEdge
+	for nodeID := range nodeIDs {
+		rels, err := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
+			AgencyID: m.agencyID,
+			FromID:   nodeID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("queryGraphEdges %s: %w", nodeID, err)
+		}
+		for _, rel := range rels {
+			if seen[rel.ID] || !nodeIDs[rel.ToID] {
+				continue
+			}
+			if len(relSet) > 0 {
+				descriptor, _ := rel.Properties["descriptor"].(string)
+				if !relSet[rel.Name] && !relSet[descriptor] {
+					continue
+				}
+			}
+			seen[rel.ID] = true
+			edges = append(edges, GraphEdge{
+				ID:     rel.ID,
+				Name:   rel.Name,
+				FromID: rel.FromID,
+				ToID:   rel.ToID,
+			})
+		}
+	}
+	return edges, nil
+}
+
+// toStringSet converts a slice to a set map for O(1) membership tests.
+func toStringSet(ss []string) map[string]bool {
+	if len(ss) == 0 {
+		return nil
+	}
+	set := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		set[s] = true
+	}
+	return set
+}
+
+// ── Set helpers ───────────────────────────────────────────────────────────────
 
 // intersectSets returns the intersection of all sets in the slice.
 // An empty slice returns an empty map.
