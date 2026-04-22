@@ -201,6 +201,11 @@ func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef,
 		}
 	}
 
+	// ── 6. .git-graph/ sync (Phase 2 — non-blocking) ────────────────────────
+	if err := m.syncGitGraph(ctx, repoName, branchRef, newSHA); err != nil {
+		log.Printf("[push-index][%s] repo=%s ref=%s: git-graph sync failed: %v", m.agencyID, repoName, branchRef, err)
+	}
+
 	log.Printf("[push-index][%s] repo=%s ref=%s sha=%s: done in %s", m.agencyID, repoName, branchRef, newSHA[:8], time.Since(start))
 	return nil
 }
