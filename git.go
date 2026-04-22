@@ -62,6 +62,10 @@ type GitManager interface {
 	// exists for this agency.
 	GetRepositoryByName(ctx context.Context, repoName string) (Repository, error)
 
+	// GetBranchByName retrieves a Branch entity by its human-readable name.
+	// Returns [ErrBranchNotFound] if no branch with that name exists for this agency.
+	GetBranchByName(ctx context.Context, repoID string, branchName string) (Branch, error)
+
 	// DeleteRepo marks the specified repository entity as archived (soft delete).
 	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
 	DeleteRepo(ctx context.Context, repoID string) error
@@ -275,6 +279,16 @@ type GitManager interface {
 	// Returns [ErrImportJobNotFound] if no job with the given ID exists for
 	// this agency.
 	GetFetchBranchStatus(ctx context.Context, jobID string) (FetchBranchJob, error)
+
+	// IndexPushedBranch indexes the commits that were just pushed and
+	// materialises Commit, Tree, and Blob entities in the entity graph, then
+	// advances the branch HEAD pointer.
+	// Called by the Git Smart HTTP receive-pack handler after a successful push.
+	// repoName is the human-readable repository name (not an entity ID).
+	// branchRef is the full ref name, e.g. "refs/heads/main".
+	// oldSHA is the previous branch tip (all-zeros string for a new branch).
+	// newSHA is the new branch tip written by the push.
+	IndexPushedBranch(ctx context.Context, repoName, branchRef, oldSHA, newSHA string) error
 }
 
 // gitManager is the concrete implementation of [GitManager].
@@ -286,6 +300,7 @@ type gitManager struct {
 	sm        GitSchemaManager        // schema versioning — injected by cmd/main.go
 	publisher CrossPublisher          // optional; nil = skip event publishing
 	agencyID  string                  // the single agency ID for this database
+	backend   Backend                 // storer backend — used by IndexPushedBranch
 }
 
 // NewGitManager constructs a [GitManager] backed by the given
@@ -297,11 +312,13 @@ func NewGitManager(
 	sm GitSchemaManager,
 	pub CrossPublisher,
 	agencyID string,
+	backend Backend,
 ) GitManager {
 	return &gitManager{
 		dm:        dm,
 		sm:        sm,
 		publisher: pub,
 		agencyID:  agencyID,
+		backend:   backend,
 	}
 }

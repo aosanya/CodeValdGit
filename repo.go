@@ -254,7 +254,7 @@ type repoFileEntry struct {
 //     (both sides independently edited the same file).
 //   - Delete: conflict when base changed the file since src's parent
 //     (base edited a file that src is trying to delete).
-func (r *repo) cherryPick(ctx context.Context, base plumbing.Hash, src *object.Commit) (plumbing.Hash, []string, error) {
+func (r *repo) cherryPick(_ context.Context, base plumbing.Hash, src *object.Commit) (plumbing.Hash, []string, error) {
 	baseCommit, err := r.git.CommitObject(base)
 	if err != nil {
 		return plumbing.ZeroHash, nil, fmt.Errorf("cherryPick: get base commit: %w", err)

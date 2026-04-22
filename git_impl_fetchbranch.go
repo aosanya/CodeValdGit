@@ -175,11 +175,24 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 	// history without shallow-object problems.
 	t0 = time.Now()
 	log.Printf("[fetchbranch][%s] job=%s branch=%q: starting deepenClone (full non-shallow single-branch)", m.agencyID, jobID, branchName)
-	repo, err := m.deepenClone(ctx, nil, branchName, sourceURL)
-	log.Printf("[fetchbranch][%s] job=%s branch=%q: deepenClone done in %s err=%v", m.agencyID, jobID, branchName, time.Since(t0), err)
+	repo, newCloneDir, err := m.deepenClone(ctx, nil, branchName, sourceURL)
+	log.Printf("[fetchbranch][%s] job=%s branch=%q: deepenClone done in %s err=%v newCloneDir=%s", m.agencyID, jobID, branchName, time.Since(t0), err, newCloneDir)
 	if err != nil {
 		fail(fmt.Sprintf("full clone branch=%q: %v", branchName, err))
 		return
+	}
+
+	// Persist the new bare_clone_path back onto the Repository entity so that
+	// loadBlobContentFromBareClone always opens the correct (fully-hydrated) clone.
+	if _, updateErr := m.dm.UpdateEntity(ctx, m.agencyID, repoID, entitygraph.UpdateEntityRequest{
+		Properties: map[string]any{
+			"bare_clone_path": newCloneDir,
+			"updated_at":      time.Now().UTC().Format(time.RFC3339),
+		},
+	}); updateErr != nil {
+		log.Printf("[fetchbranch][%s] job=%s branch=%q: WARNING failed to update bare_clone_path to %s: %v", m.agencyID, jobID, branchName, newCloneDir, updateErr)
+	} else {
+		log.Printf("[fetchbranch][%s] job=%s branch=%q: updated bare_clone_path to %s", m.agencyID, jobID, branchName, newCloneDir)
 	}
 
 	t0 = time.Now()
@@ -264,37 +277,6 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 	log.Printf("[fetchbranch][%s] job=%s branch=%q: ALL DONE — total elapsed %s", m.agencyID, jobID, branchName, time.Since(runStart))
 }
 
-// openOrRecloneBare opens the existing bare clone at bareClonePath. If the
-// path is missing or gone, it performs a fresh bare shallow clone from sourceURL.
-// Returns the Repository and the (possibly new) bare clone path.
-func (m *gitManager) openOrRecloneBare(ctx context.Context, bareClonePath, sourceURL, jobID string) (*gogit.Repository, string, error) {
-	if bareClonePath != "" {
-		if _, statErr := os.Stat(bareClonePath); statErr == nil {
-			repo, openErr := gogit.PlainOpen(bareClonePath)
-			if openErr == nil {
-				return repo, bareClonePath, nil
-			}
-		}
-	}
-	if sourceURL == "" {
-		return nil, "", fmt.Errorf("bare_clone_path missing or gone and source_url is empty")
-	}
-	dir, err := cloneRootDir(m.agencyID, jobID+"-refetch")
-	if err != nil {
-		return nil, "", err
-	}
-	repo, err := gogit.PlainCloneContext(ctx, dir, true, &gogit.CloneOptions{
-		URL:          sourceURL,
-		Depth:        1,
-		SingleBranch: false,
-		Tags:         gogit.NoTags,
-	})
-	if err != nil {
-		return nil, "", fmt.Errorf("re-clone %s: %w", sourceURL, err)
-	}
-	return repo, dir, nil
-}
-
 // deepenClone performs a fresh full (non-shallow) single-branch clone of
 // branchName from sourceURL into a new temp directory and returns the opened
 // repository. The caller should use this repo for all subsequent operations on
@@ -304,13 +286,13 @@ func (m *gitManager) openOrRecloneBare(ctx context.Context, bareClonePath, sourc
 // go-git v5 has no reliable Unshallow option: fetching into a shallow repo
 // where the tip SHA already exists returns NoErrAlreadyUpToDate without
 // fetching parent commits, leaving the object store incomplete.
-func (m *gitManager) deepenClone(ctx context.Context, _ *gogit.Repository, branchName, sourceURL string) (*gogit.Repository, error) {
+func (m *gitManager) deepenClone(ctx context.Context, _ *gogit.Repository, branchName, sourceURL string) (*gogit.Repository, string, error) {
 	if sourceURL == "" {
-		return nil, fmt.Errorf("deepenClone: source_url is empty for branch %q", branchName)
+		return nil, "", fmt.Errorf("deepenClone: source_url is empty for branch %q", branchName)
 	}
 	dir, err := cloneRootDir(m.agencyID, branchName+"-full")
 	if err != nil {
-		return nil, fmt.Errorf("deepenClone: create temp dir: %w", err)
+		return nil, "", fmt.Errorf("deepenClone: create temp dir: %w", err)
 	}
 	cloneRef := gogitplumbing.ReferenceName("refs/heads/" + branchName)
 	repo, err := gogit.PlainCloneContext(ctx, dir, true, &gogit.CloneOptions{
@@ -322,9 +304,9 @@ func (m *gitManager) deepenClone(ctx context.Context, _ *gogit.Repository, branc
 	if err != nil {
 		// Clean up temp dir on failure.
 		_ = os.RemoveAll(dir)
-		return nil, fmt.Errorf("deepenClone: clone branch %q: %w", branchName, err)
+		return nil, "", fmt.Errorf("deepenClone: clone branch %q: %w", branchName, err)
 	}
-	return repo, nil
+	return repo, dir, nil
 }
 
 // walkCommitsOnly walks all commits reachable from ref and upserts Commit entities.
@@ -383,6 +365,7 @@ func (m *gitManager) walkCommitsOnly(ctx context.Context, repo *gogit.Repository
 // Recursive for subdirectories. ErrEntityAlreadyExists is skipped.
 func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogit.Repository, tree *gogitobject.Tree, pathPrefix, now string) (string, error) {
 	treeSHA := tree.Hash.String()
+	log.Printf("[upsertTree][%s] path=%q sha=%s entries=%d", m.agencyID, pathPrefix, treeSHA[:8], len(tree.Entries))
 
 	treeEntity, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
@@ -436,7 +419,10 @@ func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogi
 		} else {
 			subTree, err := repo.TreeObject(entry.Hash)
 			if err != nil {
-				return treeID, fmt.Errorf("resolve subtree %s path=%q: %w", entry.Hash.String(), entryPath, err)
+				// Subtree has no raw data (import-job metadata-only entity) —
+				// skip recursive walk; it will be deepened by FetchBranch later.
+				log.Printf("[upsertTree][%s] SKIP subtree path=%q sha=%s: TreeObject err=%v", m.agencyID, entryPath, entry.Hash.String()[:8], err)
+				continue
 			}
 			subTreeID, err := m.upsertTreeMetadataWithEdges(ctx, repo, subTree, entryPath, now)
 			if err != nil {
@@ -461,10 +447,17 @@ func (m *gitManager) upsertTreeMetadataWithEdges(ctx context.Context, repo *gogi
 // ErrEntityAlreadyExists is skipped.
 func (m *gitManager) upsertBlobMetadataWithID(ctx context.Context, repo *gogit.Repository, entry gogitobject.TreeEntry, fullPath, now string) (string, error) {
 	blobSHA := entry.Hash.String()
+
+	// Size: read from the storer only when the raw object bytes are available
+	// (i.e. objects that were pushed, not import-job metadata-only entities).
+	// For metadata-only blobs we use size 0 — it will be backfilled lazily.
+	var blobSize int64
 	t0 := time.Now()
-	blobObj, err := repo.BlobObject(entry.Hash)
-	if err != nil {
-		return "", fmt.Errorf("read blob object %s path=%q: %w", blobSHA, fullPath, err)
+	if err := repo.Storer.HasEncodedObject(entry.Hash); err == nil {
+		blobObj, blobErr := repo.BlobObject(entry.Hash)
+		if blobErr == nil {
+			blobSize = blobObj.Size
+		}
 	}
 	if elapsed := time.Since(t0); elapsed > 100*time.Millisecond {
 		log.Printf("[fetchbranch][%s] SLOW BlobObject(%s path=%q) took %s", m.agencyID, blobSHA[:8], fullPath, elapsed)
@@ -482,7 +475,7 @@ func (m *gitManager) upsertBlobMetadataWithID(ctx context.Context, repo *gogit.R
 			"path":       fullPath,
 			"name":       name,
 			"extension":  ext,
-			"size":       blobObj.Size,
+			"size":       blobSize,
 			"encoding":   "",
 			"content":    "",
 			"created_at": now,

@@ -158,6 +158,9 @@ func (m *gitManager) deleteEdgesByBranchID(ctx context.Context, blobID, edgeName
 		if strMapProp(rel.Properties, "branch_id") != branchID {
 			continue
 		}
+		if err := m.dm.DeleteRelationship(ctx, m.agencyID, rel.ID); err != nil {
+			log.Printf("[deleteEdgesByBranchID] delete %s rel %s: %v", edgeName, rel.ID, err)
+		}
 	}
 }
 

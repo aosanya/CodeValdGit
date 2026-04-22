@@ -149,15 +149,29 @@ type FetchBranchJob struct {
 
 **Change to `ReadFile`**:
 
-1. Look up the `Blob` entity for the requested `(agencyID, repoID, branchName, path)`.
-2. If `Blob.content` is present (already cached), return it.
-3. If `Blob.content` is absent, open the bare clone at `bare_clone_path`, read
-   the blob object by SHA (`repo.BlobObject(plumbing.NewHash(sha))`), decode
-   content, write it back to the entity (`UpdateEntity` — cache it), return it.
-4. If the bare clone no longer exists and content is absent, return
-   `ErrBlobContentUnavailable` — the caller must trigger a `FetchBranch` first.
+1. Look up the `Blob` entity for the requested `(branchID, path)`.
+2. If `Blob.content` is present (already cached in the entity), return it immediately.
+3. If `Blob.content` is absent, open the **backend storer** for the repository
+   (`m.backend.OpenStorer(ctx, agencyID, repoName)`) and read the blob object by
+   SHA (`repo.BlobObject(plumbing.NewHash(sha))`). This works for both pushed
+   repositories (objects in ArangoDB/filesystem storer) and imported repositories
+   (objects in the same storer after `IndexPushedBranch` runs). Write the content
+   back to the entity (`UpdateEntity` — cache it for future reads), then return it.
+4. If the blob object cannot be resolved in the storer, return
+   `ErrBlobContentUnavailable`.
 
-This keeps blob entities small by default while still serving content correctly.
+> **Note — why not a bare clone?**
+>
+> The original GIT-023e design stored blob objects in a bare clone on disk
+> (`bare_clone_path` on the Repository entity) and read from it via
+> `gogit.PlainOpen`. This was architecturally wrong: repositories created
+> by `git push` (via `git-receive-pack`) store their objects in the
+> **backend storer** (ArangoDB or filesystem), not in a bare clone. There
+> is no bare clone for pushed repositories. Reading from the storer via
+> `m.backend.OpenStorer` is the correct and universal approach — it works
+> for both import-origin and push-origin repositories without any
+> conditional branching. The `bare_clone_path` property on `Repository`
+> entities is now unused for content hydration and can be ignored.
 
 ---
 

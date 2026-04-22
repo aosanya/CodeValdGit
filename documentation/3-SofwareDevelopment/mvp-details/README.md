@@ -97,6 +97,15 @@ for the full analysis:
 | 6 | Blob basename — resolved by Gap 1 `entries[].name` | Easy |
 | 7 | ⚠️ gRPC-written objects missing `data` — invisible to `git pull` | Medium |
 
+### `.git-graph/` Push Sync (not started)
+
+| Task ID | Title | Spec File | Status |
+|---|---|---|---|
+| GIT-025a | JSON parser + validator (`internal/gitgraph/parser.go`) | [git-graph-sync.md](git-graph-sync.md) | 📋 Not Started |
+| GIT-025b | Sync logic — keyword upsert + edge hard-sync | [git-graph-sync.md](git-graph-sync.md) | 📋 Not Started |
+| GIT-025c | Hook integration in `IndexPushedBranch` | [git-graph-sync.md](git-graph-sync.md) | 📋 Not Started |
+| GIT-025d | Update `map-folder-keywords.prompt.md` to output `.git-graph/` files | [git-graph-sync.md](git-graph-sync.md) | ✅ Done |
+
 ### Production Safety (not started)
 
 | Task ID | Title | Spec File | Status |
@@ -138,6 +147,7 @@ for the full analysis:
 | [integration.md](integration.md) | ⚠️ Superseded — see grpc-service.md |
 | [repo-import.md](repo-import.md) | GIT-016 — async import of external public HTTPS repository |
 | [grpc-proto.md](grpc-proto.md) | GIT-021 — proto + gRPC handlers + route registration for documentation layer |
+| [git-graph-sync.md](git-graph-sync.md) | GIT-025 — `.git-graph/` push sync (file-driven keyword + edge authoring) |
 
 > **DR-023 / DR-024 pivot** — The documentation layer no longer uses four named
 > Blob→Blob edge types (`documents`, `documented_by`, `depends_on`, `imported_by`).

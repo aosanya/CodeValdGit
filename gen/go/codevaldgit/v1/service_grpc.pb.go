@@ -27,6 +27,7 @@ const (
 	GitService_PurgeRepo_FullMethodName            = "/codevaldgit.v1.GitService/PurgeRepo"
 	GitService_CreateBranch_FullMethodName         = "/codevaldgit.v1.GitService/CreateBranch"
 	GitService_GetBranch_FullMethodName            = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_GetBranchByName_FullMethodName      = "/codevaldgit.v1.GitService/GetBranchByName"
 	GitService_ListBranches_FullMethodName         = "/codevaldgit.v1.GitService/ListBranches"
 	GitService_DeleteBranch_FullMethodName         = "/codevaldgit.v1.GitService/DeleteBranch"
 	GitService_MergeBranch_FullMethodName          = "/codevaldgit.v1.GitService/MergeBranch"
@@ -90,6 +91,11 @@ type GitServiceClient interface {
 	// GetBranch retrieves a Branch entity by its ID.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	GetBranch(ctx context.Context, in *GetBranchRequest, opts ...grpc.CallOption) (*Branch, error)
+	// GetBranchByName retrieves a Branch entity by its human-readable name
+	// within the given repository. Falls back to ID-based lookup for callers
+	// that have not yet migrated to name-based URLs.
+	// Error: NOT_FOUND if no branch with that name exists in the repository.
+	GetBranchByName(ctx context.Context, in *GetBranchByNameRequest, opts ...grpc.CallOption) (*Branch, error)
 	// ListBranches returns all Branch entities for the specified repository.
 	ListBranches(ctx context.Context, in *ListBranchesRequest, opts ...grpc.CallOption) (*ListBranchesResponse, error)
 	// DeleteBranch removes a Branch entity.
@@ -276,6 +282,16 @@ func (c *gitServiceClient) GetBranch(ctx context.Context, in *GetBranchRequest, 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Branch)
 	err := c.cc.Invoke(ctx, GitService_GetBranch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetBranchByName(ctx context.Context, in *GetBranchByNameRequest, opts ...grpc.CallOption) (*Branch, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Branch)
+	err := c.cc.Invoke(ctx, GitService_GetBranchByName_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -595,6 +611,11 @@ type GitServiceServer interface {
 	// GetBranch retrieves a Branch entity by its ID.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	GetBranch(context.Context, *GetBranchRequest) (*Branch, error)
+	// GetBranchByName retrieves a Branch entity by its human-readable name
+	// within the given repository. Falls back to ID-based lookup for callers
+	// that have not yet migrated to name-based URLs.
+	// Error: NOT_FOUND if no branch with that name exists in the repository.
+	GetBranchByName(context.Context, *GetBranchByNameRequest) (*Branch, error)
 	// ListBranches returns all Branch entities for the specified repository.
 	ListBranches(context.Context, *ListBranchesRequest) (*ListBranchesResponse, error)
 	// DeleteBranch removes a Branch entity.
@@ -730,6 +751,9 @@ func (UnimplementedGitServiceServer) CreateBranch(context.Context, *CreateBranch
 }
 func (UnimplementedGitServiceServer) GetBranch(context.Context, *GetBranchRequest) (*Branch, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBranch not implemented")
+}
+func (UnimplementedGitServiceServer) GetBranchByName(context.Context, *GetBranchByNameRequest) (*Branch, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBranchByName not implemented")
 }
 func (UnimplementedGitServiceServer) ListBranches(context.Context, *ListBranchesRequest) (*ListBranchesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListBranches not implemented")
@@ -976,6 +1000,24 @@ func _GitService_GetBranch_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GitServiceServer).GetBranch(ctx, req.(*GetBranchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetBranchByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBranchByNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetBranchByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetBranchByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetBranchByName(ctx, req.(*GetBranchByNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1522,6 +1564,10 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBranch",
 			Handler:    _GitService_GetBranch_Handler,
+		},
+		{
+			MethodName: "GetBranchByName",
+			Handler:    _GitService_GetBranchByName_Handler,
 		},
 		{
 			MethodName: "ListBranches",

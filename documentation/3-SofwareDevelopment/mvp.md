@@ -30,6 +30,33 @@ git branch -d feature/GIT-XXX_description
 
 ---
 
+## P1: `.git-graph/` Push Sync (GIT-025)
+
+### GIT-025 — `.git-graph/` Push Sync
+
+| Task | Status | Depends On |
+|------|--------|------------|
+| GIT-025a: `internal/gitgraph/parser.go` — `MappingFile`, `KeywordDef`, `MappingEntry`, `RefEntry`, `ParseMappingFile`, `ErrInvalidMappingFile` | 📋 Not Started | ~~GIT-019~~ ✅ |
+| GIT-025b: `internal/gitgraph/sync.go` — `Syncer.Sync`: keyword upsert + edge hard-sync | 📋 Not Started | GIT-025a |
+| GIT-025c: `git_impl_index.go` — hook `IndexPushedBranch` to call `syncGitGraph` after commit/blob phase | 📋 Not Started | GIT-025b |
+| GIT-025d: Update `.github/prompts/map-folder-keywords.prompt.md` — output `.git-graph/` JSON files instead of direct API calls | 📋 Not Started | GIT-025c |
+| GIT-025e: Schema v2 — extend `MappingFile` and parser to support `depths[]` keyword entries with `signal` + `note` fields; `.signals.json` loader | 📋 Not Started | GIT-025a |
+
+**Scope**: After every push, `IndexPushedBranch` reads all `.git-graph/*.json` files at the
+new branch tip, upserts keywords (agency-scoped, never deleted), and hard-syncs `tagged_with`
+and `references` edges for touched files. Sync errors are logged but never fail the push.
+
+GIT-025e adds support for the v2 keyword depth schema:
+```json
+{ "name": "development-tracking", "depths": [{ "signal": "authority", "note": "..." }] }
+```
+The `.signals.json` file at `.git-graph/.signals.json` defines the repo's valid signal names
+and their layer numbers; the parser validates `signal` values against it.
+
+See: [mvp-details/git-graph-sync.md](mvp-details/git-graph-sync.md)
+
+---
+
 ## P0: Production Safety (CRITICAL)
 
 ### GIT-011 — Concurrency and Atomic Ref Updates

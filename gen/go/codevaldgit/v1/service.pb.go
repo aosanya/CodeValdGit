@@ -1285,6 +1285,58 @@ func (x *GetBranchRequest) GetBranchId() string {
 	return ""
 }
 
+type GetBranchByNameRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RepositoryName string                 `protobuf:"bytes,1,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string                 `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetBranchByNameRequest) Reset() {
+	*x = GetBranchByNameRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBranchByNameRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBranchByNameRequest) ProtoMessage() {}
+
+func (x *GetBranchByNameRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBranchByNameRequest.ProtoReflect.Descriptor instead.
+func (*GetBranchByNameRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetBranchByNameRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *GetBranchByNameRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
 type ListBranchesRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	RepositoryId   string                 `protobuf:"bytes,1,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
@@ -1295,7 +1347,7 @@ type ListBranchesRequest struct {
 
 func (x *ListBranchesRequest) Reset() {
 	*x = ListBranchesRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[19]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1307,7 +1359,7 @@ func (x *ListBranchesRequest) String() string {
 func (*ListBranchesRequest) ProtoMessage() {}
 
 func (x *ListBranchesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[19]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1320,7 +1372,7 @@ func (x *ListBranchesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBranchesRequest.ProtoReflect.Descriptor instead.
 func (*ListBranchesRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{19}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListBranchesRequest) GetRepositoryId() string {
@@ -1346,7 +1398,7 @@ type ListBranchesResponse struct {
 
 func (x *ListBranchesResponse) Reset() {
 	*x = ListBranchesResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[20]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1358,7 +1410,7 @@ func (x *ListBranchesResponse) String() string {
 func (*ListBranchesResponse) ProtoMessage() {}
 
 func (x *ListBranchesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[20]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1371,7 +1423,7 @@ func (x *ListBranchesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBranchesResponse.ProtoReflect.Descriptor instead.
 func (*ListBranchesResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{20}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListBranchesResponse) GetBranches() []*Branch {
@@ -1390,7 +1442,7 @@ type DeleteBranchRequest struct {
 
 func (x *DeleteBranchRequest) Reset() {
 	*x = DeleteBranchRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[21]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1402,7 +1454,7 @@ func (x *DeleteBranchRequest) String() string {
 func (*DeleteBranchRequest) ProtoMessage() {}
 
 func (x *DeleteBranchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[21]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1415,7 +1467,7 @@ func (x *DeleteBranchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBranchRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBranchRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{21}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DeleteBranchRequest) GetBranchId() string {
@@ -1433,7 +1485,7 @@ type DeleteBranchResponse struct {
 
 func (x *DeleteBranchResponse) Reset() {
 	*x = DeleteBranchResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[22]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1497,7 @@ func (x *DeleteBranchResponse) String() string {
 func (*DeleteBranchResponse) ProtoMessage() {}
 
 func (x *DeleteBranchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[22]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1510,7 @@ func (x *DeleteBranchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBranchResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBranchResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{22}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{23}
 }
 
 type MergeBranchRequest struct {
@@ -1470,7 +1522,7 @@ type MergeBranchRequest struct {
 
 func (x *MergeBranchRequest) Reset() {
 	*x = MergeBranchRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[23]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1482,7 +1534,7 @@ func (x *MergeBranchRequest) String() string {
 func (*MergeBranchRequest) ProtoMessage() {}
 
 func (x *MergeBranchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[23]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1495,7 +1547,7 @@ func (x *MergeBranchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MergeBranchRequest.ProtoReflect.Descriptor instead.
 func (*MergeBranchRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{23}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MergeBranchRequest) GetBranchId() string {
@@ -1519,7 +1571,7 @@ type CreateTagRequest struct {
 
 func (x *CreateTagRequest) Reset() {
 	*x = CreateTagRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[24]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1531,7 +1583,7 @@ func (x *CreateTagRequest) String() string {
 func (*CreateTagRequest) ProtoMessage() {}
 
 func (x *CreateTagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[24]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1544,7 +1596,7 @@ func (x *CreateTagRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTagRequest.ProtoReflect.Descriptor instead.
 func (*CreateTagRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{24}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CreateTagRequest) GetRepositoryId() string {
@@ -1598,7 +1650,7 @@ type GetTagRequest struct {
 
 func (x *GetTagRequest) Reset() {
 	*x = GetTagRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[25]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1610,7 +1662,7 @@ func (x *GetTagRequest) String() string {
 func (*GetTagRequest) ProtoMessage() {}
 
 func (x *GetTagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[25]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1623,7 +1675,7 @@ func (x *GetTagRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTagRequest.ProtoReflect.Descriptor instead.
 func (*GetTagRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{25}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTagRequest) GetTagId() string {
@@ -1643,7 +1695,7 @@ type ListTagsRequest struct {
 
 func (x *ListTagsRequest) Reset() {
 	*x = ListTagsRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[26]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1655,7 +1707,7 @@ func (x *ListTagsRequest) String() string {
 func (*ListTagsRequest) ProtoMessage() {}
 
 func (x *ListTagsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[26]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1668,7 +1720,7 @@ func (x *ListTagsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTagsRequest.ProtoReflect.Descriptor instead.
 func (*ListTagsRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{26}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListTagsRequest) GetRepositoryId() string {
@@ -1694,7 +1746,7 @@ type ListTagsResponse struct {
 
 func (x *ListTagsResponse) Reset() {
 	*x = ListTagsResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[27]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1706,7 +1758,7 @@ func (x *ListTagsResponse) String() string {
 func (*ListTagsResponse) ProtoMessage() {}
 
 func (x *ListTagsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[27]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1719,7 +1771,7 @@ func (x *ListTagsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTagsResponse.ProtoReflect.Descriptor instead.
 func (*ListTagsResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{27}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListTagsResponse) GetTags() []*Tag {
@@ -1738,7 +1790,7 @@ type DeleteTagRequest struct {
 
 func (x *DeleteTagRequest) Reset() {
 	*x = DeleteTagRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[28]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1750,7 +1802,7 @@ func (x *DeleteTagRequest) String() string {
 func (*DeleteTagRequest) ProtoMessage() {}
 
 func (x *DeleteTagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[28]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1763,7 +1815,7 @@ func (x *DeleteTagRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTagRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTagRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{28}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *DeleteTagRequest) GetTagId() string {
@@ -1781,7 +1833,7 @@ type DeleteTagResponse struct {
 
 func (x *DeleteTagResponse) Reset() {
 	*x = DeleteTagResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[29]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1793,7 +1845,7 @@ func (x *DeleteTagResponse) String() string {
 func (*DeleteTagResponse) ProtoMessage() {}
 
 func (x *DeleteTagResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[29]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1806,7 +1858,7 @@ func (x *DeleteTagResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTagResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTagResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{29}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{30}
 }
 
 type WriteFileRequest struct {
@@ -1824,7 +1876,7 @@ type WriteFileRequest struct {
 
 func (x *WriteFileRequest) Reset() {
 	*x = WriteFileRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[30]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1836,7 +1888,7 @@ func (x *WriteFileRequest) String() string {
 func (*WriteFileRequest) ProtoMessage() {}
 
 func (x *WriteFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[30]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1849,7 +1901,7 @@ func (x *WriteFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteFileRequest.ProtoReflect.Descriptor instead.
 func (*WriteFileRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{30}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *WriteFileRequest) GetBranchId() string {
@@ -1902,16 +1954,18 @@ func (x *WriteFileRequest) GetMessage() string {
 }
 
 type ReadFileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BranchId       string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	Path           string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	RepositoryName string                 `protobuf:"bytes,3,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string                 `protobuf:"bytes,4,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ReadFileRequest) Reset() {
 	*x = ReadFileRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[31]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1923,7 +1977,7 @@ func (x *ReadFileRequest) String() string {
 func (*ReadFileRequest) ProtoMessage() {}
 
 func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[31]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1936,7 +1990,7 @@ func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadFileRequest.ProtoReflect.Descriptor instead.
 func (*ReadFileRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{31}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ReadFileRequest) GetBranchId() string {
@@ -1949,6 +2003,20 @@ func (x *ReadFileRequest) GetBranchId() string {
 func (x *ReadFileRequest) GetPath() string {
 	if x != nil {
 		return x.Path
+	}
+	return ""
+}
+
+func (x *ReadFileRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *ReadFileRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
 	}
 	return ""
 }
@@ -1966,7 +2034,7 @@ type DeleteFileRequest struct {
 
 func (x *DeleteFileRequest) Reset() {
 	*x = DeleteFileRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[32]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1978,7 +2046,7 @@ func (x *DeleteFileRequest) String() string {
 func (*DeleteFileRequest) ProtoMessage() {}
 
 func (x *DeleteFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[32]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1991,7 +2059,7 @@ func (x *DeleteFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteFileRequest.ProtoReflect.Descriptor instead.
 func (*DeleteFileRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{32}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DeleteFileRequest) GetBranchId() string {
@@ -2030,16 +2098,18 @@ func (x *DeleteFileRequest) GetMessage() string {
 }
 
 type ListDirectoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BranchId       string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	Path           string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	RepositoryName string                 `protobuf:"bytes,3,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string                 `protobuf:"bytes,4,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListDirectoryRequest) Reset() {
 	*x = ListDirectoryRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[33]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2051,7 +2121,7 @@ func (x *ListDirectoryRequest) String() string {
 func (*ListDirectoryRequest) ProtoMessage() {}
 
 func (x *ListDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[33]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2134,7 @@ func (x *ListDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*ListDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{33}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListDirectoryRequest) GetBranchId() string {
@@ -2081,6 +2151,20 @@ func (x *ListDirectoryRequest) GetPath() string {
 	return ""
 }
 
+func (x *ListDirectoryRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *ListDirectoryRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
 type ListDirectoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entries       []*FileEntry           `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
@@ -2090,7 +2174,7 @@ type ListDirectoryResponse struct {
 
 func (x *ListDirectoryResponse) Reset() {
 	*x = ListDirectoryResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[34]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2102,7 +2186,7 @@ func (x *ListDirectoryResponse) String() string {
 func (*ListDirectoryResponse) ProtoMessage() {}
 
 func (x *ListDirectoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[34]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2115,7 +2199,7 @@ func (x *ListDirectoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDirectoryResponse.ProtoReflect.Descriptor instead.
 func (*ListDirectoryResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{34}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListDirectoryResponse) GetEntries() []*FileEntry {
@@ -2126,17 +2210,19 @@ func (x *ListDirectoryResponse) GetEntries() []*FileEntry {
 }
 
 type LogRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BranchId       string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	Path           string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Limit          int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	RepositoryName string                 `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string                 `protobuf:"bytes,5,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *LogRequest) Reset() {
 	*x = LogRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[35]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2148,7 +2234,7 @@ func (x *LogRequest) String() string {
 func (*LogRequest) ProtoMessage() {}
 
 func (x *LogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[35]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2161,7 +2247,7 @@ func (x *LogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogRequest.ProtoReflect.Descriptor instead.
 func (*LogRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{35}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *LogRequest) GetBranchId() string {
@@ -2185,6 +2271,20 @@ func (x *LogRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *LogRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *LogRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
 type LogResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Commits       []*CommitEntry         `protobuf:"bytes,1,rep,name=commits,proto3" json:"commits,omitempty"`
@@ -2194,7 +2294,7 @@ type LogResponse struct {
 
 func (x *LogResponse) Reset() {
 	*x = LogResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2206,7 +2306,7 @@ func (x *LogResponse) String() string {
 func (*LogResponse) ProtoMessage() {}
 
 func (x *LogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[36]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2219,7 +2319,7 @@ func (x *LogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogResponse.ProtoReflect.Descriptor instead.
 func (*LogResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{36}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *LogResponse) GetCommits() []*CommitEntry {
@@ -2240,7 +2340,7 @@ type DiffRequest struct {
 
 func (x *DiffRequest) Reset() {
 	*x = DiffRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2252,7 +2352,7 @@ func (x *DiffRequest) String() string {
 func (*DiffRequest) ProtoMessage() {}
 
 func (x *DiffRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[37]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2265,7 +2365,7 @@ func (x *DiffRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffRequest.ProtoReflect.Descriptor instead.
 func (*DiffRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{37}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DiffRequest) GetFromRef() string {
@@ -2298,7 +2398,7 @@ type DiffResponse struct {
 
 func (x *DiffResponse) Reset() {
 	*x = DiffResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2310,7 +2410,7 @@ func (x *DiffResponse) String() string {
 func (*DiffResponse) ProtoMessage() {}
 
 func (x *DiffResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[38]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2323,7 +2423,7 @@ func (x *DiffResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffResponse.ProtoReflect.Descriptor instead.
 func (*DiffResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{38}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *DiffResponse) GetDiffs() []*FileDiff {
@@ -2346,7 +2446,7 @@ type ImportRepoRequest struct {
 
 func (x *ImportRepoRequest) Reset() {
 	*x = ImportRepoRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2358,7 +2458,7 @@ func (x *ImportRepoRequest) String() string {
 func (*ImportRepoRequest) ProtoMessage() {}
 
 func (x *ImportRepoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[39]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2371,7 +2471,7 @@ func (x *ImportRepoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportRepoRequest.ProtoReflect.Descriptor instead.
 func (*ImportRepoRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{39}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ImportRepoRequest) GetAgencyId() string {
@@ -2418,7 +2518,7 @@ type ImportRepoResponse struct {
 
 func (x *ImportRepoResponse) Reset() {
 	*x = ImportRepoResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2430,7 +2530,7 @@ func (x *ImportRepoResponse) String() string {
 func (*ImportRepoResponse) ProtoMessage() {}
 
 func (x *ImportRepoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[40]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2443,7 +2543,7 @@ func (x *ImportRepoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportRepoResponse.ProtoReflect.Descriptor instead.
 func (*ImportRepoResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{40}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ImportRepoResponse) GetJobId() string {
@@ -2463,7 +2563,7 @@ type GetImportStatusRequest struct {
 
 func (x *GetImportStatusRequest) Reset() {
 	*x = GetImportStatusRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2475,7 +2575,7 @@ func (x *GetImportStatusRequest) String() string {
 func (*GetImportStatusRequest) ProtoMessage() {}
 
 func (x *GetImportStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[41]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2488,7 +2588,7 @@ func (x *GetImportStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImportStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetImportStatusRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{41}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *GetImportStatusRequest) GetAgencyId() string {
@@ -2515,7 +2615,7 @@ type CancelImportRequest struct {
 
 func (x *CancelImportRequest) Reset() {
 	*x = CancelImportRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[42]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2627,7 @@ func (x *CancelImportRequest) String() string {
 func (*CancelImportRequest) ProtoMessage() {}
 
 func (x *CancelImportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[42]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2640,7 @@ func (x *CancelImportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelImportRequest.ProtoReflect.Descriptor instead.
 func (*CancelImportRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{42}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *CancelImportRequest) GetAgencyId() string {
@@ -2565,7 +2665,7 @@ type CancelImportResponse struct {
 
 func (x *CancelImportResponse) Reset() {
 	*x = CancelImportResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[43]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2577,7 +2677,7 @@ func (x *CancelImportResponse) String() string {
 func (*CancelImportResponse) ProtoMessage() {}
 
 func (x *CancelImportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[43]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2590,7 +2690,7 @@ func (x *CancelImportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelImportResponse.ProtoReflect.Descriptor instead.
 func (*CancelImportResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{43}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{44}
 }
 
 type ImportJobResponse struct {
@@ -2611,7 +2711,7 @@ type ImportJobResponse struct {
 
 func (x *ImportJobResponse) Reset() {
 	*x = ImportJobResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[44]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2623,7 +2723,7 @@ func (x *ImportJobResponse) String() string {
 func (*ImportJobResponse) ProtoMessage() {}
 
 func (x *ImportJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[44]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2636,7 +2736,7 @@ func (x *ImportJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportJobResponse.ProtoReflect.Descriptor instead.
 func (*ImportJobResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{44}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ImportJobResponse) GetJobId() string {
@@ -2721,7 +2821,7 @@ type FetchBranchRequest struct {
 
 func (x *FetchBranchRequest) Reset() {
 	*x = FetchBranchRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2733,7 +2833,7 @@ func (x *FetchBranchRequest) String() string {
 func (*FetchBranchRequest) ProtoMessage() {}
 
 func (x *FetchBranchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[45]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2746,7 +2846,7 @@ func (x *FetchBranchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchBranchRequest.ProtoReflect.Descriptor instead.
 func (*FetchBranchRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{45}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *FetchBranchRequest) GetAgencyId() string {
@@ -2788,7 +2888,7 @@ type FetchBranchJob struct {
 
 func (x *FetchBranchJob) Reset() {
 	*x = FetchBranchJob{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2800,7 +2900,7 @@ func (x *FetchBranchJob) String() string {
 func (*FetchBranchJob) ProtoMessage() {}
 
 func (x *FetchBranchJob) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[46]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2813,7 +2913,7 @@ func (x *FetchBranchJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchBranchJob.ProtoReflect.Descriptor instead.
 func (*FetchBranchJob) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{46}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *FetchBranchJob) GetId() string {
@@ -2883,7 +2983,7 @@ type GetFetchBranchStatusRequest struct {
 
 func (x *GetFetchBranchStatusRequest) Reset() {
 	*x = GetFetchBranchStatusRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2895,7 +2995,7 @@ func (x *GetFetchBranchStatusRequest) String() string {
 func (*GetFetchBranchStatusRequest) ProtoMessage() {}
 
 func (x *GetFetchBranchStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[47]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2908,7 +3008,7 @@ func (x *GetFetchBranchStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFetchBranchStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetFetchBranchStatusRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{47}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetFetchBranchStatusRequest) GetAgencyId() string {
@@ -2942,7 +3042,7 @@ type Keyword struct {
 
 func (x *Keyword) Reset() {
 	*x = Keyword{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2954,7 +3054,7 @@ func (x *Keyword) String() string {
 func (*Keyword) ProtoMessage() {}
 
 func (x *Keyword) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[48]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2967,7 +3067,7 @@ func (x *Keyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Keyword.ProtoReflect.Descriptor instead.
 func (*Keyword) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{48}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *Keyword) GetId() string {
@@ -3037,7 +3137,7 @@ type KeywordTreeNode struct {
 
 func (x *KeywordTreeNode) Reset() {
 	*x = KeywordTreeNode{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3049,7 +3149,7 @@ func (x *KeywordTreeNode) String() string {
 func (*KeywordTreeNode) ProtoMessage() {}
 
 func (x *KeywordTreeNode) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[49]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3062,7 +3162,7 @@ func (x *KeywordTreeNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeywordTreeNode.ProtoReflect.Descriptor instead.
 func (*KeywordTreeNode) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{49}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *KeywordTreeNode) GetKeyword() *Keyword {
@@ -3091,7 +3191,7 @@ type CreateKeywordRequest struct {
 
 func (x *CreateKeywordRequest) Reset() {
 	*x = CreateKeywordRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3103,7 +3203,7 @@ func (x *CreateKeywordRequest) String() string {
 func (*CreateKeywordRequest) ProtoMessage() {}
 
 func (x *CreateKeywordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[50]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3116,7 +3216,7 @@ func (x *CreateKeywordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateKeywordRequest.ProtoReflect.Descriptor instead.
 func (*CreateKeywordRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{50}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CreateKeywordRequest) GetName() string {
@@ -3156,7 +3256,7 @@ type GetKeywordRequest struct {
 
 func (x *GetKeywordRequest) Reset() {
 	*x = GetKeywordRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3168,7 +3268,7 @@ func (x *GetKeywordRequest) String() string {
 func (*GetKeywordRequest) ProtoMessage() {}
 
 func (x *GetKeywordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[51]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3181,7 +3281,7 @@ func (x *GetKeywordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKeywordRequest.ProtoReflect.Descriptor instead.
 func (*GetKeywordRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{51}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *GetKeywordRequest) GetKeywordId() string {
@@ -3202,7 +3302,7 @@ type ListKeywordsRequest struct {
 
 func (x *ListKeywordsRequest) Reset() {
 	*x = ListKeywordsRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3214,7 +3314,7 @@ func (x *ListKeywordsRequest) String() string {
 func (*ListKeywordsRequest) ProtoMessage() {}
 
 func (x *ListKeywordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[52]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3227,7 +3327,7 @@ func (x *ListKeywordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListKeywordsRequest.ProtoReflect.Descriptor instead.
 func (*ListKeywordsRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{52}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *ListKeywordsRequest) GetScope() string {
@@ -3260,7 +3360,7 @@ type ListKeywordsResponse struct {
 
 func (x *ListKeywordsResponse) Reset() {
 	*x = ListKeywordsResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3272,7 +3372,7 @@ func (x *ListKeywordsResponse) String() string {
 func (*ListKeywordsResponse) ProtoMessage() {}
 
 func (x *ListKeywordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[53]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3285,7 +3385,7 @@ func (x *ListKeywordsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListKeywordsResponse.ProtoReflect.Descriptor instead.
 func (*ListKeywordsResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{53}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ListKeywordsResponse) GetKeywords() []*Keyword {
@@ -3305,7 +3405,7 @@ type GetKeywordTreeRequest struct {
 
 func (x *GetKeywordTreeRequest) Reset() {
 	*x = GetKeywordTreeRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3317,7 +3417,7 @@ func (x *GetKeywordTreeRequest) String() string {
 func (*GetKeywordTreeRequest) ProtoMessage() {}
 
 func (x *GetKeywordTreeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[54]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3330,7 +3430,7 @@ func (x *GetKeywordTreeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKeywordTreeRequest.ProtoReflect.Descriptor instead.
 func (*GetKeywordTreeRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{54}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetKeywordTreeRequest) GetKeywordId() string {
@@ -3349,7 +3449,7 @@ type GetKeywordTreeResponse struct {
 
 func (x *GetKeywordTreeResponse) Reset() {
 	*x = GetKeywordTreeResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3361,7 +3461,7 @@ func (x *GetKeywordTreeResponse) String() string {
 func (*GetKeywordTreeResponse) ProtoMessage() {}
 
 func (x *GetKeywordTreeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[55]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3374,7 +3474,7 @@ func (x *GetKeywordTreeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKeywordTreeResponse.ProtoReflect.Descriptor instead.
 func (*GetKeywordTreeResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{55}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GetKeywordTreeResponse) GetNodes() []*KeywordTreeNode {
@@ -3396,7 +3496,7 @@ type UpdateKeywordRequest struct {
 
 func (x *UpdateKeywordRequest) Reset() {
 	*x = UpdateKeywordRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3408,7 +3508,7 @@ func (x *UpdateKeywordRequest) String() string {
 func (*UpdateKeywordRequest) ProtoMessage() {}
 
 func (x *UpdateKeywordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[56]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3421,7 +3521,7 @@ func (x *UpdateKeywordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateKeywordRequest.ProtoReflect.Descriptor instead.
 func (*UpdateKeywordRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{56}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *UpdateKeywordRequest) GetKeywordId() string {
@@ -3461,7 +3561,7 @@ type DeleteKeywordRequest struct {
 
 func (x *DeleteKeywordRequest) Reset() {
 	*x = DeleteKeywordRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3473,7 +3573,7 @@ func (x *DeleteKeywordRequest) String() string {
 func (*DeleteKeywordRequest) ProtoMessage() {}
 
 func (x *DeleteKeywordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[57]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3486,7 +3586,7 @@ func (x *DeleteKeywordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteKeywordRequest.ProtoReflect.Descriptor instead.
 func (*DeleteKeywordRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{57}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *DeleteKeywordRequest) GetKeywordId() string {
@@ -3504,7 +3604,7 @@ type DeleteKeywordResponse struct {
 
 func (x *DeleteKeywordResponse) Reset() {
 	*x = DeleteKeywordResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3516,7 +3616,7 @@ func (x *DeleteKeywordResponse) String() string {
 func (*DeleteKeywordResponse) ProtoMessage() {}
 
 func (x *DeleteKeywordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[58]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3529,7 +3629,7 @@ func (x *DeleteKeywordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteKeywordResponse.ProtoReflect.Descriptor instead.
 func (*DeleteKeywordResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{58}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{59}
 }
 
 type CreateEdgeRequest struct {
@@ -3544,7 +3644,7 @@ type CreateEdgeRequest struct {
 
 func (x *CreateEdgeRequest) Reset() {
 	*x = CreateEdgeRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3556,7 +3656,7 @@ func (x *CreateEdgeRequest) String() string {
 func (*CreateEdgeRequest) ProtoMessage() {}
 
 func (x *CreateEdgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[59]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3569,7 +3669,7 @@ func (x *CreateEdgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEdgeRequest.ProtoReflect.Descriptor instead.
 func (*CreateEdgeRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{59}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *CreateEdgeRequest) GetBranchId() string {
@@ -3608,7 +3708,7 @@ type CreateEdgeResponse struct {
 
 func (x *CreateEdgeResponse) Reset() {
 	*x = CreateEdgeResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3620,7 +3720,7 @@ func (x *CreateEdgeResponse) String() string {
 func (*CreateEdgeResponse) ProtoMessage() {}
 
 func (x *CreateEdgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[60]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3633,7 +3733,7 @@ func (x *CreateEdgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEdgeResponse.ProtoReflect.Descriptor instead.
 func (*CreateEdgeResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{60}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{61}
 }
 
 type DeleteEdgeRequest struct {
@@ -3648,7 +3748,7 @@ type DeleteEdgeRequest struct {
 
 func (x *DeleteEdgeRequest) Reset() {
 	*x = DeleteEdgeRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3660,7 +3760,7 @@ func (x *DeleteEdgeRequest) String() string {
 func (*DeleteEdgeRequest) ProtoMessage() {}
 
 func (x *DeleteEdgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[61]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3673,7 +3773,7 @@ func (x *DeleteEdgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEdgeRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEdgeRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{61}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *DeleteEdgeRequest) GetBranchId() string {
@@ -3712,7 +3812,7 @@ type DeleteEdgeResponse struct {
 
 func (x *DeleteEdgeResponse) Reset() {
 	*x = DeleteEdgeResponse{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3724,7 +3824,7 @@ func (x *DeleteEdgeResponse) String() string {
 func (*DeleteEdgeResponse) ProtoMessage() {}
 
 func (x *DeleteEdgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[62]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3737,7 +3837,7 @@ func (x *DeleteEdgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEdgeResponse.ProtoReflect.Descriptor instead.
 func (*DeleteEdgeResponse) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{62}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{63}
 }
 
 type GetNeighborhoodRequest struct {
@@ -3751,7 +3851,7 @@ type GetNeighborhoodRequest struct {
 
 func (x *GetNeighborhoodRequest) Reset() {
 	*x = GetNeighborhoodRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3763,7 +3863,7 @@ func (x *GetNeighborhoodRequest) String() string {
 func (*GetNeighborhoodRequest) ProtoMessage() {}
 
 func (x *GetNeighborhoodRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[63]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3776,7 +3876,7 @@ func (x *GetNeighborhoodRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNeighborhoodRequest.ProtoReflect.Descriptor instead.
 func (*GetNeighborhoodRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{63}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *GetNeighborhoodRequest) GetBranchId() string {
@@ -3813,7 +3913,7 @@ type SearchByKeywordsRequest struct {
 
 func (x *SearchByKeywordsRequest) Reset() {
 	*x = SearchByKeywordsRequest{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3825,7 +3925,7 @@ func (x *SearchByKeywordsRequest) String() string {
 func (*SearchByKeywordsRequest) ProtoMessage() {}
 
 func (x *SearchByKeywordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[64]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3838,7 +3938,7 @@ func (x *SearchByKeywordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchByKeywordsRequest.ProtoReflect.Descriptor instead.
 func (*SearchByKeywordsRequest) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{64}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SearchByKeywordsRequest) GetBranchId() string {
@@ -3882,7 +3982,7 @@ type GraphNode struct {
 
 func (x *GraphNode) Reset() {
 	*x = GraphNode{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[65]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3894,7 +3994,7 @@ func (x *GraphNode) String() string {
 func (*GraphNode) ProtoMessage() {}
 
 func (x *GraphNode) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[65]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3907,7 +4007,7 @@ func (x *GraphNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphNode.ProtoReflect.Descriptor instead.
 func (*GraphNode) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{65}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GraphNode) GetId() string {
@@ -3944,7 +4044,7 @@ type GraphEdge struct {
 
 func (x *GraphEdge) Reset() {
 	*x = GraphEdge{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[66]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3956,7 +4056,7 @@ func (x *GraphEdge) String() string {
 func (*GraphEdge) ProtoMessage() {}
 
 func (x *GraphEdge) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[66]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3969,7 +4069,7 @@ func (x *GraphEdge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphEdge.ProtoReflect.Descriptor instead.
 func (*GraphEdge) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{66}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GraphEdge) GetId() string {
@@ -4011,7 +4111,7 @@ type GraphResult struct {
 
 func (x *GraphResult) Reset() {
 	*x = GraphResult{}
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[67]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4023,7 +4123,7 @@ func (x *GraphResult) String() string {
 func (*GraphResult) ProtoMessage() {}
 
 func (x *GraphResult) ProtoReflect() protoreflect.Message {
-	mi := &file_codevaldgit_v1_service_proto_msgTypes[67]
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4036,7 +4136,7 @@ func (x *GraphResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphResult.ProtoReflect.Descriptor instead.
 func (*GraphResult) Descriptor() ([]byte, []int) {
-	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{67}
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *GraphResult) GetNodes() []*GraphNode {
@@ -4160,7 +4260,11 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\x0efrom_branch_id\x18\x03 \x01(\tR\ffromBranchId\x12'\n" +
 	"\x0frepository_name\x18\x04 \x01(\tR\x0erepositoryName\"/\n" +
 	"\x10GetBranchRequest\x12\x1b\n" +
-	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\"c\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\"b\n" +
+	"\x16GetBranchByNameRequest\x12'\n" +
+	"\x0frepository_name\x18\x01 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x02 \x01(\tR\n" +
+	"branchName\"c\n" +
 	"\x13ListBranchesRequest\x12#\n" +
 	"\rrepository_id\x18\x01 \x01(\tR\frepositoryId\x12'\n" +
 	"\x0frepository_name\x18\x02 \x01(\tR\x0erepositoryName\"J\n" +
@@ -4197,27 +4301,36 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\vauthor_name\x18\x05 \x01(\tR\n" +
 	"authorName\x12!\n" +
 	"\fauthor_email\x18\x06 \x01(\tR\vauthorEmail\x12\x18\n" +
-	"\amessage\x18\a \x01(\tR\amessage\"B\n" +
+	"\amessage\x18\a \x01(\tR\amessage\"\x8c\x01\n" +
 	"\x0fReadFileRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\xa2\x01\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12'\n" +
+	"\x0frepository_name\x18\x03 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x04 \x01(\tR\n" +
+	"branchName\"\xa2\x01\n" +
 	"\x11DeleteFileRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x1f\n" +
 	"\vauthor_name\x18\x03 \x01(\tR\n" +
 	"authorName\x12!\n" +
 	"\fauthor_email\x18\x04 \x01(\tR\vauthorEmail\x12\x18\n" +
-	"\amessage\x18\x05 \x01(\tR\amessage\"G\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\"\x91\x01\n" +
 	"\x14ListDirectoryRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"L\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12'\n" +
+	"\x0frepository_name\x18\x03 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x04 \x01(\tR\n" +
+	"branchName\"L\n" +
 	"\x15ListDirectoryResponse\x123\n" +
-	"\aentries\x18\x01 \x03(\v2\x19.codevaldgit.v1.FileEntryR\aentries\"S\n" +
+	"\aentries\x18\x01 \x03(\v2\x19.codevaldgit.v1.FileEntryR\aentries\"\x9d\x01\n" +
 	"\n" +
 	"LogRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"D\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12'\n" +
+	"\x0frepository_name\x18\x04 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x05 \x01(\tR\n" +
+	"branchName\"D\n" +
 	"\vLogResponse\x125\n" +
 	"\acommits\x18\x01 \x03(\v2\x1b.codevaldgit.v1.CommitEntryR\acommits\"h\n" +
 	"\vDiffRequest\x12\x19\n" +
@@ -4357,7 +4470,7 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\x05to_id\x18\x04 \x01(\tR\x04toId\"o\n" +
 	"\vGraphResult\x12/\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x19.codevaldgit.v1.GraphNodeR\x05nodes\x12/\n" +
-	"\x05edges\x18\x02 \x03(\v2\x19.codevaldgit.v1.GraphEdgeR\x05edges2\xa7\x17\n" +
+	"\x05edges\x18\x02 \x03(\v2\x19.codevaldgit.v1.GraphEdgeR\x05edges2\xfa\x17\n" +
 	"\n" +
 	"GitService\x12G\n" +
 	"\bInitRepo\x12\x1f.codevaldgit.v1.InitRepoRequest\x1a\x1a.codevaldgit.v1.Repository\x12e\n" +
@@ -4368,7 +4481,8 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"DeleteRepo\x12!.codevaldgit.v1.DeleteRepoRequest\x1a\".codevaldgit.v1.DeleteRepoResponse\x12P\n" +
 	"\tPurgeRepo\x12 .codevaldgit.v1.PurgeRepoRequest\x1a!.codevaldgit.v1.PurgeRepoResponse\x12K\n" +
 	"\fCreateBranch\x12#.codevaldgit.v1.CreateBranchRequest\x1a\x16.codevaldgit.v1.Branch\x12E\n" +
-	"\tGetBranch\x12 .codevaldgit.v1.GetBranchRequest\x1a\x16.codevaldgit.v1.Branch\x12Y\n" +
+	"\tGetBranch\x12 .codevaldgit.v1.GetBranchRequest\x1a\x16.codevaldgit.v1.Branch\x12Q\n" +
+	"\x0fGetBranchByName\x12&.codevaldgit.v1.GetBranchByNameRequest\x1a\x16.codevaldgit.v1.Branch\x12Y\n" +
 	"\fListBranches\x12#.codevaldgit.v1.ListBranchesRequest\x1a$.codevaldgit.v1.ListBranchesResponse\x12Y\n" +
 	"\fDeleteBranch\x12#.codevaldgit.v1.DeleteBranchRequest\x1a$.codevaldgit.v1.DeleteBranchResponse\x12I\n" +
 	"\vMergeBranch\x12\".codevaldgit.v1.MergeBranchRequest\x1a\x16.codevaldgit.v1.Branch\x12B\n" +
@@ -4415,7 +4529,7 @@ func file_codevaldgit_v1_service_proto_rawDescGZIP() []byte {
 	return file_codevaldgit_v1_service_proto_rawDescData
 }
 
-var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
+var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
 var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*Repository)(nil),                  // 0: codevaldgit.v1.Repository
 	(*Branch)(nil),                      // 1: codevaldgit.v1.Branch
@@ -4436,81 +4550,82 @@ var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*PurgeRepoResponse)(nil),           // 16: codevaldgit.v1.PurgeRepoResponse
 	(*CreateBranchRequest)(nil),         // 17: codevaldgit.v1.CreateBranchRequest
 	(*GetBranchRequest)(nil),            // 18: codevaldgit.v1.GetBranchRequest
-	(*ListBranchesRequest)(nil),         // 19: codevaldgit.v1.ListBranchesRequest
-	(*ListBranchesResponse)(nil),        // 20: codevaldgit.v1.ListBranchesResponse
-	(*DeleteBranchRequest)(nil),         // 21: codevaldgit.v1.DeleteBranchRequest
-	(*DeleteBranchResponse)(nil),        // 22: codevaldgit.v1.DeleteBranchResponse
-	(*MergeBranchRequest)(nil),          // 23: codevaldgit.v1.MergeBranchRequest
-	(*CreateTagRequest)(nil),            // 24: codevaldgit.v1.CreateTagRequest
-	(*GetTagRequest)(nil),               // 25: codevaldgit.v1.GetTagRequest
-	(*ListTagsRequest)(nil),             // 26: codevaldgit.v1.ListTagsRequest
-	(*ListTagsResponse)(nil),            // 27: codevaldgit.v1.ListTagsResponse
-	(*DeleteTagRequest)(nil),            // 28: codevaldgit.v1.DeleteTagRequest
-	(*DeleteTagResponse)(nil),           // 29: codevaldgit.v1.DeleteTagResponse
-	(*WriteFileRequest)(nil),            // 30: codevaldgit.v1.WriteFileRequest
-	(*ReadFileRequest)(nil),             // 31: codevaldgit.v1.ReadFileRequest
-	(*DeleteFileRequest)(nil),           // 32: codevaldgit.v1.DeleteFileRequest
-	(*ListDirectoryRequest)(nil),        // 33: codevaldgit.v1.ListDirectoryRequest
-	(*ListDirectoryResponse)(nil),       // 34: codevaldgit.v1.ListDirectoryResponse
-	(*LogRequest)(nil),                  // 35: codevaldgit.v1.LogRequest
-	(*LogResponse)(nil),                 // 36: codevaldgit.v1.LogResponse
-	(*DiffRequest)(nil),                 // 37: codevaldgit.v1.DiffRequest
-	(*DiffResponse)(nil),                // 38: codevaldgit.v1.DiffResponse
-	(*ImportRepoRequest)(nil),           // 39: codevaldgit.v1.ImportRepoRequest
-	(*ImportRepoResponse)(nil),          // 40: codevaldgit.v1.ImportRepoResponse
-	(*GetImportStatusRequest)(nil),      // 41: codevaldgit.v1.GetImportStatusRequest
-	(*CancelImportRequest)(nil),         // 42: codevaldgit.v1.CancelImportRequest
-	(*CancelImportResponse)(nil),        // 43: codevaldgit.v1.CancelImportResponse
-	(*ImportJobResponse)(nil),           // 44: codevaldgit.v1.ImportJobResponse
-	(*FetchBranchRequest)(nil),          // 45: codevaldgit.v1.FetchBranchRequest
-	(*FetchBranchJob)(nil),              // 46: codevaldgit.v1.FetchBranchJob
-	(*GetFetchBranchStatusRequest)(nil), // 47: codevaldgit.v1.GetFetchBranchStatusRequest
-	(*Keyword)(nil),                     // 48: codevaldgit.v1.Keyword
-	(*KeywordTreeNode)(nil),             // 49: codevaldgit.v1.KeywordTreeNode
-	(*CreateKeywordRequest)(nil),        // 50: codevaldgit.v1.CreateKeywordRequest
-	(*GetKeywordRequest)(nil),           // 51: codevaldgit.v1.GetKeywordRequest
-	(*ListKeywordsRequest)(nil),         // 52: codevaldgit.v1.ListKeywordsRequest
-	(*ListKeywordsResponse)(nil),        // 53: codevaldgit.v1.ListKeywordsResponse
-	(*GetKeywordTreeRequest)(nil),       // 54: codevaldgit.v1.GetKeywordTreeRequest
-	(*GetKeywordTreeResponse)(nil),      // 55: codevaldgit.v1.GetKeywordTreeResponse
-	(*UpdateKeywordRequest)(nil),        // 56: codevaldgit.v1.UpdateKeywordRequest
-	(*DeleteKeywordRequest)(nil),        // 57: codevaldgit.v1.DeleteKeywordRequest
-	(*DeleteKeywordResponse)(nil),       // 58: codevaldgit.v1.DeleteKeywordResponse
-	(*CreateEdgeRequest)(nil),           // 59: codevaldgit.v1.CreateEdgeRequest
-	(*CreateEdgeResponse)(nil),          // 60: codevaldgit.v1.CreateEdgeResponse
-	(*DeleteEdgeRequest)(nil),           // 61: codevaldgit.v1.DeleteEdgeRequest
-	(*DeleteEdgeResponse)(nil),          // 62: codevaldgit.v1.DeleteEdgeResponse
-	(*GetNeighborhoodRequest)(nil),      // 63: codevaldgit.v1.GetNeighborhoodRequest
-	(*SearchByKeywordsRequest)(nil),     // 64: codevaldgit.v1.SearchByKeywordsRequest
-	(*GraphNode)(nil),                   // 65: codevaldgit.v1.GraphNode
-	(*GraphEdge)(nil),                   // 66: codevaldgit.v1.GraphEdge
-	(*GraphResult)(nil),                 // 67: codevaldgit.v1.GraphResult
-	(*timestamppb.Timestamp)(nil),       // 68: google.protobuf.Timestamp
+	(*GetBranchByNameRequest)(nil),      // 19: codevaldgit.v1.GetBranchByNameRequest
+	(*ListBranchesRequest)(nil),         // 20: codevaldgit.v1.ListBranchesRequest
+	(*ListBranchesResponse)(nil),        // 21: codevaldgit.v1.ListBranchesResponse
+	(*DeleteBranchRequest)(nil),         // 22: codevaldgit.v1.DeleteBranchRequest
+	(*DeleteBranchResponse)(nil),        // 23: codevaldgit.v1.DeleteBranchResponse
+	(*MergeBranchRequest)(nil),          // 24: codevaldgit.v1.MergeBranchRequest
+	(*CreateTagRequest)(nil),            // 25: codevaldgit.v1.CreateTagRequest
+	(*GetTagRequest)(nil),               // 26: codevaldgit.v1.GetTagRequest
+	(*ListTagsRequest)(nil),             // 27: codevaldgit.v1.ListTagsRequest
+	(*ListTagsResponse)(nil),            // 28: codevaldgit.v1.ListTagsResponse
+	(*DeleteTagRequest)(nil),            // 29: codevaldgit.v1.DeleteTagRequest
+	(*DeleteTagResponse)(nil),           // 30: codevaldgit.v1.DeleteTagResponse
+	(*WriteFileRequest)(nil),            // 31: codevaldgit.v1.WriteFileRequest
+	(*ReadFileRequest)(nil),             // 32: codevaldgit.v1.ReadFileRequest
+	(*DeleteFileRequest)(nil),           // 33: codevaldgit.v1.DeleteFileRequest
+	(*ListDirectoryRequest)(nil),        // 34: codevaldgit.v1.ListDirectoryRequest
+	(*ListDirectoryResponse)(nil),       // 35: codevaldgit.v1.ListDirectoryResponse
+	(*LogRequest)(nil),                  // 36: codevaldgit.v1.LogRequest
+	(*LogResponse)(nil),                 // 37: codevaldgit.v1.LogResponse
+	(*DiffRequest)(nil),                 // 38: codevaldgit.v1.DiffRequest
+	(*DiffResponse)(nil),                // 39: codevaldgit.v1.DiffResponse
+	(*ImportRepoRequest)(nil),           // 40: codevaldgit.v1.ImportRepoRequest
+	(*ImportRepoResponse)(nil),          // 41: codevaldgit.v1.ImportRepoResponse
+	(*GetImportStatusRequest)(nil),      // 42: codevaldgit.v1.GetImportStatusRequest
+	(*CancelImportRequest)(nil),         // 43: codevaldgit.v1.CancelImportRequest
+	(*CancelImportResponse)(nil),        // 44: codevaldgit.v1.CancelImportResponse
+	(*ImportJobResponse)(nil),           // 45: codevaldgit.v1.ImportJobResponse
+	(*FetchBranchRequest)(nil),          // 46: codevaldgit.v1.FetchBranchRequest
+	(*FetchBranchJob)(nil),              // 47: codevaldgit.v1.FetchBranchJob
+	(*GetFetchBranchStatusRequest)(nil), // 48: codevaldgit.v1.GetFetchBranchStatusRequest
+	(*Keyword)(nil),                     // 49: codevaldgit.v1.Keyword
+	(*KeywordTreeNode)(nil),             // 50: codevaldgit.v1.KeywordTreeNode
+	(*CreateKeywordRequest)(nil),        // 51: codevaldgit.v1.CreateKeywordRequest
+	(*GetKeywordRequest)(nil),           // 52: codevaldgit.v1.GetKeywordRequest
+	(*ListKeywordsRequest)(nil),         // 53: codevaldgit.v1.ListKeywordsRequest
+	(*ListKeywordsResponse)(nil),        // 54: codevaldgit.v1.ListKeywordsResponse
+	(*GetKeywordTreeRequest)(nil),       // 55: codevaldgit.v1.GetKeywordTreeRequest
+	(*GetKeywordTreeResponse)(nil),      // 56: codevaldgit.v1.GetKeywordTreeResponse
+	(*UpdateKeywordRequest)(nil),        // 57: codevaldgit.v1.UpdateKeywordRequest
+	(*DeleteKeywordRequest)(nil),        // 58: codevaldgit.v1.DeleteKeywordRequest
+	(*DeleteKeywordResponse)(nil),       // 59: codevaldgit.v1.DeleteKeywordResponse
+	(*CreateEdgeRequest)(nil),           // 60: codevaldgit.v1.CreateEdgeRequest
+	(*CreateEdgeResponse)(nil),          // 61: codevaldgit.v1.CreateEdgeResponse
+	(*DeleteEdgeRequest)(nil),           // 62: codevaldgit.v1.DeleteEdgeRequest
+	(*DeleteEdgeResponse)(nil),          // 63: codevaldgit.v1.DeleteEdgeResponse
+	(*GetNeighborhoodRequest)(nil),      // 64: codevaldgit.v1.GetNeighborhoodRequest
+	(*SearchByKeywordsRequest)(nil),     // 65: codevaldgit.v1.SearchByKeywordsRequest
+	(*GraphNode)(nil),                   // 66: codevaldgit.v1.GraphNode
+	(*GraphEdge)(nil),                   // 67: codevaldgit.v1.GraphEdge
+	(*GraphResult)(nil),                 // 68: codevaldgit.v1.GraphResult
+	(*timestamppb.Timestamp)(nil),       // 69: google.protobuf.Timestamp
 }
 var file_codevaldgit_v1_service_proto_depIdxs = []int32{
-	68, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
-	68, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
-	68, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
-	68, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
-	68, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
-	68, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
-	68, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
-	68, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
-	68, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
-	68, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
-	68, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
+	69, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
+	69, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
+	69, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
+	69, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
+	69, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
+	69, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
+	69, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
+	69, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
+	69, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
+	69, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
+	69, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 11: codevaldgit.v1.ListRepositoriesResponse.repositories:type_name -> codevaldgit.v1.Repository
 	1,  // 12: codevaldgit.v1.ListBranchesResponse.branches:type_name -> codevaldgit.v1.Branch
 	2,  // 13: codevaldgit.v1.ListTagsResponse.tags:type_name -> codevaldgit.v1.Tag
 	6,  // 14: codevaldgit.v1.ListDirectoryResponse.entries:type_name -> codevaldgit.v1.FileEntry
 	5,  // 15: codevaldgit.v1.LogResponse.commits:type_name -> codevaldgit.v1.CommitEntry
 	7,  // 16: codevaldgit.v1.DiffResponse.diffs:type_name -> codevaldgit.v1.FileDiff
-	48, // 17: codevaldgit.v1.KeywordTreeNode.keyword:type_name -> codevaldgit.v1.Keyword
-	49, // 18: codevaldgit.v1.KeywordTreeNode.children:type_name -> codevaldgit.v1.KeywordTreeNode
-	48, // 19: codevaldgit.v1.ListKeywordsResponse.keywords:type_name -> codevaldgit.v1.Keyword
-	49, // 20: codevaldgit.v1.GetKeywordTreeResponse.nodes:type_name -> codevaldgit.v1.KeywordTreeNode
-	65, // 21: codevaldgit.v1.GraphResult.nodes:type_name -> codevaldgit.v1.GraphNode
-	66, // 22: codevaldgit.v1.GraphResult.edges:type_name -> codevaldgit.v1.GraphEdge
+	49, // 17: codevaldgit.v1.KeywordTreeNode.keyword:type_name -> codevaldgit.v1.Keyword
+	50, // 18: codevaldgit.v1.KeywordTreeNode.children:type_name -> codevaldgit.v1.KeywordTreeNode
+	49, // 19: codevaldgit.v1.ListKeywordsResponse.keywords:type_name -> codevaldgit.v1.Keyword
+	50, // 20: codevaldgit.v1.GetKeywordTreeResponse.nodes:type_name -> codevaldgit.v1.KeywordTreeNode
+	66, // 21: codevaldgit.v1.GraphResult.nodes:type_name -> codevaldgit.v1.GraphNode
+	67, // 22: codevaldgit.v1.GraphResult.edges:type_name -> codevaldgit.v1.GraphEdge
 	8,  // 23: codevaldgit.v1.GitService.InitRepo:input_type -> codevaldgit.v1.InitRepoRequest
 	9,  // 24: codevaldgit.v1.GitService.ListRepositories:input_type -> codevaldgit.v1.ListRepositoriesRequest
 	11, // 25: codevaldgit.v1.GitService.GetRepository:input_type -> codevaldgit.v1.GetRepositoryRequest
@@ -4519,72 +4634,74 @@ var file_codevaldgit_v1_service_proto_depIdxs = []int32{
 	15, // 28: codevaldgit.v1.GitService.PurgeRepo:input_type -> codevaldgit.v1.PurgeRepoRequest
 	17, // 29: codevaldgit.v1.GitService.CreateBranch:input_type -> codevaldgit.v1.CreateBranchRequest
 	18, // 30: codevaldgit.v1.GitService.GetBranch:input_type -> codevaldgit.v1.GetBranchRequest
-	19, // 31: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
-	21, // 32: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
-	23, // 33: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
-	24, // 34: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
-	25, // 35: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
-	26, // 36: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
-	28, // 37: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
-	30, // 38: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
-	31, // 39: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
-	32, // 40: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
-	33, // 41: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
-	35, // 42: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
-	37, // 43: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
-	39, // 44: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
-	41, // 45: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
-	42, // 46: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
-	45, // 47: codevaldgit.v1.GitService.FetchBranch:input_type -> codevaldgit.v1.FetchBranchRequest
-	47, // 48: codevaldgit.v1.GitService.GetFetchBranchStatus:input_type -> codevaldgit.v1.GetFetchBranchStatusRequest
-	50, // 49: codevaldgit.v1.GitService.CreateKeyword:input_type -> codevaldgit.v1.CreateKeywordRequest
-	51, // 50: codevaldgit.v1.GitService.GetKeyword:input_type -> codevaldgit.v1.GetKeywordRequest
-	52, // 51: codevaldgit.v1.GitService.ListKeywords:input_type -> codevaldgit.v1.ListKeywordsRequest
-	54, // 52: codevaldgit.v1.GitService.GetKeywordTree:input_type -> codevaldgit.v1.GetKeywordTreeRequest
-	56, // 53: codevaldgit.v1.GitService.UpdateKeyword:input_type -> codevaldgit.v1.UpdateKeywordRequest
-	57, // 54: codevaldgit.v1.GitService.DeleteKeyword:input_type -> codevaldgit.v1.DeleteKeywordRequest
-	59, // 55: codevaldgit.v1.GitService.CreateEdge:input_type -> codevaldgit.v1.CreateEdgeRequest
-	61, // 56: codevaldgit.v1.GitService.DeleteEdge:input_type -> codevaldgit.v1.DeleteEdgeRequest
-	63, // 57: codevaldgit.v1.GitService.GetNeighborhood:input_type -> codevaldgit.v1.GetNeighborhoodRequest
-	64, // 58: codevaldgit.v1.GitService.SearchByKeywords:input_type -> codevaldgit.v1.SearchByKeywordsRequest
-	0,  // 59: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
-	10, // 60: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
-	0,  // 61: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
-	0,  // 62: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
-	14, // 63: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
-	16, // 64: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
-	1,  // 65: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
-	1,  // 66: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
-	20, // 67: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
-	22, // 68: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
-	1,  // 69: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
-	2,  // 70: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
-	2,  // 71: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
-	27, // 72: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
-	29, // 73: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
-	3,  // 74: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
-	4,  // 75: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
-	3,  // 76: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
-	34, // 77: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
-	36, // 78: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
-	38, // 79: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
-	40, // 80: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
-	44, // 81: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
-	43, // 82: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
-	46, // 83: codevaldgit.v1.GitService.FetchBranch:output_type -> codevaldgit.v1.FetchBranchJob
-	46, // 84: codevaldgit.v1.GitService.GetFetchBranchStatus:output_type -> codevaldgit.v1.FetchBranchJob
-	48, // 85: codevaldgit.v1.GitService.CreateKeyword:output_type -> codevaldgit.v1.Keyword
-	48, // 86: codevaldgit.v1.GitService.GetKeyword:output_type -> codevaldgit.v1.Keyword
-	53, // 87: codevaldgit.v1.GitService.ListKeywords:output_type -> codevaldgit.v1.ListKeywordsResponse
-	55, // 88: codevaldgit.v1.GitService.GetKeywordTree:output_type -> codevaldgit.v1.GetKeywordTreeResponse
-	48, // 89: codevaldgit.v1.GitService.UpdateKeyword:output_type -> codevaldgit.v1.Keyword
-	58, // 90: codevaldgit.v1.GitService.DeleteKeyword:output_type -> codevaldgit.v1.DeleteKeywordResponse
-	60, // 91: codevaldgit.v1.GitService.CreateEdge:output_type -> codevaldgit.v1.CreateEdgeResponse
-	62, // 92: codevaldgit.v1.GitService.DeleteEdge:output_type -> codevaldgit.v1.DeleteEdgeResponse
-	67, // 93: codevaldgit.v1.GitService.GetNeighborhood:output_type -> codevaldgit.v1.GraphResult
-	67, // 94: codevaldgit.v1.GitService.SearchByKeywords:output_type -> codevaldgit.v1.GraphResult
-	59, // [59:95] is the sub-list for method output_type
-	23, // [23:59] is the sub-list for method input_type
+	19, // 31: codevaldgit.v1.GitService.GetBranchByName:input_type -> codevaldgit.v1.GetBranchByNameRequest
+	20, // 32: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
+	22, // 33: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
+	24, // 34: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
+	25, // 35: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
+	26, // 36: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
+	27, // 37: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
+	29, // 38: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
+	31, // 39: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
+	32, // 40: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
+	33, // 41: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
+	34, // 42: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
+	36, // 43: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
+	38, // 44: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
+	40, // 45: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
+	42, // 46: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
+	43, // 47: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
+	46, // 48: codevaldgit.v1.GitService.FetchBranch:input_type -> codevaldgit.v1.FetchBranchRequest
+	48, // 49: codevaldgit.v1.GitService.GetFetchBranchStatus:input_type -> codevaldgit.v1.GetFetchBranchStatusRequest
+	51, // 50: codevaldgit.v1.GitService.CreateKeyword:input_type -> codevaldgit.v1.CreateKeywordRequest
+	52, // 51: codevaldgit.v1.GitService.GetKeyword:input_type -> codevaldgit.v1.GetKeywordRequest
+	53, // 52: codevaldgit.v1.GitService.ListKeywords:input_type -> codevaldgit.v1.ListKeywordsRequest
+	55, // 53: codevaldgit.v1.GitService.GetKeywordTree:input_type -> codevaldgit.v1.GetKeywordTreeRequest
+	57, // 54: codevaldgit.v1.GitService.UpdateKeyword:input_type -> codevaldgit.v1.UpdateKeywordRequest
+	58, // 55: codevaldgit.v1.GitService.DeleteKeyword:input_type -> codevaldgit.v1.DeleteKeywordRequest
+	60, // 56: codevaldgit.v1.GitService.CreateEdge:input_type -> codevaldgit.v1.CreateEdgeRequest
+	62, // 57: codevaldgit.v1.GitService.DeleteEdge:input_type -> codevaldgit.v1.DeleteEdgeRequest
+	64, // 58: codevaldgit.v1.GitService.GetNeighborhood:input_type -> codevaldgit.v1.GetNeighborhoodRequest
+	65, // 59: codevaldgit.v1.GitService.SearchByKeywords:input_type -> codevaldgit.v1.SearchByKeywordsRequest
+	0,  // 60: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
+	10, // 61: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
+	0,  // 62: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
+	0,  // 63: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
+	14, // 64: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
+	16, // 65: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
+	1,  // 66: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 67: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 68: codevaldgit.v1.GitService.GetBranchByName:output_type -> codevaldgit.v1.Branch
+	21, // 69: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
+	23, // 70: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
+	1,  // 71: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
+	2,  // 72: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
+	2,  // 73: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
+	28, // 74: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
+	30, // 75: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
+	3,  // 76: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
+	4,  // 77: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
+	3,  // 78: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
+	35, // 79: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
+	37, // 80: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
+	39, // 81: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
+	41, // 82: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
+	45, // 83: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
+	44, // 84: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
+	47, // 85: codevaldgit.v1.GitService.FetchBranch:output_type -> codevaldgit.v1.FetchBranchJob
+	47, // 86: codevaldgit.v1.GitService.GetFetchBranchStatus:output_type -> codevaldgit.v1.FetchBranchJob
+	49, // 87: codevaldgit.v1.GitService.CreateKeyword:output_type -> codevaldgit.v1.Keyword
+	49, // 88: codevaldgit.v1.GitService.GetKeyword:output_type -> codevaldgit.v1.Keyword
+	54, // 89: codevaldgit.v1.GitService.ListKeywords:output_type -> codevaldgit.v1.ListKeywordsResponse
+	56, // 90: codevaldgit.v1.GitService.GetKeywordTree:output_type -> codevaldgit.v1.GetKeywordTreeResponse
+	49, // 91: codevaldgit.v1.GitService.UpdateKeyword:output_type -> codevaldgit.v1.Keyword
+	59, // 92: codevaldgit.v1.GitService.DeleteKeyword:output_type -> codevaldgit.v1.DeleteKeywordResponse
+	61, // 93: codevaldgit.v1.GitService.CreateEdge:output_type -> codevaldgit.v1.CreateEdgeResponse
+	63, // 94: codevaldgit.v1.GitService.DeleteEdge:output_type -> codevaldgit.v1.DeleteEdgeResponse
+	68, // 95: codevaldgit.v1.GitService.GetNeighborhood:output_type -> codevaldgit.v1.GraphResult
+	68, // 96: codevaldgit.v1.GitService.SearchByKeywords:output_type -> codevaldgit.v1.GraphResult
+	60, // [60:97] is the sub-list for method output_type
+	23, // [23:60] is the sub-list for method input_type
 	23, // [23:23] is the sub-list for extension type_name
 	23, // [23:23] is the sub-list for extension extendee
 	0,  // [0:23] is the sub-list for field type_name
@@ -4601,7 +4718,7 @@ func file_codevaldgit_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_codevaldgit_v1_service_proto_rawDesc), len(file_codevaldgit_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   68,
+			NumMessages:   69,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

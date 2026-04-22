@@ -106,15 +106,16 @@ func main() {
 		log.Println("codevaldgit: CODEVALDGIT_AGENCY_ID not set — skipping schema seed")
 	}
 
-	// ── GitManager (gRPC service) ──────────────────────────────────────────
-	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID)
-
 	// ── Git Smart HTTP backend (shared ArangoDB DataManager) ─────────────────
 	// Both the gRPC GitManager and the Smart HTTP handler share the same
 	// entitygraph.DataManager so that repos created via gRPC are immediately
 	// accessible for git clone/fetch/push over HTTP.
 	gitBackend := gitarangodb.NewArangoStorerBackend(arangoBackend)
-	gitHTTPHandler := server.NewGitHTTPHandler(gitBackend)
+
+	// ── GitManager (gRPC service) ──────────────────────────────────────────
+	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID, gitBackend)
+
+	gitHTTPHandler := server.NewGitHTTPHandler(gitBackend, mgr)
 
 	// ── TCP listener ─────────────────────────────────────────────────────────
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
@@ -138,8 +139,8 @@ func main() {
 	// ── HTTP server (git Smart HTTP) ─────────────────────────────────────────
 	httpServer := &http.Server{
 		Handler:      gitHTTPHandler,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  10 * time.Minute,
+		WriteTimeout: 10 * time.Minute,
 	}
 
 	// ── Signal handling ───────────────────────────────────────────────────────
