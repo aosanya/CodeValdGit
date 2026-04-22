@@ -36,7 +36,6 @@ git branch -d feature/GIT-XXX_description
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-025d: Update `.github/prompts/map-folder-keywords.prompt.md` — output `.git-graph/` JSON files instead of direct API calls | 🚀 In Progress | ~~GIT-025c~~ ✅ |
 | GIT-025e: Schema v2 — extend `MappingFile` and parser to support `depths[]` keyword entries with `signal` + `note` fields; `.signals.json` loader | 📋 Not Started | GIT-025a |
 
 **Scope**: After every push, `IndexPushedBranch` reads all `.git-graph/*.json` files at the
