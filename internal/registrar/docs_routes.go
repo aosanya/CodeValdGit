@@ -79,5 +79,12 @@ func docsRoutes() []types.RouteInfo {
 			GrpcMethod:   "/codevaldgit.v1.GitService/SearchByKeywords",
 			PathBindings: []types.PathBinding{},
 		},
+		{
+			Method:       "POST",
+			Pattern:      "/git/{agencyId}/branches/{branchId}/graph/query",
+			Capability:   "query_graph",
+			GrpcMethod:   "/codevaldgit.v1.GitService/QueryGraph",
+			PathBindings: []types.PathBinding{{URLParam: "branchId", Field: "branch_id"}},
+		},
 	}
 }

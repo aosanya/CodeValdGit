@@ -550,6 +550,39 @@ type SearchByKeywordsRequest struct {
 	Cascade bool `json:"cascade,omitempty"`
 }
 
+// QueryGraphRequest carries the parameters for [GitManager.QueryGraph].
+// All filter fields are optional; omitting a field disables that filter dimension.
+type QueryGraphRequest struct {
+	// BranchID is the entitygraph ID of the branch scope.
+	BranchID string `json:"branch_id"`
+
+	// Limit is the maximum number of nodes to return. Defaults to 50.
+	Limit int `json:"limit,omitempty"`
+
+	// SortBy controls the sort order. Only "signal" is supported in v1.
+	SortBy string `json:"sort_by,omitempty"`
+
+	// Signals restricts to Blob nodes whose highest tagged_with signal is in
+	// this set. An empty slice disables the signal filter.
+	Signals []string `json:"signals,omitempty"`
+
+	// KeywordIDs restricts to Blob nodes tagged with at least one of these
+	// keyword entity IDs. An empty slice disables the keyword filter.
+	KeywordIDs []string `json:"keyword_ids,omitempty"`
+
+	// FileTypes restricts Blob nodes by file extension (suffix match on path).
+	// Example: [".ts", ".go"]. An empty slice disables the file-type filter.
+	FileTypes []string `json:"file_types,omitempty"`
+
+	// Folders restricts Blob nodes whose path starts with any of these prefixes.
+	// An empty slice disables the folder filter.
+	Folders []string `json:"folders,omitempty"`
+
+	// Relationships restricts edges to those whose label or descriptor property
+	// is in this set. An empty slice returns all edges between returned nodes.
+	Relationships []string `json:"relationships,omitempty"`
+}
+
 // ── Lazy Import v2 (GIT-023b) ─────────────────────────────────────────────────
 
 // FetchBranchRequest carries the parameters for [GitManager.FetchBranch].

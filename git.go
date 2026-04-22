@@ -259,6 +259,14 @@ type GitManager interface {
 	// Returns an empty [GraphResult] when no entities match (never nil).
 	SearchByKeywords(ctx context.Context, req SearchByKeywordsRequest) (GraphResult, error)
 
+	// QueryGraph returns up to req.Limit Blob nodes filtered across five
+	// dimensions (signals, keyword_ids, file_types, folders, relationships) and
+	// sorted by descending signal layer. An empty request body returns the top
+	// 50 highest-signal Blob nodes with their inter-node edges.
+	//
+	// Returns [ErrBranchNotFound] if req.BranchID does not exist.
+	QueryGraph(ctx context.Context, req QueryGraphRequest) (GraphResult, error)
+
 	// ── Lazy Import v2 (GIT-023b) ─────────────────────────────────────────────
 
 	// FetchBranch triggers an async on-demand fetch of the full commit history

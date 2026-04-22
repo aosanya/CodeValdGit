@@ -299,6 +299,12 @@ service GitService {
   // optionally cascading down the keyword hierarchy.
   // Error: NOT_FOUND if the branch does not exist.
   rpc SearchByKeywords (SearchByKeywordsRequest) returns (GraphResult);
+
+  // QueryGraph returns up to limit Blob nodes filtered across five dimensions
+  // (signals, keyword_ids, file_types, folders, relationships) and sorted by
+  // descending signal layer. An empty body returns the top 50 highest-signal nodes.
+  // Error: NOT_FOUND if the branch does not exist.
+  rpc QueryGraph (QueryGraphRequest) returns (GraphResult);
 }
 
 // ── Request / Response Messages ───────────────────────────────────────────────
@@ -614,6 +620,18 @@ message SearchByKeywordsRequest {
   // match_mode is "AND" or "OR". Defaults to "OR".
   string          match_mode = 3;
   bool            cascade    = 4;
+}
+
+// QueryGraphRequest carries the parameters for the multi-filter graph query (GIT-026).
+message QueryGraphRequest {
+  string          branch_id     = 1;
+  int32           limit         = 2;
+  string          sort_by       = 3;
+  repeated string signals       = 4;
+  repeated string keyword_ids   = 5;
+  repeated string file_types    = 6;
+  repeated string folders       = 7;
+  repeated string relationships = 8;
 }
 
 // GraphNode is a vertex in a graph query result.
