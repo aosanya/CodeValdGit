@@ -36,8 +36,7 @@ git branch -d feature/GIT-XXX_description
 
 | Task | Status | Depends On |
 |------|--------|------------|
-| GIT-025a: `internal/gitgraph/parser.go` — `MappingFile`, `KeywordDef`, `MappingEntry`, `RefEntry`, `ParseMappingFile`, `ErrInvalidMappingFile` | 📋 Not Started | ~~GIT-019~~ ✅ |
-| GIT-025b: `internal/gitgraph/sync.go` — `Syncer.Sync`: keyword upsert + edge hard-sync | 📋 Not Started | GIT-025a |
+| GIT-025b: `internal/gitgraph/sync.go` — `Syncer.Sync`: keyword upsert + edge hard-sync | 📋 Not Started | ~~GIT-025a~~ ✅ |
 | GIT-025c: `git_impl_index.go` — hook `IndexPushedBranch` to call `syncGitGraph` after commit/blob phase | 📋 Not Started | GIT-025b |
 | GIT-025d: Update `.github/prompts/map-folder-keywords.prompt.md` — output `.git-graph/` JSON files instead of direct API calls | 📋 Not Started | GIT-025c |
 | GIT-025e: Schema v2 — extend `MappingFile` and parser to support `depths[]` keyword entries with `signal` + `note` fields; `.signals.json` loader | 📋 Not Started | GIT-025a |
