@@ -113,7 +113,7 @@ func main() {
 	gitBackend := gitarangodb.NewArangoStorerBackend(arangoBackend)
 
 	// ── GitManager (gRPC service) ──────────────────────────────────────────
-	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID, gitBackend)
+	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID, gitBackend, nil)
 
 	gitHTTPHandler := server.NewGitHTTPHandler(gitBackend, mgr)
 

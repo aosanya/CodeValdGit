@@ -96,3 +96,11 @@ var ErrBlobContentUnavailable = errors.New("blob content not yet available; trig
 // [GitManager.DeleteEdge] when the relationship name is not a valid
 // documentation edge type.
 var ErrInvalidRelationship = errors.New("invalid documentation relationship name")
+
+// ── Concurrency errors (GIT-011) ──────────────────────────────────────────────
+
+// ErrMergeConcurrencyConflict is returned by [GitManager.MergeBranch] when
+// the default branch HEAD has been advanced by a concurrent merge between the
+// time this merge read the expected HEAD and when it attempted the update.
+// Callers should retry the merge after re-reading the latest branch state.
+var ErrMergeConcurrencyConflict = errors.New("merge conflict: default branch HEAD changed concurrently")
