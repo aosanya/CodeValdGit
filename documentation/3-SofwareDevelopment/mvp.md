@@ -59,16 +59,7 @@ See: [mvp-details/git-graph-sync.md](mvp-details/git-graph-sync.md)
 
 ## P0: Production Safety (CRITICAL)
 
-### GIT-011 — Concurrency and Atomic Ref Updates
-
-| Task | Status | Depends On |
-|------|--------|------------|
-| GIT-011: `RefLocker` interface + CAS in `advanceBranchHead` + `ErrMergeConcurrencyConflict` | 📋 Not Started | ~~GIT-005~~ ✅ |
-
-**Scope**: Add `RefLocker` to `git.go`. Add in-process `sync.Mutex` default implementation.
-Wrap `MergeBranch` inside `WithMergeLock`. Pass expected `head_commit_id` through
-`advanceBranchHead` and return `ErrMergeConcurrencyConflict` on CAS mismatch.
-See: [mvp-details/critical-concurrency.md](mvp-details/critical-concurrency.md)
+~~### GIT-011 — Concurrency and Atomic Ref Updates~~ ✅
 
 ---
 
