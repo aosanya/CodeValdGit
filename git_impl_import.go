@@ -121,9 +121,32 @@ func appendImportStep(jobID, msg string) {
 // Returns [ErrImportInProgress] if a pending or running import already exists.
 func (m *gitManager) ImportRepo(ctx context.Context, req ImportRepoRequest) (ImportJob, error) {
 
-	// 1. (Upsert) — no duplicate-repo check; reimporting overwrites entities.
+	// 1. Reject if a Repository entity already exists for this agency.
+	repos, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: m.agencyID,
+		TypeID:   "Repository",
+	})
+	if err != nil {
+		return ImportJob{}, fmt.Errorf("ImportRepo %s: check existing repos: %w", m.agencyID, err)
+	}
+	if len(repos) > 0 {
+		return ImportJob{}, ErrRepoAlreadyExists
+	}
 
-	// 2. (Upsert) — no active-job check; a new import overwrites any prior state.
+	// 2. Reject if a pending or running import already exists.
+	jobs, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: m.agencyID,
+		TypeID:   "ImportJob",
+	})
+	if err != nil {
+		return ImportJob{}, fmt.Errorf("ImportRepo %s: check active jobs: %w", m.agencyID, err)
+	}
+	for _, j := range jobs {
+		status, _ := j.Properties["status"].(string)
+		if status == importStatusPending || status == importStatusRunning {
+			return ImportJob{}, ErrImportInProgress
+		}
+	}
 
 	// 3. Create the ImportJob entity; capture the auto-assigned ID as jobID.
 	now := time.Now().UTC().Format(time.RFC3339)
