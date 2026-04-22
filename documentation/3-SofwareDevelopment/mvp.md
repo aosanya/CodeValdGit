@@ -37,6 +37,8 @@ git branch -d feature/GIT-XXX_description
 | Task | Status | Depends On |
 |------|--------|------------|
 | GIT-025e: Schema v2 — extend `MappingFile` and parser to support `depths[]` keyword entries with `signal` + `note` fields; `.signals.json` loader | ✅ Done | GIT-025a |
+| GIT-025b: Sync logic — `Syncer` type, keyword upsert, edge hard-sync (`internal/gitgraph/sync.go`) | ✅ Done | GIT-025a |
+| GIT-025c: Hook `IndexPushedBranch` to call `syncGitGraph` after commit/blob phase (`git_impl_index.go`, `git_impl_push.go`) | ✅ Done | GIT-025b |
 
 **Scope**: After every push, `IndexPushedBranch` reads all `.git-graph/*.json` files at the
 new branch tip, upserts keywords (agency-scoped, never deleted), and hard-syncs `tagged_with`
