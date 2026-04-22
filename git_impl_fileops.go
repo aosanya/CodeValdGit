@@ -251,7 +251,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	}
 
 	// 4. Advance branch HEAD.
-	if _, err := m.advanceBranchHead(ctx, branch.ID, commitEntity.ID); err != nil {
+	if _, err := m.advanceBranchHead(ctx, branch.ID, commitEntity.ID, ""); err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: advance branch head: %w", err)
 	}
 

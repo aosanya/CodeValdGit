@@ -17,6 +17,7 @@ package codevaldgit
 
 import (
 	"context"
+	"sync"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
@@ -291,6 +292,46 @@ type GitManager interface {
 	IndexPushedBranch(ctx context.Context, repoName, branchRef, oldSHA, newSHA string) error
 }
 
+// RefLocker serialises default-branch mutations per agency.
+// The default implementation is an in-process [sync.Mutex] keyed by agencyID.
+// Inject a distributed lock implementation for multi-instance deployments.
+type RefLocker interface {
+	// WithMergeLock acquires an exclusive per-agency lock, calls fn, then
+	// releases the lock. If ctx is cancelled before the lock is acquired,
+	// ctx.Err() is returned immediately without calling fn.
+	WithMergeLock(ctx context.Context, agencyID string, fn func() error) error
+}
+
+// mutexLocker is the default in-process [RefLocker] implementation.
+// It is keyed by agencyID so concurrent merges for different agencies
+// never block each other.
+type mutexLocker struct {
+	mu sync.Map // agencyID → *sync.Mutex
+}
+
+// WithMergeLock implements [RefLocker] using a per-agency [sync.Mutex].
+// Context cancellation is checked before fn is called; if the context is
+// already done the lock is never acquired.
+func (l *mutexLocker) WithMergeLock(ctx context.Context, agencyID string, fn func() error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	raw, _ := l.mu.LoadOrStore(agencyID, &sync.Mutex{})
+	mu := raw.(*sync.Mutex)
+	done := make(chan error, 1)
+	go func() {
+		mu.Lock()
+		defer mu.Unlock()
+		done <- fn()
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-done:
+		return err
+	}
+}
+
 // gitManager is the concrete implementation of [GitManager].
 // It wraps [entitygraph.DataManager] to expose Git-specific convenience
 // methods over the entity graph.
@@ -301,24 +342,31 @@ type gitManager struct {
 	publisher CrossPublisher          // optional; nil = skip event publishing
 	agencyID  string                  // the single agency ID for this database
 	backend   Backend                 // storer backend — used by IndexPushedBranch
+	locker    RefLocker               // serialises per-agency default-branch mutations
 }
 
 // NewGitManager constructs a [GitManager] backed by the given
 // [entitygraph.DataManager] and [GitSchemaManager].
 // agencyID is the single agency scoped to this database instance.
 // pub may be nil — cross-service events are skipped when no publisher is set.
+// locker may be nil — a default in-process [mutexLocker] is used.
 func NewGitManager(
 	dm entitygraph.DataManager,
 	sm GitSchemaManager,
 	pub CrossPublisher,
 	agencyID string,
 	backend Backend,
+	locker RefLocker,
 ) GitManager {
+	if locker == nil {
+		locker = &mutexLocker{}
+	}
 	return &gitManager{
 		dm:        dm,
 		sm:        sm,
 		publisher: pub,
 		agencyID:  agencyID,
 		backend:   backend,
+		locker:    locker,
 	}
 }

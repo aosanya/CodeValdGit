@@ -196,7 +196,7 @@ func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef,
 		}
 	}
 	if branchID != "" {
-		if _, advErr := m.advanceBranchHead(ctx, branchID, commitID); advErr != nil {
+		if _, advErr := m.advanceBranchHead(ctx, branchID, commitID, ""); advErr != nil {
 			log.Printf("[push-index][%s] repo=%s ref=%s: WARNING advance branch head: %v", m.agencyID, repoName, branchRef, advErr)
 		}
 	}

@@ -50,7 +50,7 @@ func newTestManagerAndSeedRepo(t *testing.T) (codevaldgit.GitManager, *fakeDataM
 	t.Helper()
 	dm := newFakeDataManager()
 	sm := &fakeSchemaManager{}
-	mgr := codevaldgit.NewGitManager(dm, sm, nil, "test-agency", nil)
+	mgr := codevaldgit.NewGitManager(dm, sm, nil, "test-agency", nil, nil)
 
 	ctx := context.Background()
 	repo, err := mgr.InitRepo(ctx, codevaldgit.CreateRepoRequest{Name: "testrepo"})

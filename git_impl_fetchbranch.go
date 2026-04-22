@@ -262,7 +262,7 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 			})
 		}
 		// Advance branch HEAD pointer.
-		_, _ = m.advanceBranchHead(ctx, branchID, commitID)
+		_, _ = m.advanceBranchHead(ctx, branchID, commitID, "")
 	}
 
 	// Mark branch fetched and job completed.
