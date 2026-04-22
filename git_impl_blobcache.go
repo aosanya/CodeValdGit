@@ -48,6 +48,11 @@ func (m *gitManager) loadBlobContentFromStorer(ctx context.Context, branch Branc
 	}
 
 	// Open the backend storer — ArangoDB or filesystem, no network I/O.
+	// If no backend is configured (e.g. no bare clone available), content
+	// cannot be hydrated and the caller should trigger FetchBranch first.
+	if m.backend == nil {
+		return "", "", ErrBlobContentUnavailable
+	}
 	sto, fs, err := m.backend.OpenStorer(ctx, m.agencyID, repoName)
 	if err != nil {
 		log.Printf("[loadBlobContentFromStorer] OpenStorer repo=%s error: %v", repoName, err)

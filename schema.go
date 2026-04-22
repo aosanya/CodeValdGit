@@ -403,12 +403,33 @@ func DefaultGitSchema() types.Schema {
 						Inverse:     "has_blob",
 					}, // tagged_with links a Blob to Keyword nodes for discovery.
 					// Branch-scoped: created on task-branch Blobs, replicated to main on merge (DR-010).
+					//
+					// Edge properties capture the knowledge-graph signal depth (see
+					// documentation/2-SoftwareDesignAndArchitecture/architecture-knowledge-graph.md):
+					//   signal — how deeply this Blob covers the Keyword.
+					//     Well-known values (ordered by depth):
+					//       "surface"     — keyword mentioned in passing; file does not own the concept
+					//       "index"       — file navigates to other files on this topic
+					//       "structural"  — file defines a schema, format, status model, or process
+					//       "contributor" — file adds content that other files on this topic depend on
+					//       "authority"   — canonical source; other files reference this one
+					//   note — human-readable explanation of how this Blob covers the Keyword at
+					//          the declared signal depth.
 					{
 						Name:        "tagged_with",
 						Label:       "Keywords",
 						PathSegment: "keywords",
 						ToType:      "Keyword",
 						ToMany:      true,
+						Properties: []types.PropertyDefinition{
+							// signal is the depth at which this Blob covers the Keyword.
+							// Required. Well-known values: "surface", "index", "structural",
+							// "contributor", "authority".
+							{Name: "signal", Type: types.PropertyTypeString, Required: true},
+							// note is a plain-text explanation of how the file covers the keyword
+							// at the declared signal depth. Optional but strongly recommended.
+							{Name: "note", Type: types.PropertyTypeString},
+						},
 					},
 					// references is a generic directed edge from one Blob to another within
 					// the same repo. The nature of the relationship is captured in the
@@ -428,7 +449,9 @@ func DefaultGitSchema() types.Schema {
 						Properties: []types.PropertyDefinition{
 							// descriptor is the semantic label for this edge.
 							// Open vocabulary; well-known values: "documents", "depends_on",
-							// "contradicts", "references", "test_for", "obsoletes".
+							// "contradicts", "references", "test_for", "obsoletes",
+							// "tested_by" (source is the authority doc; target is the test/QA file).
+							// See architecture-knowledge-graph.md for the full descriptor vocabulary.
 							{Name: "descriptor", Type: types.PropertyTypeString, Required: true},
 						},
 					},
