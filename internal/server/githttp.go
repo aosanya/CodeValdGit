@@ -390,6 +390,9 @@ func extractAgencyRepo(path string) (agencyID, repoName, rest string, ok bool) {
 		return "", "", "", false
 	}
 	repo := after[:idx2]
+	// Strip the conventional ".git" suffix that many git clients append to the
+	// repository name (e.g. "gittesting.git" → "gittesting").
+	repo = strings.TrimSuffix(repo, ".git")
 	restSuffix := after[idx2:] // includes the leading slash
 
 	if agency == "" || repo == "" || restSuffix == "/" || restSuffix == "" {

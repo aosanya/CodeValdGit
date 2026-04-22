@@ -153,12 +153,49 @@ func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef,
 		}
 	}
 
-	// ── 5. Advance the branch HEAD pointer ───────────────────────────────────
+	// ── 5. Advance (or create) the branch HEAD pointer ───────────────────────
 	branchName := strings.TrimPrefix(branchRef, "refs/heads/")
 	branchID, err := m.findBranchIDForRepo(ctx, repoName, branchName)
 	if err != nil {
-		log.Printf("[push-index][%s] repo=%s ref=%s: WARNING find branch: %v", m.agencyID, repoName, branchRef, err)
-	} else if branchID != "" {
+		// Branch entity does not exist yet — create it now (new branch pushed
+		// directly via git push without going through the gRPC CreateBranch API).
+		log.Printf("[push-index][%s] repo=%s ref=%s: branch entity not found, creating it", m.agencyID, repoName, branchRef)
+		repos, lErr := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+			AgencyID:   m.agencyID,
+			TypeID:     "Repository",
+			Properties: map[string]any{"name": repoName},
+		})
+		if lErr != nil || len(repos) == 0 {
+			log.Printf("[push-index][%s] repo=%s ref=%s: WARNING cannot find repo entity to create branch: %v", m.agencyID, repoName, branchRef, lErr)
+		} else {
+			repoID := repos[0].ID
+			newBranch, createErr := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+				AgencyID: m.agencyID,
+				TypeID:   "Branch",
+				Properties: map[string]any{
+					"name":       branchName,
+					"repo_id":    repoID,
+					"created_at": now,
+					"updated_at": now,
+				},
+			})
+			if createErr != nil && !errors.Is(createErr, entitygraph.ErrEntityAlreadyExists) {
+				log.Printf("[push-index][%s] repo=%s ref=%s: WARNING create branch entity: %v", m.agencyID, repoName, branchRef, createErr)
+			} else {
+				branchID = newBranch.ID
+				// Wire repo → has_branch → branch.
+				if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "has_branch",
+					FromID:   repoID,
+					ToID:     branchID,
+				}); relErr != nil {
+					log.Printf("[push-index][%s] repo=%s ref=%s: WARNING create has_branch edge: %v", m.agencyID, repoName, branchRef, relErr)
+				}
+			}
+		}
+	}
+	if branchID != "" {
 		if _, advErr := m.advanceBranchHead(ctx, branchID, commitID); advErr != nil {
 			log.Printf("[push-index][%s] repo=%s ref=%s: WARNING advance branch head: %v", m.agencyID, repoName, branchRef, advErr)
 		}
