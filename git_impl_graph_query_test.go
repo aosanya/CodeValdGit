@@ -6,50 +6,52 @@ import (
 	"testing"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
+	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 )
 
-// seedBlobAndTag seeds a Blob entity and a tagged_with edge to the given
-// keyword entity ID, using the provided signal name. Returns the blob entity ID.
-func seedBlobAndTag(
-	t *testing.T,
-	mgr codevaldgit.GitManager,
-	fdm interface {
-		CreateEntity(context.Context, interface{}) (interface{}, error)
-	},
-	branchID, path, keywordID, signal string,
-) string {
-	t.Helper()
-	return ""
-}
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-// setupQueryGraphBase creates a repo, default branch, two blobs, one keyword,
-// and tagged_with edges with different signals. Returns manager, branchID, and
-// the two blob entity IDs.
-func setupQueryGraphBase(t *testing.T) (codevaldgit.GitManager, *fakeDataManager, string, string, string) {
+// seedTaggedWith creates a tagged_with relationship directly on fdm so that
+// the signal/note/branch_id properties are preserved exactly as syncGitGraph
+// would write them.
+func seedTaggedWith(t *testing.T, fdm *fakeDataManager, blobID, kwID, signal, branchID string) {
 	t.Helper()
 	ctx := context.Background()
-	mgr, fdm, _ := newTestManager(t)
-
-	repo := mustInitRepo(t, mgr)
-	branch := mustDefaultBranch(t, mgr, repo.ID)
-
-	// Write two files so Blob entities are created.
-	mustWriteFile(t, mgr, branch.ID, "src/main.go", "package main")
-	mustWriteFile(t, mgr, branch.ID, "docs/readme.md", "# docs")
-
-	// Retrieve blob IDs.
-	blobs, err := fdm.ListEntities(ctx, interface{}(nil))
-	_ = blobs
-	_ = err
-
-	return mgr, fdm, branch.ID, "", ""
+	_, err := fdm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+		AgencyID: testAgencyID,
+		Name:     "tagged_with",
+		FromID:   blobID,
+		ToID:     kwID,
+		Properties: map[string]any{
+			"signal":    signal,
+			"note":      "",
+			"branch_id": branchID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("seedTaggedWith: %v", err)
+	}
 }
 
-// ── QueryGraph tests ──────────────────────────────────────────────────────────
+// listBlobIDs returns the entity IDs of all Blob entities in fdm.
+func listBlobIDs(t *testing.T, fdm *fakeDataManager) []string {
+	t.Helper()
+	ctx := context.Background()
+	blobs, err := fdm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: testAgencyID,
+		TypeID:   "Blob",
+	})
+	if err != nil {
+		t.Fatalf("listBlobIDs: %v", err)
+	}
+	ids := make([]string, len(blobs))
+	for i, b := range blobs {
+		ids[i] = b.ID
+	}
+	return ids
+}
 
-func TestQueryGraph_EmptyBody_ReturnsBlobs(t *testing.T) {
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+func TestQueryGraph_EmptyBody_ReturnsTaggedBlobs(t *testing.T) {
 	ctx := context.Background()
 	mgr, fdm, _ := newTestManager(t)
 
@@ -58,33 +60,12 @@ func TestQueryGraph_EmptyBody_ReturnsBlobs(t *testing.T) {
 	mustWriteFile(t, mgr, branch.ID, "src/auth.go", "package auth")
 	mustWriteFile(t, mgr, branch.ID, "src/user.go", "package user")
 
-	// Create a keyword and tag both blobs at "authority" signal.
 	kw, err := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "auth", Scope: "agency"})
 	if err != nil {
 		t.Fatalf("CreateKeyword: %v", err)
 	}
-
-	blobs, err := fdm.ListEntities(ctx, nil)
-	if err != nil {
-		t.Fatalf("list blobs: %v", err)
-	}
-	var blobIDs []string
-	for _, e := range blobs {
-		if e.TypeID == "Blob" {
-			blobIDs = append(blobIDs, e.ID)
-		}
-	}
-	for _, blobID := range blobIDs {
-		_, err := mgr.CreateEdge(ctx, codevaldgit.CreateEdgeRequest{
-			BranchID:   branch.ID,
-			FromID:     blobID,
-			ToID:       kw.ID,
-			Name:       "tagged_with",
-			Properties: map[string]any{"signal": "authority", "note": "", "branch_id": branch.ID},
-		})
-		if err != nil {
-			t.Fatalf("CreateEdge: %v", err)
-		}
+	for _, id := range listBlobIDs(t, fdm) {
+		seedTaggedWith(t, fdm, id, kw.ID, "authority", branch.ID)
 	}
 
 	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{BranchID: branch.ID})
@@ -105,19 +86,9 @@ func TestQueryGraph_FileTypeFilter(t *testing.T) {
 	mustWriteFile(t, mgr, branch.ID, "src/main.go", "package main")
 	mustWriteFile(t, mgr, branch.ID, "docs/guide.md", "# guide")
 
-	blobs, _ := fdm.ListEntities(ctx, nil)
 	kw, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kw1", Scope: "agency"})
-	for _, b := range blobs {
-		if b.TypeID != "Blob" {
-			continue
-		}
-		mgr.CreateEdge(ctx, codevaldgit.CreateEdgeRequest{ //nolint:errcheck
-			BranchID:   branch.ID,
-			FromID:     b.ID,
-			ToID:       kw.ID,
-			Name:       "tagged_with",
-			Properties: map[string]any{"signal": "surface", "note": "", "branch_id": branch.ID},
-		})
+	for _, id := range listBlobIDs(t, fdm) {
+		seedTaggedWith(t, fdm, id, kw.ID, "surface", branch.ID)
 	}
 
 	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
@@ -125,12 +96,12 @@ func TestQueryGraph_FileTypeFilter(t *testing.T) {
 		FileTypes: []string{".go"},
 	})
 	if err != nil {
-		t.Fatalf("QueryGraph: %v", err)
+		t.Fatalf("QueryGraph file-type filter: %v", err)
 	}
 	for _, n := range result.Nodes {
 		path, _ := n.Properties["path"].(string)
-		if len(path) > 3 && path[len(path)-3:] != ".go" {
-			t.Errorf("unexpected non-.go node path: %s", path)
+		if len(path) < 3 || path[len(path)-3:] != ".go" {
+			t.Errorf("unexpected non-.go node path: %q", path)
 		}
 	}
 }
@@ -144,19 +115,9 @@ func TestQueryGraph_FolderFilter(t *testing.T) {
 	mustWriteFile(t, mgr, branch.ID, "internal/server.go", "package server")
 	mustWriteFile(t, mgr, branch.ID, "cmd/main.go", "package main")
 
-	blobs, _ := fdm.ListEntities(ctx, nil)
 	kw, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kw2", Scope: "agency"})
-	for _, b := range blobs {
-		if b.TypeID != "Blob" {
-			continue
-		}
-		mgr.CreateEdge(ctx, codevaldgit.CreateEdgeRequest{ //nolint:errcheck
-			BranchID:   branch.ID,
-			FromID:     b.ID,
-			ToID:       kw.ID,
-			Name:       "tagged_with",
-			Properties: map[string]any{"signal": "index", "note": "", "branch_id": branch.ID},
-		})
+	for _, id := range listBlobIDs(t, fdm) {
+		seedTaggedWith(t, fdm, id, kw.ID, "index", branch.ID)
 	}
 
 	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
@@ -164,12 +125,15 @@ func TestQueryGraph_FolderFilter(t *testing.T) {
 		Folders:  []string{"internal/"},
 	})
 	if err != nil {
-		t.Fatalf("QueryGraph: %v", err)
+		t.Fatalf("QueryGraph folder filter: %v", err)
+	}
+	if len(result.Nodes) == 0 {
+		t.Fatal("expected at least one node in internal/")
 	}
 	for _, n := range result.Nodes {
 		path, _ := n.Properties["path"].(string)
 		if len(path) < 9 || path[:9] != "internal/" {
-			t.Errorf("unexpected node path outside folder: %s", path)
+			t.Errorf("unexpected node outside folder: %q", path)
 		}
 	}
 }
@@ -190,25 +154,13 @@ func TestQueryGraph_LimitEnforced(t *testing.T) {
 
 	repo := mustInitRepo(t, mgr)
 	branch := mustDefaultBranch(t, mgr, repo.ID)
-
-	// Write 5 files.
-	for i, name := range []string{"a.go", "b.go", "c.go", "d.go", "e.go"} {
-		mustWriteFile(t, mgr, branch.ID, "src/"+name, "package p"+string(rune('a'+i)))
+	for _, name := range []string{"a.go", "b.go", "c.go", "d.go", "e.go"} {
+		mustWriteFile(t, mgr, branch.ID, "src/"+name, "package p")
 	}
 
-	blobs, _ := fdm.ListEntities(ctx, nil)
 	kw, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kw3", Scope: "agency"})
-	for _, b := range blobs {
-		if b.TypeID != "Blob" {
-			continue
-		}
-		mgr.CreateEdge(ctx, codevaldgit.CreateEdgeRequest{ //nolint:errcheck
-			BranchID:   branch.ID,
-			FromID:     b.ID,
-			ToID:       kw.ID,
-			Name:       "tagged_with",
-			Properties: map[string]any{"signal": "surface", "note": "", "branch_id": branch.ID},
-		})
+	for _, id := range listBlobIDs(t, fdm) {
+		seedTaggedWith(t, fdm, id, kw.ID, "surface", branch.ID)
 	}
 
 	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
@@ -216,7 +168,7 @@ func TestQueryGraph_LimitEnforced(t *testing.T) {
 		Limit:    2,
 	})
 	if err != nil {
-		t.Fatalf("QueryGraph: %v", err)
+		t.Fatalf("QueryGraph limit: %v", err)
 	}
 	if len(result.Nodes) > 2 {
 		t.Errorf("limit=2: got %d nodes, want ≤2", len(result.Nodes))
@@ -232,27 +184,20 @@ func TestQueryGraph_SignalFilter(t *testing.T) {
 	mustWriteFile(t, mgr, branch.ID, "high.go", "package p")
 	mustWriteFile(t, mgr, branch.ID, "low.go", "package p")
 
-	blobs, _ := fdm.ListEntities(ctx, nil)
 	kw, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kw4", Scope: "agency"})
 
-	signals := map[string]string{}
-	for _, b := range blobs {
-		if b.TypeID != "Blob" {
-			continue
-		}
+	// Assign signals per path.
+	pathSignal := map[string]string{"high.go": "authority", "low.go": "surface"}
+	blobsByID := map[string]string{} // id → path
+	allBlobs, _ := fdm.ListEntities(ctx, entitygraph.EntityFilter{AgencyID: testAgencyID, TypeID: "Blob"})
+	for _, b := range allBlobs {
 		path, _ := b.Properties["path"].(string)
-		sig := "surface"
-		if path == "high.go" {
-			sig = "authority"
+		sig := pathSignal[path]
+		if sig == "" {
+			sig = "surface"
 		}
-		signals[b.ID] = sig
-		mgr.CreateEdge(ctx, codevaldgit.CreateEdgeRequest{ //nolint:errcheck
-			BranchID:   branch.ID,
-			FromID:     b.ID,
-			ToID:       kw.ID,
-			Name:       "tagged_with",
-			Properties: map[string]any{"signal": sig, "note": "", "branch_id": branch.ID},
-		})
+		blobsByID[b.ID] = path
+		seedTaggedWith(t, fdm, b.ID, kw.ID, sig, branch.ID)
 	}
 
 	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
@@ -260,11 +205,100 @@ func TestQueryGraph_SignalFilter(t *testing.T) {
 		Signals:  []string{"authority"},
 	})
 	if err != nil {
-		t.Fatalf("QueryGraph: %v", err)
+		t.Fatalf("QueryGraph signal filter: %v", err)
+	}
+	if len(result.Nodes) == 0 {
+		t.Fatal("expected at least one authority node")
 	}
 	for _, n := range result.Nodes {
-		if signals[n.ID] != "authority" {
-			t.Errorf("node %s has signal %q, expected authority-only results", n.ID, signals[n.ID])
+		path := blobsByID[n.ID]
+		if path != "high.go" {
+			t.Errorf("signal filter: unexpected node path %q (want high.go only)", path)
+		}
+	}
+}
+
+func TestQueryGraph_KeywordIDFilter(t *testing.T) {
+	ctx := context.Background()
+	mgr, fdm, _ := newTestManager(t)
+
+	repo := mustInitRepo(t, mgr)
+	branch := mustDefaultBranch(t, mgr, repo.ID)
+	mustWriteFile(t, mgr, branch.ID, "a.go", "package a")
+	mustWriteFile(t, mgr, branch.ID, "b.go", "package b")
+
+	kwA, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kwA", Scope: "agency"})
+	kwB, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kwB", Scope: "agency"})
+
+	allBlobs, _ := fdm.ListEntities(ctx, entitygraph.EntityFilter{AgencyID: testAgencyID, TypeID: "Blob"})
+	var aID, bID string
+	for _, b := range allBlobs {
+		path, _ := b.Properties["path"].(string)
+		if path == "a.go" {
+			aID = b.ID
+		} else if path == "b.go" {
+			bID = b.ID
+		}
+	}
+	seedTaggedWith(t, fdm, aID, kwA.ID, "authority", branch.ID)
+	seedTaggedWith(t, fdm, bID, kwB.ID, "authority", branch.ID)
+
+	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
+		BranchID:   branch.ID,
+		KeywordIDs: []string{kwA.ID},
+	})
+	if err != nil {
+		t.Fatalf("QueryGraph keyword filter: %v", err)
+	}
+	if len(result.Nodes) != 1 || result.Nodes[0].ID != aID {
+		t.Errorf("keyword filter: want node %s only, got %v", aID, result.Nodes)
+	}
+}
+
+func TestQueryGraph_EdgesOnlyBetweenReturnedNodes(t *testing.T) {
+	ctx := context.Background()
+	mgr, fdm, _ := newTestManager(t)
+
+	repo := mustInitRepo(t, mgr)
+	branch := mustDefaultBranch(t, mgr, repo.ID)
+	mustWriteFile(t, mgr, branch.ID, "x.go", "package x")
+	mustWriteFile(t, mgr, branch.ID, "y.go", "package y")
+
+	kw, _ := mgr.CreateKeyword(ctx, codevaldgit.CreateKeywordRequest{Name: "kwE", Scope: "agency"})
+	allBlobs, _ := fdm.ListEntities(ctx, entitygraph.EntityFilter{AgencyID: testAgencyID, TypeID: "Blob"})
+	var xID, yID string
+	for _, b := range allBlobs {
+		path, _ := b.Properties["path"].(string)
+		if path == "x.go" {
+			xID = b.ID
+		} else if path == "y.go" {
+			yID = b.ID
+		}
+		seedTaggedWith(t, fdm, b.ID, kw.ID, "surface", branch.ID)
+	}
+	// Add a blob→blob references edge.
+	fdm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{ //nolint:errcheck
+		AgencyID: testAgencyID,
+		Name:     "references",
+		FromID:   xID,
+		ToID:     yID,
+		Properties: map[string]any{
+			"descriptor": "depends_on",
+			"branch_id":  branch.ID,
+		},
+	})
+
+	result, err := mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{BranchID: branch.ID})
+	if err != nil {
+		t.Fatalf("QueryGraph edges test: %v", err)
+	}
+	nodeSet := make(map[string]bool)
+	for _, n := range result.Nodes {
+		nodeSet[n.ID] = true
+	}
+	for _, e := range result.Edges {
+		if !nodeSet[e.FromID] || !nodeSet[e.ToID] {
+			t.Errorf("edge %s references nodes outside result set", e.ID)
 		}
 	}
 }

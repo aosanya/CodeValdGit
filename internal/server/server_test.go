@@ -269,6 +269,10 @@ func (f *fakeGitManager) SearchByKeywords(_ context.Context, req codevaldgit.Sea
 	return codevaldgit.GraphResult{}, nil
 }
 
+func (f *fakeGitManager) QueryGraph(_ context.Context, _ codevaldgit.QueryGraphRequest) (codevaldgit.GraphResult, error) {
+	return codevaldgit.GraphResult{}, nil
+}
+
 func (f *fakeGitManager) FetchBranch(_ context.Context, req codevaldgit.FetchBranchRequest) (codevaldgit.FetchBranchJob, error) {
 	return codevaldgit.FetchBranchJob{}, nil
 }
