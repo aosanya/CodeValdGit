@@ -192,6 +192,17 @@ func (m *gitManager) IndexPushedBranch(ctx context.Context, repoName, branchRef,
 				}); relErr != nil {
 					log.Printf("[push-index][%s] repo=%s ref=%s: WARNING create has_branch edge: %v", m.agencyID, repoName, branchRef, relErr)
 				}
+				// Wire branch → belongs_to_repository → repo. GetBranch resolves
+				// Branch.RepositoryID via this reverse edge, and ReadFile needs
+				// it to open the backend storer for lazy blob hydration.
+				if _, relErr := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+					AgencyID: m.agencyID,
+					Name:     "belongs_to_repository",
+					FromID:   branchID,
+					ToID:     repoID,
+				}); relErr != nil {
+					log.Printf("[push-index][%s] repo=%s ref=%s: WARNING create belongs_to_repository edge: %v", m.agencyID, repoName, branchRef, relErr)
+				}
 			}
 		}
 	}

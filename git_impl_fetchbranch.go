@@ -61,14 +61,51 @@ func (m *gitManager) FetchBranch(ctx context.Context, req FetchBranchRequest) (F
 	}
 	branchName, _ := branchEntity.Properties["name"].(string)
 	status, _ := branchEntity.Properties["status"].(string)
+	headCommitID, _ := branchEntity.Properties["head_commit_id"].(string)
 
 	// 2. Guard: reject if already fetching or fetched.
 	if status == branchStatusFetching || status == branchStatusFetched {
 		return FetchBranchJob{}, ErrBranchAlreadyFetched
 	}
 
-	// 3. Create the FetchBranchJob entity.
+	// 3. Short-circuit for locally-complete branches.
+	// If the branch already has a HEAD commit, its commits/trees/blobs were
+	// populated by push-indexing (or a prior successful fetch) and the objects
+	// live in the backend storer — re-cloning from source_url is unnecessary
+	// and will fail for branches that were pushed to CodeValdGit but never
+	// existed on the import origin.
 	now := time.Now().UTC().Format(time.RFC3339)
+	if headCommitID != "" {
+		log.Printf("[fetchbranch][%s] branch=%q: short-circuit — head_commit_id=%q already set, marking fetched",
+			m.agencyID, branchName, headCommitID)
+		jobEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID: m.agencyID,
+			TypeID:   "FetchBranchJob",
+			Properties: map[string]any{
+				"agency_id":     m.agencyID,
+				"repo_id":       req.RepoID,
+				"branch_name":   branchName,
+				"status":        fetchJobStatusCompleted,
+				"error_message": "",
+				"created_at":    now,
+				"updated_at":    now,
+			},
+		})
+		if err != nil {
+			return FetchBranchJob{}, fmt.Errorf("FetchBranch %s: create job entity: %w", req.BranchID, err)
+		}
+		if _, err := m.dm.UpdateEntity(ctx, m.agencyID, req.BranchID, entitygraph.UpdateEntityRequest{
+			Properties: map[string]any{
+				"status":     branchStatusFetched,
+				"updated_at": now,
+			},
+		}); err != nil {
+			return FetchBranchJob{}, fmt.Errorf("FetchBranch %s: mark fetched: %w", req.BranchID, err)
+		}
+		return fetchJobFromEntity(jobEntity), nil
+	}
+
+	// 4. Create the FetchBranchJob entity.
 	jobEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "FetchBranchJob",
@@ -88,7 +125,7 @@ func (m *gitManager) FetchBranch(ctx context.Context, req FetchBranchRequest) (F
 	jobID := jobEntity.ID
 	job := fetchJobFromEntity(jobEntity)
 
-	// 4. Transition Branch status to "fetching".
+	// 5. Transition Branch status to "fetching".
 	if _, err := m.dm.UpdateEntity(ctx, m.agencyID, req.BranchID, entitygraph.UpdateEntityRequest{
 		Properties: map[string]any{
 			"status":     branchStatusFetching,
@@ -98,7 +135,7 @@ func (m *gitManager) FetchBranch(ctx context.Context, req FetchBranchRequest) (F
 		return FetchBranchJob{}, fmt.Errorf("FetchBranch %s: transition to fetching: %w", req.BranchID, err)
 	}
 
-	// 5. Launch background goroutine.
+	// 6. Launch background goroutine.
 	jobCtx, cancel := context.WithCancel(context.Background())
 	fetchJobsMu.Lock()
 	fetchJobs[jobID] = fetchCancelEntry{cancel: cancel}

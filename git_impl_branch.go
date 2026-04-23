@@ -99,6 +99,25 @@ func (m *gitManager) GetBranch(ctx context.Context, branchID string) (Branch, er
 		return Branch{}, ErrBranchNotFound
 	}
 	repoID := m.resolveParentID(ctx, branchID, "belongs_to_repository")
+	if repoID == "" {
+		// Fallback: older push-indexed branches were created without the
+		// reverse edge. Look up the forward has_branch edge (repo → branch)
+		// and heal by writing the missing belongs_to_repository edge.
+		rels, relErr := m.dm.ListRelationships(ctx, entitygraph.RelationshipFilter{
+			AgencyID: m.agencyID,
+			Name:     "has_branch",
+			ToID:     branchID,
+		})
+		if relErr == nil && len(rels) > 0 {
+			repoID = rels[0].FromID
+			_, _ = m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+				AgencyID: m.agencyID,
+				Name:     "belongs_to_repository",
+				FromID:   branchID,
+				ToID:     repoID,
+			})
+		}
+	}
 	return entityToBranch(e, repoID), nil
 }
 

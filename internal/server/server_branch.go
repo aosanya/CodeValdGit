@@ -80,12 +80,18 @@ func (s *Server) MergeBranch(ctx context.Context, req *pb.MergeBranchRequest) (*
 // resolves branch_name → branch entity ID via resolveBranchID before
 // delegating to [codevaldgit.GitManager.FetchBranch].
 func (s *Server) FetchBranch(ctx context.Context, req *pb.FetchBranchRequest) (*pb.FetchBranchJob, error) {
-	branchID, err := s.resolveBranchID(ctx, req.GetRepoId(), req.GetBranchName())
+	// The REST route binds {repoName} to repo_id, so the field may carry either
+	// a repository name or a UUID — resolveRepoID handles both.
+	repoID, err := s.resolveRepoID(ctx, "", req.GetRepoId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	branchID, err := s.resolveBranchID(ctx, repoID, req.GetBranchName())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
 	job, err := s.mgr.FetchBranch(ctx, codevaldgit.FetchBranchRequest{
-		RepoID:   req.GetRepoId(),
+		RepoID:   repoID,
 		BranchID: branchID,
 	})
 	if err != nil {
