@@ -142,8 +142,19 @@ func (s *Server) SearchByKeywords(ctx context.Context, req *pb.SearchByKeywordsR
 
 // QueryGraph implements pb.GitServiceServer.
 func (s *Server) QueryGraph(ctx context.Context, req *pb.QueryGraphRequest) (*pb.GraphResult, error) {
+	branchID := req.GetBranchId()
+	if req.GetBranchName() != "" {
+		repoID, err := s.resolveRepoID(ctx, "", req.GetRepositoryName())
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		branchID, err = s.resolveBranchID(ctx, repoID, req.GetBranchName())
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+	}
 	result, err := s.mgr.QueryGraph(ctx, codevaldgit.QueryGraphRequest{
-		BranchID:      req.GetBranchId(),
+		BranchID:      branchID,
 		Limit:         int(req.GetLimit()),
 		SortBy:        req.GetSortBy(),
 		Signals:       req.GetSignals(),

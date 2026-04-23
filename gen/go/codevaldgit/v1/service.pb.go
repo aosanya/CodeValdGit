@@ -3971,17 +3971,19 @@ func (x *SearchByKeywordsRequest) GetCascade() bool {
 
 // QueryGraphRequest carries the parameters for the multi-filter graph query (GIT-026).
 type QueryGraphRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	SortBy        string                 `protobuf:"bytes,3,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`
-	Signals       []string               `protobuf:"bytes,4,rep,name=signals,proto3" json:"signals,omitempty"`
-	KeywordIds    []string               `protobuf:"bytes,5,rep,name=keyword_ids,json=keywordIds,proto3" json:"keyword_ids,omitempty"`
-	FileTypes     []string               `protobuf:"bytes,6,rep,name=file_types,json=fileTypes,proto3" json:"file_types,omitempty"`
-	Folders       []string               `protobuf:"bytes,7,rep,name=folders,proto3" json:"folders,omitempty"`
-	Relationships []string               `protobuf:"bytes,8,rep,name=relationships,proto3" json:"relationships,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BranchId       string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	Limit          int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	SortBy         string                 `protobuf:"bytes,3,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`
+	Signals        []string               `protobuf:"bytes,4,rep,name=signals,proto3" json:"signals,omitempty"`
+	KeywordIds     []string               `protobuf:"bytes,5,rep,name=keyword_ids,json=keywordIds,proto3" json:"keyword_ids,omitempty"`
+	FileTypes      []string               `protobuf:"bytes,6,rep,name=file_types,json=fileTypes,proto3" json:"file_types,omitempty"`
+	Folders        []string               `protobuf:"bytes,7,rep,name=folders,proto3" json:"folders,omitempty"`
+	Relationships  []string               `protobuf:"bytes,8,rep,name=relationships,proto3" json:"relationships,omitempty"`
+	RepositoryName string                 `protobuf:"bytes,9,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string                 `protobuf:"bytes,10,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *QueryGraphRequest) Reset() {
@@ -4068,6 +4070,20 @@ func (x *QueryGraphRequest) GetRelationships() []string {
 		return x.Relationships
 	}
 	return nil
+}
+
+func (x *QueryGraphRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *QueryGraphRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
 }
 
 // GraphNode is a vertex in a graph query result.
@@ -4557,7 +4573,7 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\bkeywords\x18\x02 \x03(\tR\bkeywords\x12\x1d\n" +
 	"\n" +
 	"match_mode\x18\x03 \x01(\tR\tmatchMode\x12\x18\n" +
-	"\acascade\x18\x04 \x01(\bR\acascade\"\xf9\x01\n" +
+	"\acascade\x18\x04 \x01(\bR\acascade\"\xc3\x02\n" +
 	"\x11QueryGraphRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x17\n" +
@@ -4568,7 +4584,11 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"file_types\x18\x06 \x03(\tR\tfileTypes\x12\x18\n" +
 	"\afolders\x18\a \x03(\tR\afolders\x12$\n" +
-	"\rrelationships\x18\b \x03(\tR\rrelationships\"T\n" +
+	"\rrelationships\x18\b \x03(\tR\rrelationships\x12'\n" +
+	"\x0frepository_name\x18\t \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\n" +
+	" \x01(\tR\n" +
+	"branchName\"T\n" +
 	"\tGraphNode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\atype_id\x18\x02 \x01(\tR\x06typeId\x12\x1e\n" +

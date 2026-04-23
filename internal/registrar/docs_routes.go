@@ -38,6 +38,13 @@ func docsRoutes() []types.RouteInfo {
 			PathBindings: []types.PathBinding{kwid},
 		},
 		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/keyword-tree",
+			Capability:   "get_keyword_tree",
+			GrpcMethod:   "/codevaldgit.v1.GitService/GetKeywordTree",
+			PathBindings: []types.PathBinding{},
+		},
+		{
 			Method:       "PUT",
 			Pattern:      "/git/{agencyId}/keywords/{keywordId}",
 			Capability:   "update_keyword",
@@ -80,11 +87,14 @@ func docsRoutes() []types.RouteInfo {
 			PathBindings: []types.PathBinding{},
 		},
 		{
-			Method:       "POST",
-			Pattern:      "/git/{agencyId}/branches/{branchId}/graph/query",
-			Capability:   "query_graph",
-			GrpcMethod:   "/codevaldgit.v1.GitService/QueryGraph",
-			PathBindings: []types.PathBinding{{URLParam: "branchId", Field: "branch_id"}},
+			Method:     "POST",
+			Pattern:    "/git/{agencyId}/repositories/{repoName}/branches/{branchName}/graph/query",
+			Capability: "query_graph",
+			GrpcMethod: "/codevaldgit.v1.GitService/QueryGraph",
+			PathBindings: []types.PathBinding{
+				{URLParam: "repoName", Field: "repository_name"},
+				{URLParam: "branchName", Field: "branch_name"},
+			},
 		},
 	}
 }

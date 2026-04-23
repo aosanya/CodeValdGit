@@ -624,14 +624,16 @@ message SearchByKeywordsRequest {
 
 // QueryGraphRequest carries the parameters for the multi-filter graph query (GIT-026).
 message QueryGraphRequest {
-  string          branch_id     = 1;
-  int32           limit         = 2;
-  string          sort_by       = 3;
-  repeated string signals       = 4;
-  repeated string keyword_ids   = 5;
-  repeated string file_types    = 6;
-  repeated string folders       = 7;
-  repeated string relationships = 8;
+  string          branch_id       = 1;
+  int32           limit           = 2;
+  string          sort_by         = 3;
+  repeated string signals         = 4;
+  repeated string keyword_ids     = 5;
+  repeated string file_types      = 6;
+  repeated string folders         = 7;
+  repeated string relationships   = 8;
+  string          repository_name = 9;
+  string          branch_name     = 10;
 }
 
 // GraphNode is a vertex in a graph query result.
