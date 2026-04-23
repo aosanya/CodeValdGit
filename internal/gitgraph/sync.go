@@ -57,18 +57,31 @@ func NewSyncer(dm entitygraph.DataManager, agencyID string, vocab SignalVocab) *
 // signal "surface" when no depths[] entry exists for the keyword.
 // tested_by[] entries are written as references {descriptor:"tested_by"} edges.
 func (s *Syncer) Sync(ctx context.Context, branchID string, files []MappingFile) error {
+	var totalKw, totalMappings int
+	for _, f := range files {
+		totalKw += len(f.Keywords)
+		totalMappings += len(f.Mappings)
+	}
+	log.Printf("[gitgraph-sync][%s] Sync: START branch=%s files=%d keywords=%d mappings=%d", s.agencyID, branchID, len(files), totalKw, totalMappings)
+
 	// 1. Signal vocabulary persistence (insert-only — no update, never delete).
+	log.Printf("[gitgraph-sync][%s] Sync: phase 1 — persistSignals (vocab size=%d)", s.agencyID, len(s.vocab.Signals))
 	s.persistSignals(ctx, s.vocab)
 
 	// 2. Keyword upsert: collect across all files, deduplicate by name.
+	log.Printf("[gitgraph-sync][%s] Sync: phase 2 — upsertAllKeywords", s.agencyID)
 	kwIDByName := s.upsertAllKeywords(ctx, files)
+	log.Printf("[gitgraph-sync][%s] Sync: phase 2 — upserted %d keyword(s)", s.agencyID, len(kwIDByName))
 
 	// 3. Wire parent edges for keywords that declare a non-empty parent name.
+	log.Printf("[gitgraph-sync][%s] Sync: phase 3 — resolveParentEdges", s.agencyID)
 	s.resolveParentEdges(ctx, files, kwIDByName)
 
 	// 4. Hard-sync edges for every file declared in any mapping entry.
+	log.Printf("[gitgraph-sync][%s] Sync: phase 4 — syncEdgesForFiles", s.agencyID)
 	s.syncEdgesForFiles(ctx, branchID, files, kwIDByName)
 
+	log.Printf("[gitgraph-sync][%s] Sync: END branch=%s", s.agencyID, branchID)
 	return nil
 }
 
@@ -157,6 +170,7 @@ func (s *Syncer) upsertOneKeyword(ctx context.Context, kw KeywordDef) string {
 			log.Printf("[gitgraph-sync][%s] upsertKeyword: create %q: %v", s.agencyID, kw.Name, err)
 			return ""
 		}
+		log.Printf("[gitgraph-sync][%s] upsertKeyword: CREATE name=%q scope=%s id=%s", s.agencyID, kw.Name, kw.Scope, entity.ID)
 		return entity.ID
 	}
 
@@ -172,6 +186,7 @@ func (s *Syncer) upsertOneKeyword(ctx context.Context, kw KeywordDef) string {
 		log.Printf("[gitgraph-sync][%s] upsertKeyword: update %q: %v", s.agencyID, kw.Name, err)
 		return existing[0].ID // return existing ID even when the update fails
 	}
+	log.Printf("[gitgraph-sync][%s] upsertKeyword: UPDATE name=%q scope=%s id=%s", s.agencyID, kw.Name, kw.Scope, entity.ID)
 	return entity.ID
 }
 
@@ -237,6 +252,8 @@ func (s *Syncer) syncEdgesForFiles(ctx context.Context, branchID string, files [
 		}
 	}
 
+	log.Printf("[gitgraph-sync][%s] syncEdgesForFiles: %d distinct file path(s) to resolve", s.agencyID, len(pathSet))
+
 	blobIDByPath := make(map[string]string)
 	for filePath := range pathSet {
 		blobID, err := s.findBlobByPath(ctx, filePath, blobIDByPath)
@@ -245,6 +262,7 @@ func (s *Syncer) syncEdgesForFiles(ctx context.Context, branchID string, files [
 			continue
 		}
 		desired := s.buildDesiredEdgesForFile(ctx, filePath, files, kwIDByName, blobIDByPath)
+		log.Printf("[gitgraph-sync][%s] syncEdgesForFiles: path=%q blob=%s desired_edges=%d", s.agencyID, filePath, blobID, len(desired))
 		s.syncEdgesForBlob(ctx, blobID, branchID, desired)
 	}
 }
@@ -366,11 +384,14 @@ func (s *Syncer) syncEdgesForBlob(ctx context.Context, blobID, branchID string, 
 		return
 	}
 
+	var deleted, created int
 	for key, rel := range actual {
 		if _, ok := desiredSet[key]; !ok {
 			if err := s.dm.DeleteRelationship(ctx, s.agencyID, rel.ID); err != nil {
 				log.Printf("[gitgraph-sync][%s] syncEdgesForBlob: delete edge %s: %v", s.agencyID, rel.ID, err)
+				continue
 			}
+			deleted++
 		}
 	}
 	for key, e := range desiredSet {
@@ -390,7 +411,13 @@ func (s *Syncer) syncEdgesForBlob(ctx context.Context, blobID, branchID string, 
 			Properties: props,
 		}); err != nil {
 			log.Printf("[gitgraph-sync][%s] syncEdgesForBlob: create %s blob→%s: %v", s.agencyID, e.relName, e.toEntityID, err)
+			continue
 		}
+		created++
+		_ = key
+	}
+	if deleted > 0 || created > 0 {
+		log.Printf("[gitgraph-sync][%s] syncEdgesForBlob: blob=%s created=%d deleted=%d kept=%d", s.agencyID, blobID, created, deleted, len(actual)-deleted)
 	}
 }
 
