@@ -21,6 +21,7 @@ func smartHTTPRoutes() []types.RouteInfo {
 			Method:     "POST",
 			Pattern:    "/{agencyId}/{repoName}/git-receive-pack",
 			Capability: "git_receive_pack",
+			IsWrite:    true,
 		},
 	}
 }

@@ -14,6 +14,7 @@ func importRoutes() []types.RouteInfo {
 			Capability:   "import_repo",
 			GrpcMethod:   "/codevaldgit.v1.GitService/ImportRepo",
 			PathBindings: []types.PathBinding{},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",
@@ -28,6 +29,7 @@ func importRoutes() []types.RouteInfo {
 			Capability:   "cancel_import",
 			GrpcMethod:   "/codevaldgit.v1.GitService/CancelImport",
 			PathBindings: []types.PathBinding{rid},
+			IsWrite:      true,
 		},
 	}
 }

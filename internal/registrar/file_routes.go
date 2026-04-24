@@ -21,6 +21,7 @@ func fileRoutes() []types.RouteInfo {
 			Capability:   "write_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/WriteFile",
 			PathBindings: []types.PathBinding{bid},
+			IsWrite:      true,
 		},
 		// delete_file keeps branchId because DeleteFile proto only has branch_id
 		{
@@ -29,6 +30,7 @@ func fileRoutes() []types.RouteInfo {
 			Capability:   "delete_file",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteFile",
 			PathBindings: []types.PathBinding{bid},
+			IsWrite:      true,
 		},
 		// read_file and list_directory use branchName so human-readable names work
 		{

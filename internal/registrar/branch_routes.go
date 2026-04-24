@@ -16,6 +16,7 @@ func branchRoutes() []types.RouteInfo {
 			Capability:   "create_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/CreateBranch",
 			PathBindings: []types.PathBinding{rid},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",
@@ -44,6 +45,7 @@ func branchRoutes() []types.RouteInfo {
 			Capability:   "delete_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteBranch",
 			PathBindings: []types.PathBinding{rid, bname},
+			IsWrite:      true,
 		},
 		{
 			Method:       "POST",
@@ -51,6 +53,7 @@ func branchRoutes() []types.RouteInfo {
 			Capability:   "merge_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/MergeBranch",
 			PathBindings: []types.PathBinding{rid, bname},
+			IsWrite:      true,
 		},
 	}
 }
