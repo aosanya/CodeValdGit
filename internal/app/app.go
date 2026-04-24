@@ -1,25 +1,12 @@
-// Command codevaldgit is the binary entry point for the CodeValdGit gRPC
-// service. It wires the ArangoDB entitygraph backend, seeds the pre-delivered
-// Git schema on startup, starts a Cross registrar heartbeat, and serves both
-// the gRPC GitService and the Git Smart HTTP protocol on a single TCP port
-// using cmux.
-//
-// Configuration is via environment variables (see internal/config for full list):
-//
-//	GIT_GRPC_LISTEN_ADDR     host:port the combined server listens on (default ":50053")
-//	GIT_ARANGO_ENDPOINT      ArangoDB endpoint (default "http://localhost:8529")
-//	GIT_ARANGO_USER          ArangoDB username (default "root")
-//	GIT_ARANGO_PASSWORD      ArangoDB password
-//	GIT_ARANGO_DATABASE      ArangoDB database (default "codevaldgit")
-//	CROSS_GRPC_ADDR          CodeValdCross gRPC address; empty disables registration
-//	GIT_GRPC_ADVERTISE_ADDR  address CodeValdCross dials back on (default: listen addr)
-//	CODEVALDGIT_AGENCY_ID    agency scope for this instance (empty = all agencies)
-//	CROSS_PING_INTERVAL      heartbeat cadence (default "30s")
-//	CROSS_PING_TIMEOUT       per-RPC timeout (default "5s")
-package main
+// Package app holds the shared runtime wiring for CodeValdGit. Both the
+// production binary (cmd/server) and the local dev binary (cmd/dev) call
+// Run; they differ only in which environment variables they set before
+// loading config.
+package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -43,9 +30,10 @@ import (
 	"github.com/aosanya/CodeValdSharedLib/serverutil"
 )
 
-func main() {
-	cfg := config.Load()
-
+// Run starts all CodeValdGit subsystems (Cross registrar, ArangoDB backend,
+// gRPC + git Smart HTTP via cmux) and blocks until SIGINT/SIGTERM triggers
+// graceful shutdown.
+func Run(cfg config.Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -79,7 +67,7 @@ func main() {
 		Schema:   codevaldgit.DefaultGitSchema(),
 	})
 	if err != nil {
-		log.Fatalf("codevaldgit: ArangoDB backend: %v", err)
+		return fmt.Errorf("ArangoDB backend: %w", err)
 	}
 
 	// ── GIT-017b: Persistent [agency_id, properties.sha] indexes ─────────────
@@ -120,7 +108,7 @@ func main() {
 	// ── TCP listener ─────────────────────────────────────────────────────────
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
-		log.Fatalf("codevaldgit: failed to listen on %s: %v", cfg.ListenAddr, err)
+		return fmt.Errorf("failed to listen on %s: %w", cfg.ListenAddr, err)
 	}
 
 	// ── cmux — split one port into gRPC and HTTP ─────────────────────────────
@@ -185,4 +173,5 @@ func main() {
 		log.Printf("codevaldgit: HTTP server shutdown error: %v", err)
 	}
 	log.Println("codevaldgit: stopped")
+	return nil
 }

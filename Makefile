@@ -1,4 +1,4 @@
-.PHONY: build build-server run-server restart kill proto test cover test-arango test-all vet lint clean
+.PHONY: build build-server build-dev server dev dev-restart kill proto test cover test-arango test-all vet lint clean
 
 export PATH := /usr/local/go/bin:$(PATH)
 
@@ -8,35 +8,35 @@ export PATH := /usr/local/go/bin:$(PATH)
 build:
 	go build ./...
 
-## Build the standalone gRPC server binary to bin/codevaldgit-server.
+## Build the production server binary to bin/codevaldgit-server.
 build-server:
-	go build -o bin/codevaldgit-server ./cmd
+	go build -o bin/codevaldgit-server ./cmd/server
 
-## Run the gRPC server locally using the filesystem backend (default).
-## Override backend:  CODEVALDGIT_BACKEND=arangodb make run-server
-## ArangoDB vars can be placed in a .env file (loaded automatically).
-run-server: build-server
+## Build the dev binary to bin/codevaldgit-dev.
+build-dev:
+	go build -o bin/codevaldgit-dev ./cmd/dev
+
+## Run the production server locally. Expects env vars to be set by the caller
+## (or the shell) — does not source .env, to mirror container behaviour.
+server: build-server
+	./bin/codevaldgit-server
+
+## Run the dev binary with local-dev defaults (listens on :50052, talks to
+## localhost ArangoDB, no Cross registration). Sources .env if present so
+## GIT_ARANGO_PASSWORD etc. stay out of the source tree.
+dev: build-dev
 	@if [ -f .env ]; then \
 		set -a && . ./.env && set +a; \
 	fi; \
-	CODEVALDGIT_PORT=$${CODEVALDGIT_PORT:-50052} \
-	CODEVALDGIT_BACKEND=$${CODEVALDGIT_BACKEND:-filesystem} \
-	./bin/codevaldgit-server
+	./bin/codevaldgit-dev
 
-## Stop any running instance, rebuild, and run.
-restart: kill build-server
-	@echo "Running codevaldgit-server..."
-	@if [ -f .env ]; then \
-		set -a && . ./.env && set +a; \
-	fi; \
-	CODEVALDGIT_PORT=$${CODEVALDGIT_PORT:-50052} \
-	CODEVALDGIT_BACKEND=$${CODEVALDGIT_BACKEND:-filesystem} \
-	./bin/codevaldgit-server
+## Stop any running dev instance, rebuild, and run.
+dev-restart: kill dev
 
-## Stop any running instances of codevaldgit-server.
+## Stop any running instances of the codevaldgit binaries.
 kill:
 	@echo "Stopping any running instances..."
-	-@pkill -9 -f "bin/codevaldgit" 2>/dev/null || true
+	-@pkill -9 -f "bin/codevaldgit-" 2>/dev/null || true
 	@sleep 1
 
 # ── Proto Codegen ─────────────────────────────────────────────────────────────

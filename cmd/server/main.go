@@ -1,12 +1,18 @@
-// Command server starts the CodeValdGit gRPC microservice.
-//
-// TODO(GIT-009): Rewrite with cmux wiring (gRPC + git Smart HTTP on one port),
-// entitygraph-backed GitManager, schema seeding, and Cross registrar.
-// This file is a placeholder stub until GIT-009 is implemented.
+// Command server is the production CodeValdGit gRPC microservice. Configuration
+// is read strictly from environment variables (see internal/config for the full
+// list). No .env is loaded; the container/orchestrator is expected to inject
+// the environment.
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/aosanya/CodeValdGit/internal/app"
+	"github.com/aosanya/CodeValdGit/internal/config"
+)
 
 func main() {
-	log.Println("codevaldgit-server: binary entry point — pending GIT-009 implementation")
+	if err := app.Run(config.Load()); err != nil {
+		log.Fatalf("codevaldgit: %v", err)
+	}
 }

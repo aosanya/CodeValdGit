@@ -1,16 +1,27 @@
 # syntax=docker/dockerfile:1
+#
+# Build context MUST be the monorepo root so the COPY lines can reach
+# CodeValdSharedLib/ — go.mod has `replace ... => ../CodeValdSharedLib`,
+# which only resolves when SharedLib is present on disk at build time.
+#
+# Invoked from Deployment/staging/codevaldgit/Makefile as:
+#   docker build -f ../../../CodeValdGit/Dockerfile.server -t codevaldgit:staging ../../..
 
 # ── Build stage ───────────────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS build
 
 WORKDIR /src
 
+# SharedLib first — referenced via `replace` in CodeValdGit/go.mod.
+# Copied to /CodeValdSharedLib so that `../CodeValdSharedLib` resolves from /src.
+COPY CodeValdSharedLib/ /CodeValdSharedLib/
+
 # Cache dependency downloads separately from source changes.
-COPY go.mod go.sum ./
+COPY CodeValdGit/go.mod CodeValdGit/go.sum ./
 RUN go mod download
 
 # Copy the rest of the source and build the server binary.
-COPY . .
+COPY CodeValdGit/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /codevaldgit-server ./cmd/server
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
