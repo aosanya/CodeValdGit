@@ -18,6 +18,7 @@ func fetchBranchRoutes() []types.RouteInfo {
 			Capability:   "fetch_branch",
 			GrpcMethod:   "/codevaldgit.v1.GitService/FetchBranch",
 			PathBindings: []types.PathBinding{rid, bname},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",

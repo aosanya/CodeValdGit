@@ -13,6 +13,7 @@ func repoRoutes() []types.RouteInfo {
 			Pattern:    "/git/{agencyId}/repositories",
 			Capability: "init_repo",
 			GrpcMethod: "/codevaldgit.v1.GitService/InitRepo",
+			IsWrite:    true,
 		},
 		{
 			Method:     "GET",
@@ -33,6 +34,7 @@ func repoRoutes() []types.RouteInfo {
 			Capability:   "delete_repo",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteRepo",
 			PathBindings: rid,
+			IsWrite:      true,
 		},
 		{
 			Method:       "POST",
@@ -40,6 +42,7 @@ func repoRoutes() []types.RouteInfo {
 			Capability:   "purge_repo",
 			GrpcMethod:   "/codevaldgit.v1.GitService/PurgeRepo",
 			PathBindings: rid,
+			IsWrite:      true,
 		},
 	}
 }

@@ -15,6 +15,7 @@ func tagRoutes() []types.RouteInfo {
 			Capability:   "create_tag",
 			GrpcMethod:   "/codevaldgit.v1.GitService/CreateTag",
 			PathBindings: []types.PathBinding{rid},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",
@@ -36,6 +37,7 @@ func tagRoutes() []types.RouteInfo {
 			Capability:   "delete_tag",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteTag",
 			PathBindings: []types.PathBinding{rid, tid},
+			IsWrite:      true,
 		},
 	}
 }

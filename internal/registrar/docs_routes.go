@@ -15,6 +15,7 @@ func docsRoutes() []types.RouteInfo {
 			Capability:   "create_keyword",
 			GrpcMethod:   "/codevaldgit.v1.GitService/CreateKeyword",
 			PathBindings: []types.PathBinding{},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",
@@ -50,6 +51,7 @@ func docsRoutes() []types.RouteInfo {
 			Capability:   "update_keyword",
 			GrpcMethod:   "/codevaldgit.v1.GitService/UpdateKeyword",
 			PathBindings: []types.PathBinding{kwid},
+			IsWrite:      true,
 		},
 		{
 			Method:       "DELETE",
@@ -57,6 +59,7 @@ func docsRoutes() []types.RouteInfo {
 			Capability:   "delete_keyword",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteKeyword",
 			PathBindings: []types.PathBinding{kwid},
+			IsWrite:      true,
 		},
 		{
 			Method:       "POST",
@@ -64,6 +67,7 @@ func docsRoutes() []types.RouteInfo {
 			Capability:   "create_edge",
 			GrpcMethod:   "/codevaldgit.v1.GitService/CreateEdge",
 			PathBindings: []types.PathBinding{},
+			IsWrite:      true,
 		},
 		{
 			Method:       "DELETE",
@@ -71,6 +75,7 @@ func docsRoutes() []types.RouteInfo {
 			Capability:   "delete_edge",
 			GrpcMethod:   "/codevaldgit.v1.GitService/DeleteEdge",
 			PathBindings: []types.PathBinding{},
+			IsWrite:      true,
 		},
 		{
 			Method:       "GET",
