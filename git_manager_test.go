@@ -24,6 +24,7 @@ import (
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
+	"github.com/aosanya/CodeValdSharedLib/eventbus"
 	"github.com/aosanya/CodeValdSharedLib/types"
 )
 
@@ -337,10 +338,10 @@ type fakePublisher struct {
 }
 
 // Publish records the event.
-func (p *fakePublisher) Publish(_ context.Context, topic, agencyID string) error {
+func (p *fakePublisher) Publish(_ context.Context, e eventbus.Event) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.events = append(p.events, publishedEvent{topic: topic, agencyID: agencyID})
+	p.events = append(p.events, publishedEvent{topic: e.Topic, agencyID: e.AgencyID})
 	return nil
 }
 

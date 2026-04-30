@@ -234,9 +234,10 @@ func TestQueryGraph_KeywordIDFilter(t *testing.T) {
 	var aID, bID string
 	for _, b := range allBlobs {
 		path, _ := b.Properties["path"].(string)
-		if path == "a.go" {
+		switch path {
+		case "a.go":
 			aID = b.ID
-		} else if path == "b.go" {
+		case "b.go":
 			bID = b.ID
 		}
 	}
@@ -269,9 +270,10 @@ func TestQueryGraph_EdgesOnlyBetweenReturnedNodes(t *testing.T) {
 	var xID, yID string
 	for _, b := range allBlobs {
 		path, _ := b.Properties["path"].(string)
-		if path == "x.go" {
+		switch path {
+		case "x.go":
 			xID = b.ID
-		} else if path == "y.go" {
+		case "y.go":
 			yID = b.ID
 		}
 		seedTaggedWith(t, fdm, b.ID, kw.ID, "surface", branch.ID)
