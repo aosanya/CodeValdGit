@@ -310,7 +310,7 @@ func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID
 	if err := m.updateFetchJobStatus(bg, jobID, fetchJobStatusCompleted, ""); err != nil {
 		log.Printf("[fetchbranch][%s] job=%s branch=%q: WARNING failed to mark job completed: %v", m.agencyID, jobID, branchName, err)
 	}
-	_ = m.publishImportEvent(bg, "cross.git.%s.branch.fetched")
+	m.publish(bg, TopicBranchFetched, BranchFetchedPayload{JobID: jobID, BranchID: branchID})
 	log.Printf("[fetchbranch][%s] job=%s branch=%q: ALL DONE — total elapsed %s", m.agencyID, jobID, branchName, time.Since(runStart))
 }
 

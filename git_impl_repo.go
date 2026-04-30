@@ -24,7 +24,7 @@ func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repos
 		return Repository{}, fmt.Errorf("InitRepo: %w", err)
 	}
 	for _, r := range existing {
-		if strProp(r.Properties, "name") == req.Name {
+		if entitygraph.StringProp(r.Properties, "name") == req.Name {
 			return Repository{}, ErrRepoAlreadyExists
 		}
 	}
@@ -90,9 +90,7 @@ func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repos
 	}
 
 	repo := entityToRepository(repoEntity, m.agencyID)
-	if m.publisher != nil {
-		_ = m.publisher.Publish(ctx, fmt.Sprintf("cross.git.%s.repo.created", m.agencyID), m.agencyID)
-	}
+	m.publish(ctx, TopicRepoCreated, RepoCreatedPayload{RepoID: repoEntity.ID, Name: req.Name})
 	return repo, nil
 }
 
@@ -130,7 +128,7 @@ func (m *gitManager) GetRepositoryByName(ctx context.Context, repoName string) (
 		return Repository{}, fmt.Errorf("GetRepositoryByName: %w", err)
 	}
 	for _, e := range entities {
-		if strProp(e.Properties, "name") == repoName {
+		if entitygraph.StringProp(e.Properties, "name") == repoName {
 			return entityToRepository(e, m.agencyID), nil
 		}
 	}

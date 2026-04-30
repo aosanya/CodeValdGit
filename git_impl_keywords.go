@@ -58,7 +58,7 @@ func (m *gitManager) CreateKeyword(ctx context.Context, req CreateKeywordRequest
 		return Keyword{}, fmt.Errorf("CreateKeyword: list siblings: %w", err)
 	}
 	for _, k := range siblings {
-		if strProp(k.Properties, "name") == req.Name {
+		if entitygraph.StringProp(k.Properties, "name") == req.Name {
 			return Keyword{}, ErrKeywordAlreadyExists
 		}
 	}
@@ -324,11 +324,11 @@ func entityToKeyword(e entitygraph.Entity) Keyword {
 	p := e.Properties
 	return Keyword{
 		ID:          e.ID,
-		Name:        strProp(p, "name"),
-		Description: strProp(p, "description"),
-		Scope:       strProp(p, "scope"),
-		CreatedAt:   strProp(p, "created_at"),
-		UpdatedAt:   strProp(p, "updated_at"),
+		Name:        entitygraph.StringProp(p, "name"),
+		Description: entitygraph.StringProp(p, "description"),
+		Scope:       entitygraph.StringProp(p, "scope"),
+		CreatedAt:   entitygraph.StringProp(p, "created_at"),
+		UpdatedAt:   entitygraph.StringProp(p, "updated_at"),
 	}
 }
 

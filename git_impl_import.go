@@ -290,7 +290,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	if err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
-			_ = m.publishImportEvent(context.Background(), "cross.git.%s.repo.import.cancelled")
+			m.publish(context.Background(), TopicRepoImportCancelled, RepoImportCancelledPayload{JobID: jobID})
 			return
 		}
 		m.failImportJob(ctx, jobID, fmt.Sprintf("bare shallow clone %s: %v", req.SourceURL, err))
@@ -380,7 +380,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}); err != nil {
 		if ctx.Err() != nil {
 			_ = m.updateImportJobStatus(context.Background(), jobID, importStatusCancelled, "")
-			_ = m.publishImportEvent(context.Background(), "cross.git.%s.repo.import.cancelled")
+			m.publish(context.Background(), TopicRepoImportCancelled, RepoImportCancelledPayload{JobID: jobID})
 			return
 		}
 		m.failImportJob(ctx, jobID, fmt.Sprintf("walk refs: %v", err))
@@ -415,7 +415,7 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}
 
 	// 6. Publish success event and mark completed.
-	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.imported")
+	m.publish(ctx, TopicRepoImported, RepoImportedPayload{JobID: jobID})
 	if err := m.updateImportJobStatus(context.Background(), jobID, importStatusCompleted, ""); err != nil {
 		log.Printf("[import][%s] job=%s: WARNING failed to mark import completed: %v", m.agencyID, jobID, err)
 	}
@@ -506,17 +506,7 @@ func (m *gitManager) updateImportJobStatus(ctx context.Context, jobID, status, e
 func (m *gitManager) failImportJob(ctx context.Context, jobID, errMsg string) {
 	log.Printf("[import][%s] job=%s: FAILED — %s", m.agencyID, jobID, errMsg)
 	_ = m.updateImportJobStatus(context.Background(), jobID, importStatusFailed, errMsg)
-	_ = m.publishImportEvent(ctx, "cross.git.%s.repo.import.failed")
-}
-
-// publishImportEvent publishes a Cross event for this agency using the provided
-// topic format string (must contain one %s placeholder for agencyID).
-func (m *gitManager) publishImportEvent(ctx context.Context, topicFmt string) error {
-	if m.publisher == nil {
-		return nil
-	}
-	topic := fmt.Sprintf(topicFmt, m.agencyID)
-	return m.publisher.Publish(ctx, topic, m.agencyID)
+	m.publish(ctx, TopicRepoImportFailed, RepoImportFailedPayload{JobID: jobID, ErrorMessage: errMsg})
 }
 
 // importJobFromEntity converts an [entitygraph.Entity] to an [ImportJob] value type.

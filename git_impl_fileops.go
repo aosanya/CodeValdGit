@@ -98,7 +98,7 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		if err != nil {
 			return Commit{}, fmt.Errorf("WriteFile: get parent commit sha: %w", err)
 		}
-		if sha := strProp(parentEntity.Properties, "sha"); sha != "" {
+		if sha := entitygraph.StringProp(parentEntity.Properties, "sha"); sha != "" {
 			parentHashes = []plumbing.Hash{plumbing.NewHash(sha)}
 		}
 	}
@@ -602,7 +602,7 @@ func (m *gitManager) resolveRef(ctx context.Context, ref string) (string, error)
 		return "", err
 	}
 	for _, c := range commits {
-		if strProp(c.Properties, "sha") == ref {
+		if entitygraph.StringProp(c.Properties, "sha") == ref {
 			return c.ID, nil
 		}
 	}
@@ -617,16 +617,16 @@ func entityToCommit(e entitygraph.Entity, repositoryID string, parentIDs []strin
 	return Commit{
 		ID:             e.ID,
 		RepositoryID:   repositoryID,
-		SHA:            strProp(p, "sha"),
-		Message:        strProp(p, "message"),
-		AuthorName:     strProp(p, "author_name"),
-		AuthorEmail:    strProp(p, "author_email"),
-		AuthorAt:       strProp(p, "author_at"),
-		CommitterName:  strProp(p, "committer_name"),
-		CommitterEmail: strProp(p, "committer_email"),
-		CommittedAt:    strProp(p, "committed_at"),
+		SHA:            entitygraph.StringProp(p, "sha"),
+		Message:        entitygraph.StringProp(p, "message"),
+		AuthorName:     entitygraph.StringProp(p, "author_name"),
+		AuthorEmail:    entitygraph.StringProp(p, "author_email"),
+		AuthorAt:       entitygraph.StringProp(p, "author_at"),
+		CommitterName:  entitygraph.StringProp(p, "committer_name"),
+		CommitterEmail: entitygraph.StringProp(p, "committer_email"),
+		CommittedAt:    entitygraph.StringProp(p, "committed_at"),
 		ParentIDs:      parentIDs,
-		CreatedAt:      strProp(p, "created_at"),
+		CreatedAt:      entitygraph.StringProp(p, "created_at"),
 	}
 }
 
@@ -635,31 +635,31 @@ func entityToBlob(e entitygraph.Entity) Blob {
 	p := e.Properties
 	return Blob{
 		ID:        e.ID,
-		SHA:       strProp(p, "sha"),
-		Path:      strProp(p, "path"),
-		Name:      strProp(p, "name"),
-		Extension: strProp(p, "extension"),
-		Size:      int64Prop(p, "size"),
-		Encoding:  strProp(p, "encoding"),
-		Content:   strProp(p, "content"),
-		CreatedAt: strProp(p, "created_at"),
+		SHA:       entitygraph.StringProp(p, "sha"),
+		Path:      entitygraph.StringProp(p, "path"),
+		Name:      entitygraph.StringProp(p, "name"),
+		Extension: entitygraph.StringProp(p, "extension"),
+		Size:      entitygraph.Int64Prop(p, "size"),
+		Encoding:  entitygraph.StringProp(p, "encoding"),
+		Content:   entitygraph.StringProp(p, "content"),
+		CreatedAt: entitygraph.StringProp(p, "created_at"),
 	}
 }
 
 // commitToEntry converts a Commit entity to a [CommitEntry] for Log output.
 func commitToEntry(e entitygraph.Entity) CommitEntry {
 	p := e.Properties
-	ts, _ := time.Parse(time.RFC3339, strProp(p, "committed_at"))
+	ts, _ := time.Parse(time.RFC3339, entitygraph.StringProp(p, "committed_at"))
 	if ts.IsZero() {
-		ts, _ = time.Parse(time.RFC3339, strProp(p, "author_at"))
+		ts, _ = time.Parse(time.RFC3339, entitygraph.StringProp(p, "author_at"))
 	}
 	if ts.IsZero() {
 		ts = e.CreatedAt
 	}
 	return CommitEntry{
-		SHA:       strProp(p, "sha"),
-		Author:    strProp(p, "author_name"),
-		Message:   strProp(p, "message"),
+		SHA:       entitygraph.StringProp(p, "sha"),
+		Author:    entitygraph.StringProp(p, "author_name"),
+		Message:   entitygraph.StringProp(p, "message"),
 		Timestamp: ts,
 	}
 }

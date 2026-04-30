@@ -20,21 +20,16 @@ import (
 	"sync"
 
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
+	"github.com/aosanya/CodeValdSharedLib/eventbus"
 )
 
 // GitSchemaManager is a type alias for [entitygraph.SchemaManager].
 // Used in cmd/main.go to seed [DefaultGitSchema] on startup via SetSchema.
 type GitSchemaManager = entitygraph.SchemaManager
 
-// CrossPublisher publishes Git lifecycle events to CodeValdCross.
-// Implementations must be safe for concurrent use. A nil CrossPublisher is
-// valid — publish calls are silently skipped.
-type CrossPublisher interface {
-	// Publish delivers an event for the given topic and agencyID to
-	// CodeValdCross. Errors are non-fatal: implementations should log and
-	// return nil for best-effort delivery.
-	Publish(ctx context.Context, topic string, agencyID string) error
-}
+// CrossPublisher is a type alias for [eventbus.Publisher] — the SharedLib
+// package that unifies the publish contract across CodeVald services.
+type CrossPublisher = eventbus.Publisher
 
 // GitManager is the primary interface for Git repository management.
 // gRPC handlers hold this interface — never the concrete type.
@@ -343,11 +338,10 @@ func (l *mutexLocker) WithMergeLock(ctx context.Context, agencyID string, fn fun
 // gitManager is the concrete implementation of [GitManager].
 // It wraps [entitygraph.DataManager] to expose Git-specific convenience
 // methods over the entity graph.
-// Method bodies are stubs — implementations are added in GIT-005/GIT-006.
 type gitManager struct {
 	dm        entitygraph.DataManager // graph CRUD — injected by cmd/main.go
 	sm        GitSchemaManager        // schema versioning — injected by cmd/main.go
-	publisher CrossPublisher          // optional; nil = skip event publishing
+	publisher eventbus.Publisher      // optional; nil = skip event publishing
 	agencyID  string                  // the single agency ID for this database
 	backend   Backend                 // storer backend — used by IndexPushedBranch
 	locker    RefLocker               // serialises per-agency default-branch mutations
@@ -361,7 +355,7 @@ type gitManager struct {
 func NewGitManager(
 	dm entitygraph.DataManager,
 	sm GitSchemaManager,
-	pub CrossPublisher,
+	pub eventbus.Publisher,
 	agencyID string,
 	backend Backend,
 	locker RefLocker,
@@ -377,4 +371,15 @@ func NewGitManager(
 		backend:   backend,
 		locker:    locker,
 	}
+}
+
+// publish emits a typed [eventbus.Event] via the optional Publisher.
+// A nil publisher is silently skipped; errors are swallowed — events are
+// best-effort and must not fail the originating operation.
+func (m *gitManager) publish(ctx context.Context, topic string, payload any) {
+	eventbus.SafePublish(ctx, m.publisher, eventbus.Event{
+		Topic:    topic,
+		AgencyID: m.agencyID,
+		Payload:  payload,
+	})
 }

@@ -41,7 +41,7 @@ func (m *gitManager) CreateBranch(ctx context.Context, req CreateBranchRequest) 
 		return Branch{}, fmt.Errorf("CreateBranch: list branches: %w", err)
 	}
 	for _, b := range existing {
-		if strProp(b.Properties, "name") == req.Name {
+		if entitygraph.StringProp(b.Properties, "name") == req.Name {
 			return Branch{}, ErrBranchExists
 		}
 	}
@@ -147,7 +147,7 @@ func (m *gitManager) GetBranchByName(ctx context.Context, repoID string, branchN
 		return Branch{}, fmt.Errorf("GetBranchByName: %w", err)
 	}
 	for _, e := range entities {
-		if strProp(e.Properties, "name") == branchName {
+		if entitygraph.StringProp(e.Properties, "name") == branchName {
 			return entityToBranch(e, repoID), nil
 		}
 	}
@@ -162,13 +162,13 @@ func (m *gitManager) DeleteBranch(ctx context.Context, branchID string) error {
 	if err != nil {
 		return ErrBranchNotFound
 	}
-	if boolProp(e.Properties, "is_default") {
+	if entitygraph.BoolProp(e.Properties, "is_default") {
 		return fmt.Errorf("DeleteBranch: %w", ErrDefaultBranchDeleteForbidden)
 	}
 
 	// GIT-022b: Delete branch-scoped documentation edges before removing the
 	// branch entity so no dangling edges are left behind.
-	headCommitID := strProp(e.Properties, "head_commit_id")
+	headCommitID := entitygraph.StringProp(e.Properties, "head_commit_id")
 	m.deleteDocEdgesForBranch(ctx, branchID, headCommitID)
 
 	if err := m.dm.DeleteEntity(ctx, m.agencyID, branchID); err != nil {
@@ -294,7 +294,7 @@ func (m *gitManager) defaultBranch(ctx context.Context, repositoryID string) (Br
 		return Branch{}, err
 	}
 	for _, b := range branches {
-		if boolProp(b.Properties, "is_default") {
+		if entitygraph.BoolProp(b.Properties, "is_default") {
 			return entityToBranch(b, repositoryID), nil
 		}
 	}
@@ -317,7 +317,7 @@ func (m *gitManager) advanceBranchHead(ctx context.Context, branchID, newCommitI
 		if err != nil {
 			return Branch{}, fmt.Errorf("advanceBranchHead: read current branch: %w", err)
 		}
-		if strProp(current.Properties, "head_commit_id") != expectedHeadCommitID {
+		if entitygraph.StringProp(current.Properties, "head_commit_id") != expectedHeadCommitID {
 			return Branch{}, ErrMergeConcurrencyConflict
 		}
 	}
@@ -349,7 +349,7 @@ func (m *gitManager) advanceBranchHead(ctx context.Context, branchID, newCommitI
 	if err != nil {
 		return Branch{}, fmt.Errorf("advanceBranchHead: get commit: %w", err)
 	}
-	commitSHA := strProp(commitEntity.Properties, "sha")
+	commitSHA := entitygraph.StringProp(commitEntity.Properties, "sha")
 
 	// Update head_commit_id, sha, and updated_at in a single call.
 	now := time.Now().UTC().Format(time.RFC3339)

@@ -26,7 +26,7 @@ func (m *gitManager) CreateTag(ctx context.Context, req CreateTagRequest) (Tag, 
 		return Tag{}, fmt.Errorf("CreateTag: list tags: %w", err)
 	}
 	for _, t := range tags {
-		if strProp(t.Properties, "name") == req.Name {
+		if entitygraph.StringProp(t.Properties, "name") == req.Name {
 			return Tag{}, ErrTagAlreadyExists
 		}
 	}
@@ -43,7 +43,7 @@ func (m *gitManager) CreateTag(ctx context.Context, req CreateTagRequest) (Tag, 
 		TypeID:   "Tag",
 		Properties: map[string]any{
 			"name":        req.Name,
-			"sha":         strProp(commitEntity.Properties, "sha"),
+			"sha":         entitygraph.StringProp(commitEntity.Properties, "sha"),
 			"message":     req.Message,
 			"tagger_name": req.TaggerName,
 			"tagger_at":   now,

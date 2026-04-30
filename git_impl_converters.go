@@ -1,5 +1,8 @@
-// git_impl_converters.go — entity→domain converters, property helpers, and
-// shared graph lookup utilities for [gitManager].
+// git_impl_converters.go — entity→domain converters and shared graph lookup
+// utilities for [gitManager].
+//
+// Property helpers (StringProp, BoolProp, Int64Prop) live in
+// [github.com/aosanya/CodeValdSharedLib/entitygraph] and are used directly.
 package codevaldgit
 
 import (
@@ -16,12 +19,12 @@ func entityToRepository(e entitygraph.Entity, agencyID string) Repository {
 	return Repository{
 		ID:            e.ID,
 		AgencyID:      agencyID,
-		Name:          strProp(p, "name"),
-		Description:   strProp(p, "description"),
-		DefaultBranch: strProp(p, "default_branch"),
-		CreatedAt:     strProp(p, "created_at"),
-		UpdatedAt:     strProp(p, "updated_at"),
-		SourceURL:     strProp(p, "source_url"),
+		Name:          entitygraph.StringProp(p, "name"),
+		Description:   entitygraph.StringProp(p, "description"),
+		DefaultBranch: entitygraph.StringProp(p, "default_branch"),
+		CreatedAt:     entitygraph.StringProp(p, "created_at"),
+		UpdatedAt:     entitygraph.StringProp(p, "updated_at"),
+		SourceURL:     entitygraph.StringProp(p, "source_url"),
 	}
 }
 
@@ -31,11 +34,11 @@ func entityToBranch(e entitygraph.Entity, repositoryID string) Branch {
 	return Branch{
 		ID:           e.ID,
 		RepositoryID: repositoryID,
-		Name:         strProp(p, "name"),
-		IsDefault:    boolProp(p, "is_default"),
-		HeadCommitID: strProp(p, "head_commit_id"),
-		CreatedAt:    strProp(p, "created_at"),
-		UpdatedAt:    strProp(p, "updated_at"),
+		Name:         entitygraph.StringProp(p, "name"),
+		IsDefault:    entitygraph.BoolProp(p, "is_default"),
+		HeadCommitID: entitygraph.StringProp(p, "head_commit_id"),
+		CreatedAt:    entitygraph.StringProp(p, "created_at"),
+		UpdatedAt:    entitygraph.StringProp(p, "updated_at"),
 	}
 }
 
@@ -45,12 +48,12 @@ func entityToTag(e entitygraph.Entity, repositoryID string) Tag {
 	return Tag{
 		ID:           e.ID,
 		RepositoryID: repositoryID,
-		Name:         strProp(p, "name"),
-		SHA:          strProp(p, "sha"),
-		Message:      strProp(p, "message"),
-		TaggerName:   strProp(p, "tagger_name"),
-		TaggerAt:     strProp(p, "tagger_at"),
-		CreatedAt:    strProp(p, "created_at"),
+		Name:         entitygraph.StringProp(p, "name"),
+		SHA:          entitygraph.StringProp(p, "sha"),
+		Message:      entitygraph.StringProp(p, "message"),
+		TaggerName:   entitygraph.StringProp(p, "tagger_name"),
+		TaggerAt:     entitygraph.StringProp(p, "tagger_at"),
+		CreatedAt:    entitygraph.StringProp(p, "created_at"),
 	}
 }
 
@@ -68,41 +71,4 @@ func (m *gitManager) resolveParentID(ctx context.Context, entityID, relName stri
 		return ""
 	}
 	return rels[0].ToID
-}
-
-// ── Property helpers ──────────────────────────────────────────────────────────
-
-// strProp returns the string value of key in props, or "" if absent.
-func strProp(props map[string]any, key string) string {
-	if v, ok := props[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
-}
-
-// boolProp returns the bool value of key in props, or false if absent.
-func boolProp(props map[string]any, key string) bool {
-	if v, ok := props[key]; ok {
-		if b, ok := v.(bool); ok {
-			return b
-		}
-	}
-	return false
-}
-
-// int64Prop returns the int64 value of key in props, or 0 if absent.
-func int64Prop(props map[string]any, key string) int64 {
-	if v, ok := props[key]; ok {
-		switch vv := v.(type) {
-		case int64:
-			return vv
-		case int:
-			return int64(vv)
-		case float64:
-			return int64(vv)
-		}
-	}
-	return 0
 }
