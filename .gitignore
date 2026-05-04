@@ -13,3 +13,6 @@ coverage.html
 # OS
 .DS_Store
 integration-test.log
+
+.claude/*
+.claude
