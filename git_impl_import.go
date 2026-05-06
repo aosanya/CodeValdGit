@@ -258,7 +258,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 	}()
 
 	runStart := time.Now()
-	log.Printf("[import][%s] job=%s url=%s: starting", m.agencyID, jobID, req.SourceURL)
 	appendImportStep(jobID, "Starting import…")
 
 	// Transition to running.
@@ -274,7 +273,6 @@ func (m *gitManager) runImport(ctx context.Context, jobID string, req ImportRepo
 		m.failImportJob(ctx, jobID, fmt.Sprintf("allocate clone dir: %v", err))
 		return
 	}
-	log.Printf("[import][%s] job=%s: clone dir allocated in %s → %s", m.agencyID, jobID, time.Since(t0), cloneDir)
 
 	// 2. Bare shallow clone — one tip commit per branch, no tags, no blobs yet.
 	appendImportStep(jobID, fmt.Sprintf("Cloning %s (shallow, all branches)…", req.SourceURL))
