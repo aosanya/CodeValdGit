@@ -18,7 +18,13 @@ const (
 	// Payload: [RepoImportCancelledPayload].
 	TopicRepoImportCancelled = "git.repo.import.cancelled"
 
-	// TopicBranchFetched fires when an async FetchBranch job completes successfully.
+	// TopicBranchCreate is consumed by CodeValdGit to create a branch on demand.
+	// Published by CodeValdAI when the LLM instructs a branch to be created.
+	// Payload: [BranchCreatePayload].
+	TopicBranchCreate = "git.branch.create"
+
+	// TopicBranchFetched fires when an async FetchBranch job completes successfully,
+	// or when a branch is directly created via [TopicBranchCreate].
 	// Payload: [BranchFetchedPayload].
 	TopicBranchFetched = "git.branch.fetched"
 
@@ -42,6 +48,11 @@ func AllTopics() []string {
 		TopicBranchMerged,
 		TopicMergeConflict,
 	}
+}
+
+// ConsumedTopics is the closed list of topics this service subscribes to.
+func ConsumedTopics() []string {
+	return []string{TopicBranchCreate}
 }
 
 // RepoCreatedPayload is the [eventbus.Event.Payload] for [TopicRepoCreated].
@@ -72,6 +83,18 @@ type BranchFetchedPayload struct {
 	JobID    string
 	BranchID string
 	RepoID   string
+}
+
+// BranchCreatePayload is the [eventbus.Event.Payload] for [TopicBranchCreate].
+// Published by CodeValdAI; consumed by CodeValdGit to create the branch and
+// emit [TopicBranchFetched] on completion.
+type BranchCreatePayload struct {
+	// Repository is the human-readable name of the target repository.
+	Repository string `json:"repository"`
+	// Name is the branch name to create (e.g. "feature/UTIL-001-widget").
+	Name string `json:"name"`
+	// FromBranch is the source branch name; defaults to the repo default branch.
+	FromBranch string `json:"from_branch,omitempty"`
 }
 
 // BranchMergedPayload is the [eventbus.Event.Payload] for [TopicBranchMerged].

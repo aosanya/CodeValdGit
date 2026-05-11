@@ -7,6 +7,7 @@ package registrar
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -48,8 +49,8 @@ func New(
 		advertiseAddr,
 		agencyID,
 		"codevaldgit",
-		[]string{"git.repo.created", "git.branch.merged", "git.conflict.detected"},
-		[]string{},
+		codevaldgit.AllTopics(),
+		codevaldgit.ConsumedTopics(),
 		gitRoutes(),
 		pingInterval,
 		pingTimeout,
@@ -74,14 +75,18 @@ func (r *Registrar) Close() {
 }
 
 // Publish implements [eventbus.Publisher].
-// Best-effort notification — currently logs the event; a future iteration will
-// call a CodeValdCross Publish RPC once CodeValdCross exposes one.
-// Errors are always nil — the git operation has already been persisted and
-// must not be rolled back.
-func (r *Registrar) Publish(_ context.Context, e eventbus.Event) error {
-	log.Printf("registrar[codevaldgit]: publish topic=%q agencyID=%q payload=%T",
-		e.Topic, e.AgencyID, e.Payload)
-	// TODO(CROSS-007): call OrchestratorService.Publish RPC when available.
+// Marshals the event payload to JSON and forwards it to CodeValdCross via the
+// shared-library heartbeat registrar's Publish RPC.
+// Errors are logged but not returned — the git operation is already persisted.
+func (r *Registrar) Publish(ctx context.Context, e eventbus.Event) error {
+	payload, err := json.Marshal(e.Payload)
+	if err != nil {
+		log.Printf("registrar[codevaldgit]: marshal payload for topic=%q: %v", e.Topic, err)
+		payload = []byte("{}")
+	}
+	if err := r.heartbeat.Publish(ctx, e.AgencyID, e.Topic, "codevaldgit", string(payload)); err != nil {
+		log.Printf("registrar[codevaldgit]: Publish topic=%q: %v", e.Topic, err)
+	}
 	return nil
 }
 

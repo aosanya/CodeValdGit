@@ -26,6 +26,7 @@ import (
 	gitarangodb "github.com/aosanya/CodeValdGit/storage/arangodb"
 	"github.com/aosanya/CodeValdSharedLib/entitygraph"
 	healthpb "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldhealth/v1"
+	sharedev1 "github.com/aosanya/CodeValdSharedLib/gen/go/codevaldshared/v1"
 	"github.com/aosanya/CodeValdSharedLib/health"
 	"github.com/aosanya/CodeValdSharedLib/serverutil"
 )
@@ -122,6 +123,7 @@ func Run(cfg config.Config) error {
 	// ── gRPC server ───────────────────────────────────────────────────────────
 	grpcServer, _ := serverutil.NewGRPCServer()
 	pb.RegisterGitServiceServer(grpcServer, server.New(mgr))
+	sharedev1.RegisterEventReceiverServiceServer(grpcServer, server.NewEventReceiver(mgr, pub, cfg.AgencyID))
 	healthpb.RegisterHealthServiceServer(grpcServer, health.New("codevaldgit"))
 
 	// ── HTTP server (git Smart HTTP) ─────────────────────────────────────────
