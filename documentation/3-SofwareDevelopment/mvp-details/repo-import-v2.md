@@ -295,8 +295,8 @@ Registered in `internal/registrar/routes.go`:
 - [ ] `ReadFile` caches blob content lazily; returns `ErrBlobContentUnavailable` when bare clone is absent
 - [ ] Default branch is automatically fetched (commits + tip-tree + blob metadata) during import — no user action required
 - [ ] If the default branch stub is not found the import still completes (auto-fetch is best-effort)
-- [ ] `cross.git.{agencyID}.repo.imported` published after Phase 1 import (stub branches)
-- [ ] `cross.git.{agencyID}.branch.fetched` published after Phase 2 fetch completes
+- [ ] `git.{agencyID}.repo.imported` published after Phase 1 import (stub branches)
+- [ ] `git.branch.fetched` published after Phase 2 fetch completes
 - [ ] Seen-SHA deduplication: shared commits between branches are not re-walked
 - [ ] Temp dir (for re-clone) cleaned up on completion, failure, or cancellation
 - [ ] `go test -race ./...` passes
