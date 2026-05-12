@@ -74,7 +74,7 @@ seconds.
    remote has no matching ref) the auto-fetch is skipped with a log warning;
    the import still completes successfully.
 
-6. **Mark job `completed`** and publish `cross.git.{agencyID}.repo.imported`.
+6. **Mark job `completed`** and publish `git.{agencyID}.repo.imported`.
 
 **Result**: Import finishes in seconds. The UI immediately shows all branch
 names. The default branch content is already being populated in the background
@@ -139,7 +139,7 @@ type FetchBranchJob struct {
 6. **Store blob metadata, not content** — `upsertBlob` writes SHA, path, name,
    extension, and size. Content is fetched lazily by `ReadFile` (see Phase 3).
 7. **Transition branch status** → `"fetched"`.
-8. **Publish** `cross.git.{agencyID}.branch.fetched`.
+8. **Publish** `git.branch.fetched`.
 
 ---
 

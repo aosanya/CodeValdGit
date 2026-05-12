@@ -983,7 +983,7 @@ func TestGitManager_Publisher(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("published events: got %d, want 1", len(events))
 	}
-	wantTopic := "cross.git." + testAgencyID + ".repo.created"
+	wantTopic := "git." + testAgencyID + ".repo.created"
 	if events[0].topic != wantTopic {
 		t.Errorf("event.topic = %q, want %q", events[0].topic, wantTopic)
 	}

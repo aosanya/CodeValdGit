@@ -17,7 +17,7 @@ import (
 
 // InitRepo creates a new Repository entity for this agency.
 // Returns [ErrRepoAlreadyExists] if a repository with the same name already exists.
-// Publishes "cross.git.{agencyID}.repo.created" after a successful write.
+// Publishes "git.{agencyID}.repo.created" after a successful write.
 func (m *gitManager) InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error) {
 	existing, err := m.listRepositories(ctx)
 	if err != nil {

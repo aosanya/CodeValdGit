@@ -170,7 +170,7 @@ func (m *gitManager) GetFetchBranchStatus(ctx context.Context, jobID string) (Fe
 //  7. Advance branch HEAD pointer.
 //  8. Transition Branch status to "fetched" (or "fetch_failed" on error).
 //  9. Transition job to "completed" (or "failed" on error).
-//  10. Publish cross.git.{agencyID}.branch.fetched.
+//  10. Publish git.{agencyID}.branch.fetched.
 func (m *gitManager) runFetchBranch(ctx context.Context, jobID, repoID, branchID, branchName string) {
 	runStart := time.Now()
 	log.Printf("[fetchbranch][%s] job=%s branch=%q repoID=%s: starting", m.agencyID, jobID, branchName, repoID)
