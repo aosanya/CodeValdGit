@@ -180,7 +180,7 @@ type GitManager interface {
 
     // InitRepo creates a new Repository entity with the given name.
     // Returns ErrRepoAlreadyExists if a repository with the same name exists.
-    // Publishes "git.{agencyID}.repo.created" after a successful write.
+    // Publishes "git.repo.created" after a successful write.
     InitRepo(ctx context.Context, req CreateRepoRequest) (Repository, error)
 
     // ListRepositories returns all Repository entities owned by this agency.
@@ -308,7 +308,7 @@ to CodeValdCross via its `CrossPublisher`:
 
 | Event | Topic | Trigger |
 |---|---|---|
-| Repository created | `git.{agencyID}.repo.created` | `InitRepo` |
+| Repository created | `git.repo.created` | `InitRepo` |
 | Branch created | `git.branch.created` | `CreateBranch` |
 | File committed | `git.file.committed` | `WriteFile` |
 | Branch merged | `git.branch.merged` | `MergeBranch` |

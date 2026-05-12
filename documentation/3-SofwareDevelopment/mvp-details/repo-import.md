@@ -56,9 +56,9 @@ progress and detect completion or failure.
 - [ ] On cancellation, the background goroutine's context is cancelled, temp dir cleaned up, status set to `cancelled`
 - [ ] On failure, `ImportJob.ErrorMessage` contains a human-readable reason
 - [ ] Temp clone directory is cleaned up on completion, failure, or cancellation
-- [ ] `git.{agencyID}.repo.imported` published on successful completion
-- [ ] `git.{agencyID}.repo.import.failed` published on failure
-- [ ] `git.{agencyID}.repo.import.cancelled` published on cancellation
+- [ ] `git.repo.imported` published on successful completion
+- [ ] `git.repo.import.failed` published on failure
+- [ ] `git.repo.import.cancelled` published on cancellation
 
 ---
 
@@ -170,20 +170,20 @@ ImportRepo called
             │       with complete data. This guarantees consistency on retry
             │       without requiring cleanup of partial state.
             ├── 6. Create Repository entity with default branch set
-            ├── 7. Publish git.{agencyID}.repo.imported
+            ├── 7. Publish git.repo.imported
             ├── 8. Update status → completed
             └── 9. os.RemoveAll(tempDir)
 
     On any error:
             ├── Update status → failed, set ErrorMessage
-            ├── Publish git.{agencyID}.repo.import.failed
+            ├── Publish git.repo.import.failed
             └── os.RemoveAll(tempDir)
 
     On CancelImport(jobID):
             ├── Look up cancel func for jobID in in-process cancel map
             ├── Call cancelFunc() → goroutine's ctx.Done() fires
             ├── Update status → cancelled
-            ├── Publish git.{agencyID}.repo.import.cancelled
+            ├── Publish git.repo.import.cancelled
             └── os.RemoveAll(tempDir) (goroutine cleans up on ctx cancellation)
 ```
 
@@ -301,9 +301,9 @@ message ImportJobResponse {
 
 | Topic | Trigger | Payload |
 |---|---|---|
-| `git.{agencyID}.repo.imported` | Import completed successfully | `{ "job_id": "...", "repository_id": "..." }` |
-| `git.{agencyID}.repo.import.failed` | Import failed | `{ "job_id": "...", "error": "..." }` |
-| `git.{agencyID}.repo.import.cancelled` | Import cancelled by caller | `{ "job_id": "..." }` |
+| `git.repo.imported` | Import completed successfully | `{ "job_id": "...", "repository_id": "..." }` |
+| `git.repo.import.failed` | Import failed | `{ "job_id": "...", "error": "..." }` |
+| `git.repo.import.cancelled` | Import cancelled by caller | `{ "job_id": "..." }` |
 
 ---
 
@@ -311,7 +311,7 @@ message ImportJobResponse {
 
 | # | Question | Status |
 |---|---|---|
-| Q7 | Should `cancelled` be a valid job status? Is a `CancelImport` RPC needed? | ✅ Yes — `cancelled` state + `CancelImport` RPC + `git.{agencyID}.repo.import.cancelled` event |
+| Q7 | Should `cancelled` be a valid job status? Is a `CancelImport` RPC needed? | ✅ Yes — `cancelled` state + `CancelImport` RPC + `git.repo.import.cancelled` event |
 | Q8 | Job entity storage: reuse `GitInternalState` or add `ImportJob` TypeDefinition to schema? | ✅ New `ImportJob` TypeDefinition in `schema.go`, stored in `git_importjobs` collection |
 | Q9 | Deduplication: if blobs/commits with the same SHA already exist (e.g. prior import), upsert or skip? | ✅ Upsert — always overwrite; guarantees complete entity data on retry |
 | Q10 | Concurrency: should concurrent `ImportRepo` calls on the same agency return `ErrImportInProgress` or queue? | ✅ Reject — return `ErrImportInProgress` immediately if a `pending` or `running` job exists |

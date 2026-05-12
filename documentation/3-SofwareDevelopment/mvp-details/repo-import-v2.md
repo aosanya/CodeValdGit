@@ -74,7 +74,7 @@ seconds.
    remote has no matching ref) the auto-fetch is skipped with a log warning;
    the import still completes successfully.
 
-6. **Mark job `completed`** and publish `git.{agencyID}.repo.imported`.
+6. **Mark job `completed`** and publish `git.repo.imported`.
 
 **Result**: Import finishes in seconds. The UI immediately shows all branch
 names. The default branch content is already being populated in the background
@@ -295,7 +295,7 @@ Registered in `internal/registrar/routes.go`:
 - [ ] `ReadFile` caches blob content lazily; returns `ErrBlobContentUnavailable` when bare clone is absent
 - [ ] Default branch is automatically fetched (commits + tip-tree + blob metadata) during import — no user action required
 - [ ] If the default branch stub is not found the import still completes (auto-fetch is best-effort)
-- [ ] `git.{agencyID}.repo.imported` published after Phase 1 import (stub branches)
+- [ ] `git.repo.imported` published after Phase 1 import (stub branches)
 - [ ] `git.branch.fetched` published after Phase 2 fetch completes
 - [ ] Seen-SHA deduplication: shared commits between branches are not re-walked
 - [ ] Temp dir (for re-clone) cleaned up on completion, failure, or cancellation
