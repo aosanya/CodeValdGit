@@ -92,9 +92,26 @@ type BranchCreatePayload struct {
 	// Repository is the human-readable name of the target repository.
 	Repository string `json:"repository"`
 	// Name is the branch name to create (e.g. "feature/UTIL-001-widget").
+	// Also accepted as "branch_name" for LLM compatibility.
 	Name string `json:"name"`
+	// BranchName is an LLM-emitted alias for Name; used when the model writes
+	// "branch_name" instead of "name". Resolved in UnmarshalJSON.
+	BranchName string `json:"branch_name,omitempty"`
 	// FromBranch is the source branch name; defaults to the repo default branch.
+	// Also accepted as "base_branch".
 	FromBranch string `json:"from_branch,omitempty"`
+	// BaseBranch is an LLM-emitted alias for FromBranch.
+	BaseBranch string `json:"base_branch,omitempty"`
+}
+
+// Resolve merges alias fields into canonical fields so callers only check Name/FromBranch.
+func (p *BranchCreatePayload) Resolve() {
+	if p.Name == "" && p.BranchName != "" {
+		p.Name = p.BranchName
+	}
+	if p.FromBranch == "" && p.BaseBranch != "" {
+		p.FromBranch = p.BaseBranch
+	}
 }
 
 // BranchMergedPayload is the [eventbus.Event.Payload] for [TopicBranchMerged].

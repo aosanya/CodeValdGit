@@ -48,6 +48,7 @@ func (s *EventReceiverServer) handleBranchCreate(ctx context.Context, rawPayload
 		log.Printf("codevaldgit: handleBranchCreate: unmarshal payload: %v", err)
 		return
 	}
+	p.Resolve()
 	if p.Repository == "" || p.Name == "" {
 		log.Printf("codevaldgit: handleBranchCreate: missing repository or name in payload")
 		return

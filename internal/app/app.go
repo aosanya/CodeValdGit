@@ -66,9 +66,9 @@ func Run(cfg config.Config) error {
 					schemaCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 					defer cancel()
 					schemas := map[string]string{
-						"git.branch.create": `{repository: string, name: string, from_branch?: string}`,
-						"git.branch.delete": `{repository: string, name: string}`,
-						"git.repo.create":   `{name: string, default_branch?: string}`,
+						"git.branch.create": `{"repository":"<repo-name>","name":"<branch-name>","from_branch":"<base-branch>"}`,
+						"git.branch.delete": `{"repository":"<repo-name>","name":"<branch-name>"}`,
+						"git.repo.create":   `{"name":"<repo-name>","default_branch":"<branch>"}`,
 					}
 					if err := reg.RegisterTopicSchemas(schemaCtx, cfg.AgencyID, schemas); err != nil {
 						log.Printf("codevaldgit: RegisterTopicSchemas: %v", err)
