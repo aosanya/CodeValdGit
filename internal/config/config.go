@@ -38,6 +38,11 @@ type Config struct {
 	// registration. Empty string disables registration (standalone mode).
 	CrossGRPCAddr string
 
+	// CrossHTTPAddr is the CodeValdCross HTTP base URL (e.g. "http://localhost:8080").
+	// Used to register topic schemas after the initial gRPC heartbeat.
+	// Empty string disables schema registration.
+	CrossHTTPAddr string
+
 	// AdvertiseAddr is the address CodeValdCross dials back on.
 	// Defaults to ListenAddr when unset.
 	AdvertiseAddr string
@@ -82,6 +87,7 @@ func Load() Config {
 		ArangoDatabase:     serverutil.EnvOrDefault("GIT_ARANGO_DATABASE", "codevaldgit"),
 		ArangoWorktreePath: serverutil.EnvOrDefault("GIT_ARANGO_WORKTREE_PATH", ""),
 		CrossGRPCAddr:      serverutil.EnvOrDefault("CROSS_GRPC_ADDR", ""),
+		CrossHTTPAddr:      serverutil.EnvOrDefault("CROSS_HTTP_ADDR", ""),
 		AdvertiseAddr:      serverutil.EnvOrDefault("GIT_GRPC_ADVERTISE_ADDR", listenAddr),
 		AgencyID:           serverutil.EnvOrDefault("CODEVALDGIT_AGENCY_ID", ""),
 		PingInterval:       serverutil.ParseDurationString("CROSS_PING_INTERVAL", 30*time.Second),

@@ -52,8 +52,29 @@ func Run(cfg config.Config) error {
 			log.Printf("codevaldgit: registrar: failed to create: %v — continuing without registration", err)
 		} else {
 			defer reg.Close()
+			if cfg.CrossHTTPAddr != "" {
+				reg.SetCrossHTTPAddr(cfg.CrossHTTPAddr)
+			}
 			go reg.Run(ctx)
 			pub = reg
+
+			if cfg.CrossHTTPAddr != "" && cfg.AgencyID != "" {
+				go func() {
+					// Wait for the initial gRPC Register ping to complete so the
+					// registry entry exists before we PATCH topic schemas onto it.
+					time.Sleep(3 * time.Second)
+					schemaCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+					defer cancel()
+					schemas := map[string]string{
+						"git.branch.create": `{repository: string, name: string, from_branch?: string}`,
+						"git.branch.delete": `{repository: string, name: string}`,
+						"git.repo.create":   `{name: string, default_branch?: string}`,
+					}
+					if err := reg.RegisterTopicSchemas(schemaCtx, cfg.AgencyID, schemas); err != nil {
+						log.Printf("codevaldgit: RegisterTopicSchemas: %v", err)
+					}
+				}()
+			}
 		}
 	} else {
 		log.Println("codevaldgit: CROSS_GRPC_ADDR not set — skipping CodeValdCross registration")

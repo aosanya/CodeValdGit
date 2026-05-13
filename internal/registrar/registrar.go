@@ -68,6 +68,19 @@ func (r *Registrar) Run(ctx context.Context) {
 	r.heartbeat.Run(ctx)
 }
 
+// SetCrossHTTPAddr configures the Cross HTTP base URL used for
+// RegisterTopicSchemas. Call this before starting schema registration.
+func (r *Registrar) SetCrossHTTPAddr(addr string) {
+	r.heartbeat.SetCrossHTTPAddr(addr)
+}
+
+// RegisterTopicSchemas sends the consumed-topic payload descriptions to Cross
+// so the LLM action catalogue includes field-level guidance. Call after the
+// initial heartbeat ping so the service entry already exists in the registry.
+func (r *Registrar) RegisterTopicSchemas(ctx context.Context, agencyID string, schemas map[string]string) error {
+	return r.heartbeat.RegisterTopicSchemas(ctx, agencyID, schemas)
+}
+
 // Close releases the underlying gRPC connection used for heartbeats.
 // Call after the context passed to Run has been cancelled.
 func (r *Registrar) Close() {
