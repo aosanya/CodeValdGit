@@ -47,16 +47,32 @@ func (m *gitManager) CreateBranch(ctx context.Context, req CreateBranchRequest) 
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
+	branchProps := map[string]any{
+		"name":           req.Name,
+		"is_default":     false,
+		"head_commit_id": sourceBranch.HeadCommitID,
+		"created_at":     now,
+		"updated_at":     now,
+	}
+	// Copy sha from the source branch so IterReferences can advertise this
+	// branch via git smart HTTP. Without sha the branch is invisible to git.
+	// sourceBranch.SHA is populated from the entity's "sha" property which is
+	// set both by import (stub branches) and by advanceBranchHead (pushed commits).
+	if sourceBranch.SHA != "" {
+		branchProps["sha"] = sourceBranch.SHA
+	} else if sourceBranch.HeadCommitID != "" {
+		// Fallback for branches that pre-date the sha property: resolve from the
+		// linked Commit entity.
+		if commitEntity, ceErr := m.dm.GetEntity(ctx, m.agencyID, sourceBranch.HeadCommitID); ceErr == nil {
+			if sha := entitygraph.StringProp(commitEntity.Properties, "sha"); sha != "" {
+				branchProps["sha"] = sha
+			}
+		}
+	}
 	branchEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Branch",
-		Properties: map[string]any{
-			"name":           req.Name,
-			"is_default":     false,
-			"head_commit_id": sourceBranch.HeadCommitID,
-			"created_at":     now,
-			"updated_at":     now,
-		},
+		Properties: branchProps,
 		Relationships: []entitygraph.EntityRelationshipRequest{
 			{Name: "belongs_to_repository", ToID: repo.ID},
 		},

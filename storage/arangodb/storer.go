@@ -522,16 +522,48 @@ func (s *arangoStorer) IterReferences() (storer.ReferenceIter, error) {
 	}
 	// There may be duplicate Branch entities for the same name (e.g. from
 	// import jobs). Deduplicate by name, preferring any entity with a sha.
-	branchSHA := make(map[string]string)
+	//
+	// First pass: collect all shas and find the default branch sha so we can
+	// use it as a fallback for branches that were created via the gRPC API
+	// before the sha property was copied from the source branch.
+	type branchEntry struct {
+		sha       string
+		isDefault bool
+	}
+	rawEntries := make(map[string]branchEntry, len(branches))
+	var defaultSHA string
 	for _, b := range branches {
 		bname, _ := b.Properties["name"].(string)
 		sha, _ := b.Properties["sha"].(string)
+		isDefault, _ := b.Properties["is_default"].(bool)
 		if bname == "" {
 			continue
 		}
-		if existing, ok := branchSHA[bname]; !ok || existing == "" || existing == plumbing.ZeroHash.String() {
-			branchSHA[bname] = sha
+		// Resolve sha from the linked Commit entity when the branch entity itself
+		// has no sha property (branches created via gRPC before the fix).
+		if sha == "" || sha == plumbing.ZeroHash.String() {
+			if headCommitID, _ := b.Properties["head_commit_id"].(string); headCommitID != "" {
+				if commitEntity, err := s.dm.GetEntity(ctx, s.agencyID, headCommitID); err == nil {
+					sha, _ = commitEntity.Properties["sha"].(string)
+				}
+			}
 		}
+		if cur, ok := rawEntries[bname]; !ok || cur.sha == "" || cur.sha == plumbing.ZeroHash.String() {
+			rawEntries[bname] = branchEntry{sha: sha, isDefault: isDefault}
+		}
+		if isDefault && sha != "" && sha != plumbing.ZeroHash.String() {
+			defaultSHA = sha
+		}
+	}
+	branchSHA := make(map[string]string, len(rawEntries))
+	for bname, entry := range rawEntries {
+		sha := entry.sha
+		// Last-resort fallback: branches forked from the default stub (e.g. via
+		// the event-driven CreateBranch path) inherit the default branch tip.
+		if (sha == "" || sha == plumbing.ZeroHash.String()) && !entry.isDefault && defaultSHA != "" {
+			sha = defaultSHA
+		}
+		branchSHA[bname] = sha
 	}
 	for bname, sha := range branchSHA {
 		// Skip branches with no commits yet (zero/empty SHA). Advertising

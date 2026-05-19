@@ -85,6 +85,10 @@ type Branch struct {
 	// from the points_to edge.
 	HeadCommitID string `json:"head_commit_id,omitempty"`
 
+	// SHA is the git commit hash at the branch tip, stored directly on the
+	// entity so IterReferences can advertise the ref without an extra lookup.
+	SHA string `json:"sha,omitempty"`
+
 	// CreatedAt is the ISO 8601 timestamp when the branch was created.
 	CreatedAt string `json:"created_at"`
 

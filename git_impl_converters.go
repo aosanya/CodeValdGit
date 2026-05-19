@@ -37,6 +37,7 @@ func entityToBranch(e entitygraph.Entity, repositoryID string) Branch {
 		Name:         entitygraph.StringProp(p, "name"),
 		IsDefault:    entitygraph.BoolProp(p, "is_default"),
 		HeadCommitID: entitygraph.StringProp(p, "head_commit_id"),
+		SHA:          entitygraph.StringProp(p, "sha"),
 		CreatedAt:    entitygraph.StringProp(p, "created_at"),
 		UpdatedAt:    entitygraph.StringProp(p, "updated_at"),
 	}
