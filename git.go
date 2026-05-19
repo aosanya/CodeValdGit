@@ -293,6 +293,23 @@ type GitManager interface {
 	// oldSHA is the previous branch tip (all-zeros string for a new branch).
 	// newSHA is the new branch tip written by the push.
 	IndexPushedBranch(ctx context.Context, repoName, branchRef, oldSHA, newSHA string) error
+
+	// ── Blob full-text search (ArangoSearch View) ─────────────────────────────
+
+	// SearchBlobs performs a ranked full-text search over Blob name and content
+	// fields using an ArangoSearch View. Results are sorted by BM25 relevance.
+	// Returns an empty slice when no results match or when no BlobSearcher is
+	// configured (graceful degradation).
+	SearchBlobs(ctx context.Context, req SearchBlobsRequest) ([]BlobSearchResult, error)
+}
+
+// BlobSearcher is the interface satisfied by the ArangoDB-specific full-text
+// search backend. It is injected into [gitManager] at construction time so the
+// core package stays backend-agnostic. A nil BlobSearcher causes SearchBlobs
+// to return an empty result without error.
+type BlobSearcher interface {
+	// Search runs a BM25-ranked ArangoSearch query against the blob view.
+	Search(ctx context.Context, agencyID, query string, limit int) ([]BlobSearchResult, error)
 }
 
 // RefLocker serialises default-branch mutations per agency.
@@ -345,6 +362,7 @@ type gitManager struct {
 	agencyID  string                  // the single agency ID for this database
 	backend   Backend                 // storer backend — used by IndexPushedBranch
 	locker    RefLocker               // serialises per-agency default-branch mutations
+	searcher  BlobSearcher            // optional; nil = SearchBlobs returns empty
 }
 
 // NewGitManager constructs a [GitManager] backed by the given
@@ -352,6 +370,7 @@ type gitManager struct {
 // agencyID is the single agency scoped to this database instance.
 // pub may be nil — cross-service events are skipped when no publisher is set.
 // locker may be nil — a default in-process [mutexLocker] is used.
+// searcher may be nil — SearchBlobs returns an empty result without error.
 func NewGitManager(
 	dm entitygraph.DataManager,
 	sm GitSchemaManager,
@@ -359,6 +378,7 @@ func NewGitManager(
 	agencyID string,
 	backend Backend,
 	locker RefLocker,
+	searcher BlobSearcher,
 ) GitManager {
 	if locker == nil {
 		locker = &mutexLocker{}
@@ -370,6 +390,7 @@ func NewGitManager(
 		agencyID:  agencyID,
 		backend:   backend,
 		locker:    locker,
+		searcher:  searcher,
 	}
 }
 

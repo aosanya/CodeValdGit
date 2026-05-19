@@ -4270,6 +4270,212 @@ func (x *GraphResult) GetEdges() []*GraphEdge {
 	return nil
 }
 
+// SearchBlobsRequest carries the parameters for [GitService.SearchBlobs].
+type SearchBlobsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// query is the search term — tokenised and matched against blob name and content.
+	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	// repository_name scopes the search to a single repository. Required.
+	RepositoryName string `protobuf:"bytes,2,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	// branch_name optionally scopes results to blobs reachable on the named branch.
+	// When empty, all blobs in the repository are searched.
+	BranchName string `protobuf:"bytes,3,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	// limit caps the number of results. Defaults to 20 when 0.
+	Limit         int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchBlobsRequest) Reset() {
+	*x = SearchBlobsRequest{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchBlobsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchBlobsRequest) ProtoMessage() {}
+
+func (x *SearchBlobsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchBlobsRequest.ProtoReflect.Descriptor instead.
+func (*SearchBlobsRequest) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *SearchBlobsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchBlobsRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *SearchBlobsRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
+func (x *SearchBlobsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+// BlobSearchResult is a single match returned by SearchBlobs.
+type BlobSearchResult struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Path      string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Extension string                 `protobuf:"bytes,4,opt,name=extension,proto3" json:"extension,omitempty"`
+	// snippet is a short excerpt of the content around the first match.
+	// May be empty when the match is in the file name only.
+	Snippet       string  `protobuf:"bytes,5,opt,name=snippet,proto3" json:"snippet,omitempty"`
+	Score         float64 `protobuf:"fixed64,6,opt,name=score,proto3" json:"score,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlobSearchResult) Reset() {
+	*x = BlobSearchResult{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlobSearchResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlobSearchResult) ProtoMessage() {}
+
+func (x *BlobSearchResult) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlobSearchResult.ProtoReflect.Descriptor instead.
+func (*BlobSearchResult) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *BlobSearchResult) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *BlobSearchResult) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *BlobSearchResult) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BlobSearchResult) GetExtension() string {
+	if x != nil {
+		return x.Extension
+	}
+	return ""
+}
+
+func (x *BlobSearchResult) GetSnippet() string {
+	if x != nil {
+		return x.Snippet
+	}
+	return ""
+}
+
+func (x *BlobSearchResult) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+// SearchBlobsResponse is the response from [GitService.SearchBlobs].
+type SearchBlobsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Results       []*BlobSearchResult    `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchBlobsResponse) Reset() {
+	*x = SearchBlobsResponse{}
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchBlobsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchBlobsResponse) ProtoMessage() {}
+
+func (x *SearchBlobsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_codevaldgit_v1_service_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchBlobsResponse.ProtoReflect.Descriptor instead.
+func (*SearchBlobsResponse) Descriptor() ([]byte, []int) {
+	return file_codevaldgit_v1_service_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *SearchBlobsResponse) GetResults() []*BlobSearchResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
 var File_codevaldgit_v1_service_proto protoreflect.FileDescriptor
 
 const file_codevaldgit_v1_service_proto_rawDesc = "" +
@@ -4602,7 +4808,22 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\x05to_id\x18\x04 \x01(\tR\x04toId\"o\n" +
 	"\vGraphResult\x12/\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x19.codevaldgit.v1.GraphNodeR\x05nodes\x12/\n" +
-	"\x05edges\x18\x02 \x03(\v2\x19.codevaldgit.v1.GraphEdgeR\x05edges2\xc8\x18\n" +
+	"\x05edges\x18\x02 \x03(\v2\x19.codevaldgit.v1.GraphEdgeR\x05edges\"\x8a\x01\n" +
+	"\x12SearchBlobsRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12'\n" +
+	"\x0frepository_name\x18\x02 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x03 \x01(\tR\n" +
+	"branchName\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x98\x01\n" +
+	"\x10BlobSearchResult\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1c\n" +
+	"\textension\x18\x04 \x01(\tR\textension\x12\x18\n" +
+	"\asnippet\x18\x05 \x01(\tR\asnippet\x12\x14\n" +
+	"\x05score\x18\x06 \x01(\x01R\x05score\"Q\n" +
+	"\x13SearchBlobsResponse\x12:\n" +
+	"\aresults\x18\x01 \x03(\v2 .codevaldgit.v1.BlobSearchResultR\aresults2\xa0\x19\n" +
 	"\n" +
 	"GitService\x12G\n" +
 	"\bInitRepo\x12\x1f.codevaldgit.v1.InitRepoRequest\x1a\x1a.codevaldgit.v1.Repository\x12e\n" +
@@ -4649,7 +4870,8 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\x0fGetNeighborhood\x12&.codevaldgit.v1.GetNeighborhoodRequest\x1a\x1b.codevaldgit.v1.GraphResult\x12X\n" +
 	"\x10SearchByKeywords\x12'.codevaldgit.v1.SearchByKeywordsRequest\x1a\x1b.codevaldgit.v1.GraphResult\x12L\n" +
 	"\n" +
-	"QueryGraph\x12!.codevaldgit.v1.QueryGraphRequest\x1a\x1b.codevaldgit.v1.GraphResultBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
+	"QueryGraph\x12!.codevaldgit.v1.QueryGraphRequest\x1a\x1b.codevaldgit.v1.GraphResult\x12V\n" +
+	"\vSearchBlobs\x12\".codevaldgit.v1.SearchBlobsRequest\x1a#.codevaldgit.v1.SearchBlobsResponseBDZBgithub.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1;codevaldgitv1b\x06proto3"
 
 var (
 	file_codevaldgit_v1_service_proto_rawDescOnce sync.Once
@@ -4663,7 +4885,7 @@ func file_codevaldgit_v1_service_proto_rawDescGZIP() []byte {
 	return file_codevaldgit_v1_service_proto_rawDescData
 }
 
-var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
+var file_codevaldgit_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
 var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*Repository)(nil),                  // 0: codevaldgit.v1.Repository
 	(*Branch)(nil),                      // 1: codevaldgit.v1.Branch
@@ -4735,20 +4957,23 @@ var file_codevaldgit_v1_service_proto_goTypes = []any{
 	(*GraphNode)(nil),                   // 67: codevaldgit.v1.GraphNode
 	(*GraphEdge)(nil),                   // 68: codevaldgit.v1.GraphEdge
 	(*GraphResult)(nil),                 // 69: codevaldgit.v1.GraphResult
-	(*timestamppb.Timestamp)(nil),       // 70: google.protobuf.Timestamp
+	(*SearchBlobsRequest)(nil),          // 70: codevaldgit.v1.SearchBlobsRequest
+	(*BlobSearchResult)(nil),            // 71: codevaldgit.v1.BlobSearchResult
+	(*SearchBlobsResponse)(nil),         // 72: codevaldgit.v1.SearchBlobsResponse
+	(*timestamppb.Timestamp)(nil),       // 73: google.protobuf.Timestamp
 }
 var file_codevaldgit_v1_service_proto_depIdxs = []int32{
-	70, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
-	70, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
-	70, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
-	70, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
-	70, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
-	70, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
-	70, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
-	70, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
-	70, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
-	70, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
-	70, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
+	73, // 0: codevaldgit.v1.Repository.created_at:type_name -> google.protobuf.Timestamp
+	73, // 1: codevaldgit.v1.Repository.updated_at:type_name -> google.protobuf.Timestamp
+	73, // 2: codevaldgit.v1.Branch.created_at:type_name -> google.protobuf.Timestamp
+	73, // 3: codevaldgit.v1.Branch.updated_at:type_name -> google.protobuf.Timestamp
+	73, // 4: codevaldgit.v1.Tag.tagger_at:type_name -> google.protobuf.Timestamp
+	73, // 5: codevaldgit.v1.Tag.created_at:type_name -> google.protobuf.Timestamp
+	73, // 6: codevaldgit.v1.Commit.author_at:type_name -> google.protobuf.Timestamp
+	73, // 7: codevaldgit.v1.Commit.committed_at:type_name -> google.protobuf.Timestamp
+	73, // 8: codevaldgit.v1.Commit.created_at:type_name -> google.protobuf.Timestamp
+	73, // 9: codevaldgit.v1.Blob.created_at:type_name -> google.protobuf.Timestamp
+	73, // 10: codevaldgit.v1.CommitEntry.timestamp:type_name -> google.protobuf.Timestamp
 	0,  // 11: codevaldgit.v1.ListRepositoriesResponse.repositories:type_name -> codevaldgit.v1.Repository
 	1,  // 12: codevaldgit.v1.ListBranchesResponse.branches:type_name -> codevaldgit.v1.Branch
 	2,  // 13: codevaldgit.v1.ListTagsResponse.tags:type_name -> codevaldgit.v1.Tag
@@ -4761,87 +4986,90 @@ var file_codevaldgit_v1_service_proto_depIdxs = []int32{
 	50, // 20: codevaldgit.v1.GetKeywordTreeResponse.nodes:type_name -> codevaldgit.v1.KeywordTreeNode
 	67, // 21: codevaldgit.v1.GraphResult.nodes:type_name -> codevaldgit.v1.GraphNode
 	68, // 22: codevaldgit.v1.GraphResult.edges:type_name -> codevaldgit.v1.GraphEdge
-	8,  // 23: codevaldgit.v1.GitService.InitRepo:input_type -> codevaldgit.v1.InitRepoRequest
-	9,  // 24: codevaldgit.v1.GitService.ListRepositories:input_type -> codevaldgit.v1.ListRepositoriesRequest
-	11, // 25: codevaldgit.v1.GitService.GetRepository:input_type -> codevaldgit.v1.GetRepositoryRequest
-	12, // 26: codevaldgit.v1.GitService.GetRepositoryByName:input_type -> codevaldgit.v1.GetRepositoryByNameRequest
-	13, // 27: codevaldgit.v1.GitService.DeleteRepo:input_type -> codevaldgit.v1.DeleteRepoRequest
-	15, // 28: codevaldgit.v1.GitService.PurgeRepo:input_type -> codevaldgit.v1.PurgeRepoRequest
-	17, // 29: codevaldgit.v1.GitService.CreateBranch:input_type -> codevaldgit.v1.CreateBranchRequest
-	18, // 30: codevaldgit.v1.GitService.GetBranch:input_type -> codevaldgit.v1.GetBranchRequest
-	19, // 31: codevaldgit.v1.GitService.GetBranchByName:input_type -> codevaldgit.v1.GetBranchByNameRequest
-	20, // 32: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
-	22, // 33: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
-	24, // 34: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
-	25, // 35: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
-	26, // 36: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
-	27, // 37: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
-	29, // 38: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
-	31, // 39: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
-	32, // 40: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
-	33, // 41: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
-	34, // 42: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
-	36, // 43: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
-	38, // 44: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
-	40, // 45: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
-	42, // 46: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
-	43, // 47: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
-	46, // 48: codevaldgit.v1.GitService.FetchBranch:input_type -> codevaldgit.v1.FetchBranchRequest
-	48, // 49: codevaldgit.v1.GitService.GetFetchBranchStatus:input_type -> codevaldgit.v1.GetFetchBranchStatusRequest
-	51, // 50: codevaldgit.v1.GitService.CreateKeyword:input_type -> codevaldgit.v1.CreateKeywordRequest
-	52, // 51: codevaldgit.v1.GitService.GetKeyword:input_type -> codevaldgit.v1.GetKeywordRequest
-	53, // 52: codevaldgit.v1.GitService.ListKeywords:input_type -> codevaldgit.v1.ListKeywordsRequest
-	55, // 53: codevaldgit.v1.GitService.GetKeywordTree:input_type -> codevaldgit.v1.GetKeywordTreeRequest
-	57, // 54: codevaldgit.v1.GitService.UpdateKeyword:input_type -> codevaldgit.v1.UpdateKeywordRequest
-	58, // 55: codevaldgit.v1.GitService.DeleteKeyword:input_type -> codevaldgit.v1.DeleteKeywordRequest
-	60, // 56: codevaldgit.v1.GitService.CreateEdge:input_type -> codevaldgit.v1.CreateEdgeRequest
-	62, // 57: codevaldgit.v1.GitService.DeleteEdge:input_type -> codevaldgit.v1.DeleteEdgeRequest
-	64, // 58: codevaldgit.v1.GitService.GetNeighborhood:input_type -> codevaldgit.v1.GetNeighborhoodRequest
-	65, // 59: codevaldgit.v1.GitService.SearchByKeywords:input_type -> codevaldgit.v1.SearchByKeywordsRequest
-	66, // 60: codevaldgit.v1.GitService.QueryGraph:input_type -> codevaldgit.v1.QueryGraphRequest
-	0,  // 61: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
-	10, // 62: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
-	0,  // 63: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
-	0,  // 64: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
-	14, // 65: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
-	16, // 66: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
-	1,  // 67: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
-	1,  // 68: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
-	1,  // 69: codevaldgit.v1.GitService.GetBranchByName:output_type -> codevaldgit.v1.Branch
-	21, // 70: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
-	23, // 71: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
-	1,  // 72: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
-	2,  // 73: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
-	2,  // 74: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
-	28, // 75: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
-	30, // 76: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
-	3,  // 77: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
-	4,  // 78: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
-	3,  // 79: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
-	35, // 80: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
-	37, // 81: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
-	39, // 82: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
-	41, // 83: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
-	45, // 84: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
-	44, // 85: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
-	47, // 86: codevaldgit.v1.GitService.FetchBranch:output_type -> codevaldgit.v1.FetchBranchJob
-	47, // 87: codevaldgit.v1.GitService.GetFetchBranchStatus:output_type -> codevaldgit.v1.FetchBranchJob
-	49, // 88: codevaldgit.v1.GitService.CreateKeyword:output_type -> codevaldgit.v1.Keyword
-	49, // 89: codevaldgit.v1.GitService.GetKeyword:output_type -> codevaldgit.v1.Keyword
-	54, // 90: codevaldgit.v1.GitService.ListKeywords:output_type -> codevaldgit.v1.ListKeywordsResponse
-	56, // 91: codevaldgit.v1.GitService.GetKeywordTree:output_type -> codevaldgit.v1.GetKeywordTreeResponse
-	49, // 92: codevaldgit.v1.GitService.UpdateKeyword:output_type -> codevaldgit.v1.Keyword
-	59, // 93: codevaldgit.v1.GitService.DeleteKeyword:output_type -> codevaldgit.v1.DeleteKeywordResponse
-	61, // 94: codevaldgit.v1.GitService.CreateEdge:output_type -> codevaldgit.v1.CreateEdgeResponse
-	63, // 95: codevaldgit.v1.GitService.DeleteEdge:output_type -> codevaldgit.v1.DeleteEdgeResponse
-	69, // 96: codevaldgit.v1.GitService.GetNeighborhood:output_type -> codevaldgit.v1.GraphResult
-	69, // 97: codevaldgit.v1.GitService.SearchByKeywords:output_type -> codevaldgit.v1.GraphResult
-	69, // 98: codevaldgit.v1.GitService.QueryGraph:output_type -> codevaldgit.v1.GraphResult
-	61, // [61:99] is the sub-list for method output_type
-	23, // [23:61] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	71, // 23: codevaldgit.v1.SearchBlobsResponse.results:type_name -> codevaldgit.v1.BlobSearchResult
+	8,  // 24: codevaldgit.v1.GitService.InitRepo:input_type -> codevaldgit.v1.InitRepoRequest
+	9,  // 25: codevaldgit.v1.GitService.ListRepositories:input_type -> codevaldgit.v1.ListRepositoriesRequest
+	11, // 26: codevaldgit.v1.GitService.GetRepository:input_type -> codevaldgit.v1.GetRepositoryRequest
+	12, // 27: codevaldgit.v1.GitService.GetRepositoryByName:input_type -> codevaldgit.v1.GetRepositoryByNameRequest
+	13, // 28: codevaldgit.v1.GitService.DeleteRepo:input_type -> codevaldgit.v1.DeleteRepoRequest
+	15, // 29: codevaldgit.v1.GitService.PurgeRepo:input_type -> codevaldgit.v1.PurgeRepoRequest
+	17, // 30: codevaldgit.v1.GitService.CreateBranch:input_type -> codevaldgit.v1.CreateBranchRequest
+	18, // 31: codevaldgit.v1.GitService.GetBranch:input_type -> codevaldgit.v1.GetBranchRequest
+	19, // 32: codevaldgit.v1.GitService.GetBranchByName:input_type -> codevaldgit.v1.GetBranchByNameRequest
+	20, // 33: codevaldgit.v1.GitService.ListBranches:input_type -> codevaldgit.v1.ListBranchesRequest
+	22, // 34: codevaldgit.v1.GitService.DeleteBranch:input_type -> codevaldgit.v1.DeleteBranchRequest
+	24, // 35: codevaldgit.v1.GitService.MergeBranch:input_type -> codevaldgit.v1.MergeBranchRequest
+	25, // 36: codevaldgit.v1.GitService.CreateTag:input_type -> codevaldgit.v1.CreateTagRequest
+	26, // 37: codevaldgit.v1.GitService.GetTag:input_type -> codevaldgit.v1.GetTagRequest
+	27, // 38: codevaldgit.v1.GitService.ListTags:input_type -> codevaldgit.v1.ListTagsRequest
+	29, // 39: codevaldgit.v1.GitService.DeleteTag:input_type -> codevaldgit.v1.DeleteTagRequest
+	31, // 40: codevaldgit.v1.GitService.WriteFile:input_type -> codevaldgit.v1.WriteFileRequest
+	32, // 41: codevaldgit.v1.GitService.ReadFile:input_type -> codevaldgit.v1.ReadFileRequest
+	33, // 42: codevaldgit.v1.GitService.DeleteFile:input_type -> codevaldgit.v1.DeleteFileRequest
+	34, // 43: codevaldgit.v1.GitService.ListDirectory:input_type -> codevaldgit.v1.ListDirectoryRequest
+	36, // 44: codevaldgit.v1.GitService.Log:input_type -> codevaldgit.v1.LogRequest
+	38, // 45: codevaldgit.v1.GitService.Diff:input_type -> codevaldgit.v1.DiffRequest
+	40, // 46: codevaldgit.v1.GitService.ImportRepo:input_type -> codevaldgit.v1.ImportRepoRequest
+	42, // 47: codevaldgit.v1.GitService.GetImportStatus:input_type -> codevaldgit.v1.GetImportStatusRequest
+	43, // 48: codevaldgit.v1.GitService.CancelImport:input_type -> codevaldgit.v1.CancelImportRequest
+	46, // 49: codevaldgit.v1.GitService.FetchBranch:input_type -> codevaldgit.v1.FetchBranchRequest
+	48, // 50: codevaldgit.v1.GitService.GetFetchBranchStatus:input_type -> codevaldgit.v1.GetFetchBranchStatusRequest
+	51, // 51: codevaldgit.v1.GitService.CreateKeyword:input_type -> codevaldgit.v1.CreateKeywordRequest
+	52, // 52: codevaldgit.v1.GitService.GetKeyword:input_type -> codevaldgit.v1.GetKeywordRequest
+	53, // 53: codevaldgit.v1.GitService.ListKeywords:input_type -> codevaldgit.v1.ListKeywordsRequest
+	55, // 54: codevaldgit.v1.GitService.GetKeywordTree:input_type -> codevaldgit.v1.GetKeywordTreeRequest
+	57, // 55: codevaldgit.v1.GitService.UpdateKeyword:input_type -> codevaldgit.v1.UpdateKeywordRequest
+	58, // 56: codevaldgit.v1.GitService.DeleteKeyword:input_type -> codevaldgit.v1.DeleteKeywordRequest
+	60, // 57: codevaldgit.v1.GitService.CreateEdge:input_type -> codevaldgit.v1.CreateEdgeRequest
+	62, // 58: codevaldgit.v1.GitService.DeleteEdge:input_type -> codevaldgit.v1.DeleteEdgeRequest
+	64, // 59: codevaldgit.v1.GitService.GetNeighborhood:input_type -> codevaldgit.v1.GetNeighborhoodRequest
+	65, // 60: codevaldgit.v1.GitService.SearchByKeywords:input_type -> codevaldgit.v1.SearchByKeywordsRequest
+	66, // 61: codevaldgit.v1.GitService.QueryGraph:input_type -> codevaldgit.v1.QueryGraphRequest
+	70, // 62: codevaldgit.v1.GitService.SearchBlobs:input_type -> codevaldgit.v1.SearchBlobsRequest
+	0,  // 63: codevaldgit.v1.GitService.InitRepo:output_type -> codevaldgit.v1.Repository
+	10, // 64: codevaldgit.v1.GitService.ListRepositories:output_type -> codevaldgit.v1.ListRepositoriesResponse
+	0,  // 65: codevaldgit.v1.GitService.GetRepository:output_type -> codevaldgit.v1.Repository
+	0,  // 66: codevaldgit.v1.GitService.GetRepositoryByName:output_type -> codevaldgit.v1.Repository
+	14, // 67: codevaldgit.v1.GitService.DeleteRepo:output_type -> codevaldgit.v1.DeleteRepoResponse
+	16, // 68: codevaldgit.v1.GitService.PurgeRepo:output_type -> codevaldgit.v1.PurgeRepoResponse
+	1,  // 69: codevaldgit.v1.GitService.CreateBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 70: codevaldgit.v1.GitService.GetBranch:output_type -> codevaldgit.v1.Branch
+	1,  // 71: codevaldgit.v1.GitService.GetBranchByName:output_type -> codevaldgit.v1.Branch
+	21, // 72: codevaldgit.v1.GitService.ListBranches:output_type -> codevaldgit.v1.ListBranchesResponse
+	23, // 73: codevaldgit.v1.GitService.DeleteBranch:output_type -> codevaldgit.v1.DeleteBranchResponse
+	1,  // 74: codevaldgit.v1.GitService.MergeBranch:output_type -> codevaldgit.v1.Branch
+	2,  // 75: codevaldgit.v1.GitService.CreateTag:output_type -> codevaldgit.v1.Tag
+	2,  // 76: codevaldgit.v1.GitService.GetTag:output_type -> codevaldgit.v1.Tag
+	28, // 77: codevaldgit.v1.GitService.ListTags:output_type -> codevaldgit.v1.ListTagsResponse
+	30, // 78: codevaldgit.v1.GitService.DeleteTag:output_type -> codevaldgit.v1.DeleteTagResponse
+	3,  // 79: codevaldgit.v1.GitService.WriteFile:output_type -> codevaldgit.v1.Commit
+	4,  // 80: codevaldgit.v1.GitService.ReadFile:output_type -> codevaldgit.v1.Blob
+	3,  // 81: codevaldgit.v1.GitService.DeleteFile:output_type -> codevaldgit.v1.Commit
+	35, // 82: codevaldgit.v1.GitService.ListDirectory:output_type -> codevaldgit.v1.ListDirectoryResponse
+	37, // 83: codevaldgit.v1.GitService.Log:output_type -> codevaldgit.v1.LogResponse
+	39, // 84: codevaldgit.v1.GitService.Diff:output_type -> codevaldgit.v1.DiffResponse
+	41, // 85: codevaldgit.v1.GitService.ImportRepo:output_type -> codevaldgit.v1.ImportRepoResponse
+	45, // 86: codevaldgit.v1.GitService.GetImportStatus:output_type -> codevaldgit.v1.ImportJobResponse
+	44, // 87: codevaldgit.v1.GitService.CancelImport:output_type -> codevaldgit.v1.CancelImportResponse
+	47, // 88: codevaldgit.v1.GitService.FetchBranch:output_type -> codevaldgit.v1.FetchBranchJob
+	47, // 89: codevaldgit.v1.GitService.GetFetchBranchStatus:output_type -> codevaldgit.v1.FetchBranchJob
+	49, // 90: codevaldgit.v1.GitService.CreateKeyword:output_type -> codevaldgit.v1.Keyword
+	49, // 91: codevaldgit.v1.GitService.GetKeyword:output_type -> codevaldgit.v1.Keyword
+	54, // 92: codevaldgit.v1.GitService.ListKeywords:output_type -> codevaldgit.v1.ListKeywordsResponse
+	56, // 93: codevaldgit.v1.GitService.GetKeywordTree:output_type -> codevaldgit.v1.GetKeywordTreeResponse
+	49, // 94: codevaldgit.v1.GitService.UpdateKeyword:output_type -> codevaldgit.v1.Keyword
+	59, // 95: codevaldgit.v1.GitService.DeleteKeyword:output_type -> codevaldgit.v1.DeleteKeywordResponse
+	61, // 96: codevaldgit.v1.GitService.CreateEdge:output_type -> codevaldgit.v1.CreateEdgeResponse
+	63, // 97: codevaldgit.v1.GitService.DeleteEdge:output_type -> codevaldgit.v1.DeleteEdgeResponse
+	69, // 98: codevaldgit.v1.GitService.GetNeighborhood:output_type -> codevaldgit.v1.GraphResult
+	69, // 99: codevaldgit.v1.GitService.SearchByKeywords:output_type -> codevaldgit.v1.GraphResult
+	69, // 100: codevaldgit.v1.GitService.QueryGraph:output_type -> codevaldgit.v1.GraphResult
+	72, // 101: codevaldgit.v1.GitService.SearchBlobs:output_type -> codevaldgit.v1.SearchBlobsResponse
+	63, // [63:102] is the sub-list for method output_type
+	24, // [24:63] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_codevaldgit_v1_service_proto_init() }
@@ -4855,7 +5083,7 @@ func file_codevaldgit_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_codevaldgit_v1_service_proto_rawDesc), len(file_codevaldgit_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   70,
+			NumMessages:   73,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

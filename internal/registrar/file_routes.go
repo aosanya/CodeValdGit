@@ -47,5 +47,14 @@ func fileRoutes() []types.RouteInfo {
 			GrpcMethod:   "/codevaldgit.v1.GitService/ListDirectory",
 			PathBindings: []types.PathBinding{rid, bname},
 		},
+		// search_blobs uses the ArangoSearch View; query is passed via ?q=...
+		// branch_name is optional: when present it is bound from the URL segment.
+		{
+			Method:       "GET",
+			Pattern:      "/git/{agencyId}/repositories/{repoName}/blobs/search",
+			Capability:   "search_blobs",
+			GrpcMethod:   "/codevaldgit.v1.GitService/SearchBlobs",
+			PathBindings: []types.PathBinding{rid},
+		},
 	}
 }

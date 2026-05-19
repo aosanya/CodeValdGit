@@ -289,6 +289,10 @@ func (f *fakeGitManager) IndexPushedBranch(_ context.Context, _, _, _, _ string)
 	return nil
 }
 
+func (f *fakeGitManager) SearchBlobs(_ context.Context, _ codevaldgit.SearchBlobsRequest) ([]codevaldgit.BlobSearchResult, error) {
+	return nil, nil
+}
+
 // ── test server setup ─────────────────────────────────────────────────────────
 
 const bufSize = 1024 * 1024

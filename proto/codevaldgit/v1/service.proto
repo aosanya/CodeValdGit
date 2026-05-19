@@ -305,6 +305,12 @@ service GitService {
   // descending signal layer. An empty body returns the top 50 highest-signal nodes.
   // Error: NOT_FOUND if the branch does not exist.
   rpc QueryGraph (QueryGraphRequest) returns (GraphResult);
+
+  // SearchBlobs performs a full-text search against an ArangoSearch View that
+  // indexes the name and content fields of all Blob entities in git_blobs.
+  // Results are ranked by BM25 relevance and capped by limit (default 20).
+  // agency_id is resolved from the service's construction-time scope.
+  rpc SearchBlobs (SearchBlobsRequest) returns (SearchBlobsResponse);
 }
 
 // ── Request / Response Messages ───────────────────────────────────────────────
@@ -656,4 +662,36 @@ message GraphEdge {
 message GraphResult {
   repeated GraphNode nodes = 1;
   repeated GraphEdge edges = 2;
+}
+
+// ── Blob full-text search (ArangoSearch View) ─────────────────────────────────
+
+// SearchBlobsRequest carries the parameters for [GitService.SearchBlobs].
+message SearchBlobsRequest {
+  // query is the search term — tokenised and matched against blob name and content.
+  string query           = 1;
+  // repository_name scopes the search to a single repository. Required.
+  string repository_name = 2;
+  // branch_name optionally scopes results to blobs reachable on the named branch.
+  // When empty, all blobs in the repository are searched.
+  string branch_name     = 3;
+  // limit caps the number of results. Defaults to 20 when 0.
+  int32  limit           = 4;
+}
+
+// BlobSearchResult is a single match returned by SearchBlobs.
+message BlobSearchResult {
+  string id        = 1;
+  string path      = 2;
+  string name      = 3;
+  string extension = 4;
+  // snippet is a short excerpt of the content around the first match.
+  // May be empty when the match is in the file name only.
+  string snippet   = 5;
+  double score     = 6;
+}
+
+// SearchBlobsResponse is the response from [GitService.SearchBlobs].
+message SearchBlobsResponse {
+  repeated BlobSearchResult results = 1;
 }

@@ -69,6 +69,8 @@ func Run(cfg config.Config) error {
 						"git.branch.create": `{"repository":"<repo-name>","name":"<branch-name>","from_branch":"<base-branch>"}`,
 						"git.branch.delete": `{"repository":"<repo-name>","name":"<branch-name>"}`,
 						"git.repo.create":   `{"name":"<repo-name>","default_branch":"<branch>"}`,
+						"git.file.write":    `{"repository":"<repo-name>","branch_name":"<branch>","path":"<rel-path>","content":"<text>","message":"<commit-msg>","run_id":"<run-id>","keywords":[{"name":"<kw>","signal":"<depth>"}]}`,
+						"git.file.written":  `{"run_id":"<run-id>","repository":"<repo-name>","branch_name":"<branch>","path":"<rel-path>","commit_sha":"<sha>"}`,
 					}
 					if err := reg.RegisterTopicSchemas(schemaCtx, cfg.AgencyID, schemas); err != nil {
 						log.Printf("codevaldgit: RegisterTopicSchemas: %v", err)
@@ -105,6 +107,33 @@ func Run(cfg config.Config) error {
 	}
 	idxCancel()
 
+	// ── ArangoSearch View for blob full-text search ───────────────────────────
+	viewCtx, viewCancel := context.WithTimeout(ctx, 15*time.Second)
+	if viewErr := gitarangodb.EnsureBlobSearchView(viewCtx, gitarangodb.Config{
+		Endpoint: cfg.ArangoEndpoint,
+		Username: cfg.ArangoUser,
+		Password: cfg.ArangoPassword,
+		Database: cfg.ArangoDatabase,
+	}); viewErr != nil {
+		log.Printf("codevaldgit: EnsureBlobSearchView: %v (continuing without full-text search)", viewErr)
+	}
+	viewCancel()
+
+	// ── Blob text searcher ────────────────────────────────────────────────────
+	var blobSearcher codevaldgit.BlobSearcher
+	searcherCtx, searcherCancel := context.WithTimeout(ctx, 10*time.Second)
+	if s, sErr := gitarangodb.NewArangoBlobSearcher(searcherCtx, gitarangodb.Config{
+		Endpoint: cfg.ArangoEndpoint,
+		Username: cfg.ArangoUser,
+		Password: cfg.ArangoPassword,
+		Database: cfg.ArangoDatabase,
+	}); sErr != nil {
+		log.Printf("codevaldgit: NewArangoBlobSearcher: %v (SearchBlobs disabled)", sErr)
+	} else {
+		blobSearcher = s
+	}
+	searcherCancel()
+
 	// ── Schema seed (idempotent on startup) ──────────────────────────────────
 	if cfg.AgencyID != "" {
 		seedCtx, seedCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -123,7 +152,7 @@ func Run(cfg config.Config) error {
 	gitBackend := gitarangodb.NewArangoStorerBackend(arangoBackend)
 
 	// ── GitManager (gRPC service) ──────────────────────────────────────────
-	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID, gitBackend, nil)
+	mgr := codevaldgit.NewGitManager(arangoBackend, arangoBackend, pub, cfg.AgencyID, gitBackend, nil, blobSearcher)
 
 	gitHTTPHandler := server.NewGitHTTPHandler(gitBackend, mgr)
 

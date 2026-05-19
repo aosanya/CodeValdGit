@@ -306,12 +306,38 @@ Adding a new endpoint requires **zero changes to CodeValdCross**.
 After each successful mutating operation CodeValdGit publishes a typed event
 to CodeValdCross via its `CrossPublisher`:
 
-| Event | Topic | Trigger |
-|---|---|---|
-| Repository created | `git.repo.created` | `InitRepo` |
-| Branch created | `git.branch.created` | `CreateBranch` |
-| File committed | `git.file.committed` | `WriteFile` |
-| Branch merged | `git.branch.merged` | `MergeBranch` |
+| Event | Topic | Trigger | Payload type |
+|---|---|---|---|
+| Repository created | `git.repo.created` | `InitRepo` | `RepoCreatedPayload` |
+| Repository imported | `git.repo.imported` | async `ImportRepo` job | `RepoImportedPayload` |
+| Repository import failed | `git.repo.import.failed` | async `ImportRepo` job | `RepoImportFailedPayload` |
+| Repository import cancelled | `git.repo.import.cancelled` | `CancelImport` | `RepoImportCancelledPayload` |
+| Branch fetched/created | `git.branch.fetched` | `CreateBranch` or async `FetchBranch` job | `BranchFetchedPayload` |
+| Branch merged | `git.branch.merged` | `MergeBranch` | `BranchMergedPayload` |
+| Merge conflict | `git.conflict.detected` | `MergeBranch` (auto-resolve failed) | `MergeConflictPayload` |
+| File committed | `git.file.written` | `handleFileWrite` (via `git.file.write` command) | `FileWrittenPayload` |
+
+### Command topics consumed by CodeValdGit
+
+These are imperative topics published by CodeValdAI. CodeValdGit subscribes,
+executes the command, and publishes a response event.
+
+| Topic | Payload type | Action | Response topic |
+|---|---|---|---|
+| `git.branch.create` | `BranchCreatePayload` | Resolves repo by name, creates branch | `git.branch.fetched` |
+| `git.file.write` | `FileWritePayload` | Resolves repo+branch, calls `WriteFile`, tags blob with keywords | `git.file.written` |
+
+### Blob full-text search (ArangoSearch View)
+
+`GitManager.SearchBlobs` queries an ArangoSearch View (`git_blob_search_view`)
+that indexes the `properties.name` and `properties.content` fields of the
+`git_blobs` collection with the `text_en` analyzer. Results are BM25-ranked.
+
+- **HTTP route**: `GET /git/{agencyId}/repositories/{repoName}/blobs/search?query=<term>&limit=<n>`
+- **gRPC method**: `GitService/SearchBlobs`
+- **View seeded at startup** via `EnsureBlobSearchView` in `storage/arangodb/arangodb.go`
+- Used by `HydrateEventContext` in CodeValdAI to execute precall blob searches
+  before the LLM runs a todo that declares `blob_search` precalls.
 
 ---
 

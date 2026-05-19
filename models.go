@@ -597,6 +597,36 @@ type FetchBranchRequest struct {
 	BranchID string `json:"branch_id"`
 }
 
+// SearchBlobsRequest carries the parameters for [GitManager.SearchBlobs].
+type SearchBlobsRequest struct {
+	// Query is the search term tokenised against blob name and content. Required.
+	Query string `json:"query"`
+	// RepositoryName scopes the search to a single repository. Required.
+	RepositoryName string `json:"repository_name"`
+	// BranchName optionally scopes results to blobs reachable on the named branch.
+	// When empty all blobs in the repository are searched.
+	BranchName string `json:"branch_name,omitempty"`
+	// Limit caps the number of results. Defaults to 20 when 0.
+	Limit int `json:"limit,omitempty"`
+}
+
+// BlobSearchResult is a single ranked match returned by [GitManager.SearchBlobs].
+type BlobSearchResult struct {
+	// ID is the entitygraph identifier of the matching Blob.
+	ID string `json:"id"`
+	// Path is the file path relative to the repository root.
+	Path string `json:"path"`
+	// Name is the base file name including extension.
+	Name string `json:"name"`
+	// Extension is the file extension without the leading dot.
+	Extension string `json:"extension,omitempty"`
+	// Snippet is a short excerpt of content around the first match.
+	// May be empty when the match is on the file name only.
+	Snippet string `json:"snippet,omitempty"`
+	// Score is the BM25 relevance score (higher = more relevant).
+	Score float64 `json:"score"`
+}
+
 // FetchBranchJob represents the state of an async on-demand branch fetch
 // operation triggered by [GitManager.FetchBranch].
 //

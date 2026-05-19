@@ -72,6 +72,31 @@ func (s *Server) DeleteFile(ctx context.Context, req *pb.DeleteFileRequest) (*pb
 	return commitToProto(commit), nil
 }
 
+// SearchBlobs implements pb.GitServiceServer.
+func (s *Server) SearchBlobs(ctx context.Context, req *pb.SearchBlobsRequest) (*pb.SearchBlobsResponse, error) {
+	results, err := s.mgr.SearchBlobs(ctx, codevaldgit.SearchBlobsRequest{
+		Query:          req.GetQuery(),
+		RepositoryName: req.GetRepositoryName(),
+		BranchName:     req.GetBranchName(),
+		Limit:          int(req.GetLimit()),
+	})
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	out := make([]*pb.BlobSearchResult, len(results))
+	for i, r := range results {
+		out[i] = &pb.BlobSearchResult{
+			Id:        r.ID,
+			Path:      r.Path,
+			Name:      r.Name,
+			Extension: r.Extension,
+			Snippet:   r.Snippet,
+			Score:     r.Score,
+		}
+	}
+	return &pb.SearchBlobsResponse{Results: out}, nil
+}
+
 // ListDirectory implements pb.GitServiceServer.
 func (s *Server) ListDirectory(ctx context.Context, req *pb.ListDirectoryRequest) (*pb.ListDirectoryResponse, error) {
 	log.Printf("[gRPC ListDirectory] branch_id=%q branch_name=%q repository_name=%q path=%q",
