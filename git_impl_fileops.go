@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,9 +25,118 @@ import (
 
 // ── File Operations ───────────────────────────────────────────────────────────
 
+// treeRecord holds the git object data for one tree node built by buildNestedTrees.
+type treeRecord struct {
+	path    string // directory path: "" = root, "lib", "lib/providers", …
+	sha     string
+	rawData []byte
+	size    int64
+	entries string // JSON [{name,mode,sha}] for entity graph queries
+}
+
+// buildNestedTrees constructs a complete, properly-nested git tree from a flat
+// map of full file paths to blob hashes. It processes directories bottom-up so
+// subtree hashes are known before parent trees are encoded.
+// Returns the root tree hash and one treeRecord per directory.
+func buildNestedTrees(files map[string]plumbing.Hash) (plumbing.Hash, []treeRecord, error) {
+	// Collect every directory that appears as an ancestor of any file path.
+	dirSet := map[string]bool{"": true}
+	for p := range files {
+		parts := strings.Split(p, "/")
+		for i := 1; i < len(parts); i++ {
+			dirSet[strings.Join(parts[:i], "/")] = true
+		}
+	}
+
+	// Sort directories deepest-first so subtrees are built before their parents.
+	dirs := make([]string, 0, len(dirSet))
+	for d := range dirSet {
+		dirs = append(dirs, d)
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		di := strings.Count(dirs[i], "/")
+		dj := strings.Count(dirs[j], "/")
+		if di != dj {
+			return di > dj
+		}
+		return dirs[i] > dirs[j]
+	})
+
+	subtreeHashes := map[string]plumbing.Hash{} // dir path → encoded tree hash
+	var records []treeRecord
+
+	for _, dir := range dirs {
+		var entries []object.TreeEntry
+
+		// File entries directly inside this directory.
+		for filePath, blobHash := range files {
+			if dirPath(filePath) == dir {
+				entries = append(entries, object.TreeEntry{
+					Name: fileName(filePath),
+					Mode: filemode.Regular,
+					Hash: blobHash,
+				})
+			}
+		}
+
+		// Immediate subdirectory entries (already encoded in earlier iterations).
+		for subPath, subHash := range subtreeHashes {
+			if dirPath(subPath) == dir {
+				entries = append(entries, object.TreeEntry{
+					Name: fileName(subPath),
+					Mode: filemode.Dir,
+					Hash: subHash,
+				})
+			}
+		}
+
+		// Git requires tree entries sorted by name.
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].Name < entries[j].Name
+		})
+
+		treeObj := &object.Tree{Entries: entries}
+		memObj := &plumbing.MemoryObject{}
+		if err := treeObj.Encode(memObj); err != nil {
+			return plumbing.ZeroHash, nil, fmt.Errorf("buildNestedTrees: encode %q: %w", dir, err)
+		}
+		r, _ := memObj.Reader()
+		raw, _ := io.ReadAll(r)
+		r.Close()
+
+		h := memObj.Hash()
+		subtreeHashes[dir] = h
+
+		entryMaps := make([]map[string]string, len(entries))
+		for i, e := range entries {
+			mode := "100644"
+			if e.Mode == filemode.Dir {
+				mode = "040000"
+			}
+			entryMaps[i] = map[string]string{"name": e.Name, "mode": mode, "sha": e.Hash.String()}
+		}
+		entriesJSON, _ := json.Marshal(entryMaps)
+
+		records = append(records, treeRecord{
+			path:    dir,
+			sha:     h.String(),
+			rawData: raw,
+			size:    memObj.Size(),
+			entries: string(entriesJSON),
+		})
+	}
+
+	rootHash, ok := subtreeHashes[""]
+	if !ok {
+		return plumbing.ZeroHash, nil, fmt.Errorf("buildNestedTrees: root tree missing")
+	}
+	return rootHash, records, nil
+}
+
 // WriteFile commits a single file to the specified branch.
-// It creates Blob, Tree, and Commit entities, wires the graph edges, and
-// advances the branch HEAD pointer to the new commit.
+// Each call builds a complete nested git tree that includes all files from
+// the parent commit plus the new file, so the branch accumulates files
+// correctly across successive writes.
 // Returns [ErrBranchNotFound] if the branch does not exist.
 // Returns [ErrRepoNotInitialised] if no repository entity exists.
 func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commit, error) {
@@ -39,6 +149,9 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}
 
+	// Normalise the path: strip leading slashes.
+	req.Path = strings.TrimLeft(req.Path, "/")
+
 	encoding := req.Encoding
 	if encoding == "" {
 		encoding = "utf-8"
@@ -50,14 +163,12 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	commitTime := time.Now().UTC()
 	now := commitTime.Format(time.RFC3339)
 
-	// Blob SHA — real git canonical format "blob {size}\x00{content}".
+	// ── 1. Create the new Blob entity ─────────────────────────────────────────
 	blobObj := &plumbing.MemoryObject{}
 	blobObj.SetType(plumbing.BlobObject)
-	blobW, _ := blobObj.Writer() // MemoryObject.Writer never returns an error.
+	blobW, _ := blobObj.Writer()
 	_, _ = blobW.Write([]byte(req.Content))
 	_ = blobW.Close()
-	// GIT-017a: read the raw MemoryObject bytes so that EncodedObject (used by
-	// the Smart HTTP storer) can decode them during git pull / git clone.
 	blobR, _ := blobObj.Reader()
 	blobRaw, _ := io.ReadAll(blobR)
 	_ = blobR.Close()
@@ -65,84 +176,17 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	blobHash := blobObj.Hash()
 	blobSHA := blobHash.String()
 
-	// Tree SHA — encoded via go-git tree format; one entry per WriteFile call.
-	treeDir := dirPath(req.Path)
-	treeGitObj := &object.Tree{
-		Entries: []object.TreeEntry{
-			{Name: fileName(req.Path), Mode: filemode.Regular, Hash: blobHash},
-		},
-	}
-	treeMemObj := &plumbing.MemoryObject{}
-	if err := treeGitObj.Encode(treeMemObj); err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: encode tree: %w", err)
-	}
-	// GIT-017a: read the raw MemoryObject bytes for Smart HTTP storer.
-	treeR, _ := treeMemObj.Reader()
-	treeRaw, _ := io.ReadAll(treeR)
-	_ = treeR.Close()
-	treeDataB64 := base64.StdEncoding.EncodeToString(treeRaw)
-	treeHash := treeMemObj.Hash()
-	treeSHA := treeHash.String()
-
-	// Serialise entries as a JSON array [{name, mode, sha}] for the Tree entity.
-	entriesJSON, _ := json.Marshal([]map[string]string{
-		{"name": fileName(req.Path), "mode": "100644", "sha": blobSHA},
-	})
-
-	// Parent entity IDs (graph edges) and git hashes (commit SHA computation).
-	var parentIDs []string
-	var parentHashes []plumbing.Hash
-	if branch.HeadCommitID != "" {
-		parentIDs = []string{branch.HeadCommitID}
-		parentEntity, err := m.dm.GetEntity(ctx, m.agencyID, branch.HeadCommitID)
-		if err != nil {
-			return Commit{}, fmt.Errorf("WriteFile: get parent commit sha: %w", err)
-		}
-		if sha := entitygraph.StringProp(parentEntity.Properties, "sha"); sha != "" {
-			parentHashes = []plumbing.Hash{plumbing.NewHash(sha)}
-		}
-	}
-
-	// Commit SHA — encoded via go-git commit format.
-	gitCommitObj := &object.Commit{
-		TreeHash:     treeHash,
-		ParentHashes: parentHashes,
-		Author: object.Signature{
-			Name:  req.AuthorName,
-			Email: req.AuthorEmail,
-			When:  commitTime,
-		},
-		Committer: object.Signature{
-			Name:  req.AuthorName,
-			Email: req.AuthorEmail,
-			When:  commitTime,
-		},
-		Message: message,
-	}
-	commitMemObj := &plumbing.MemoryObject{}
-	if err := gitCommitObj.Encode(commitMemObj); err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: encode commit: %w", err)
-	}
-	// GIT-017a: read the raw MemoryObject bytes for Smart HTTP storer.
-	commitR, _ := commitMemObj.Reader()
-	commitRaw, _ := io.ReadAll(commitR)
-	_ = commitR.Close()
-	commitDataB64 := base64.StdEncoding.EncodeToString(commitRaw)
-	commitSHA := commitMemObj.Hash().String()
-
-	// 1. Create the Blob entity.
 	blobEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
 		AgencyID: m.agencyID,
 		TypeID:   "Blob",
 		Properties: map[string]any{
-			"sha":       blobSHA,
-			"path":      req.Path,
-			"name":      fileName(req.Path),
-			"extension": fileExtension(req.Path),
-			"size":      int64(len(req.Content)),
-			"encoding":  encoding,
-			"content":   req.Content,
-			// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
+			"sha":        blobSHA,
+			"path":       req.Path,
+			"name":       fileName(req.Path),
+			"extension":  fileExtension(req.Path),
+			"size":       int64(len(req.Content)),
+			"encoding":   encoding,
+			"content":    req.Content,
 			"data":       blobDataB64,
 			"created_at": now,
 		},
@@ -151,106 +195,146 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 		return Commit{}, fmt.Errorf("WriteFile: create blob: %w", err)
 	}
 
-	// 2. Create a Tree entity for the directory containing the file.
-	treeEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
-		AgencyID: m.agencyID,
-		TypeID:   "Tree",
-		Properties: map[string]any{
-			"sha":     treeSHA,
-			"path":    treeDir,
-			"entries": string(entriesJSON),
-			// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
-			"data":       treeDataB64,
-			"size":       treeMemObj.Size(),
-			"created_at": now,
-		},
-	})
+	// ── 2. Build the complete file map (parent files + new file) ──────────────
+	var parentIDs []string
+	var parentHashes []plumbing.Hash
+	if branch.HeadCommitID != "" {
+		parentIDs = []string{branch.HeadCommitID}
+		parentEntity, err := m.dm.GetEntity(ctx, m.agencyID, branch.HeadCommitID)
+		if err != nil {
+			return Commit{}, fmt.Errorf("WriteFile: get parent commit: %w", err)
+		}
+		if sha := entitygraph.StringProp(parentEntity.Properties, "sha"); sha != "" {
+			parentHashes = []plumbing.Hash{plumbing.NewHash(sha)}
+		}
+	}
+
+	// path → blob git SHA for all files on the branch after this write.
+	fileMap := map[string]plumbing.Hash{}
+	// path → blob entity ID for wiring has_blob edges to the new root tree.
+	blobEntityByPath := map[string]string{}
+
+	if len(parentIDs) > 0 {
+		parentBlobs, err := m.allBlobsAtCommit(ctx, parentIDs[0])
+		if err != nil {
+			log.Printf("WriteFile: allBlobsAtCommit parent=%s: %v (continuing with empty parent)", parentIDs[0], err)
+		}
+		for _, b := range parentBlobs {
+			if b.Path != "" && b.SHA != "" {
+				fileMap[b.Path] = plumbing.NewHash(b.SHA)
+				blobEntityByPath[b.Path] = b.ID
+			}
+		}
+	}
+	// Add/replace with the file being written.
+	fileMap[req.Path] = blobHash
+	blobEntityByPath[req.Path] = blobEntity.ID
+
+	// ── 3. Build nested git trees ─────────────────────────────────────────────
+	rootTreeHash, treeRecords, err := buildNestedTrees(fileMap)
 	if err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: create tree: %w", err)
+		return Commit{}, fmt.Errorf("WriteFile: %w", err)
 	}
 
-	// Tree → has_blob → Blob (also creates inverse belongs_to_tree).
-	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
-		AgencyID: m.agencyID,
-		Name:     "has_blob",
-		FromID:   treeEntity.ID,
-		ToID:     blobEntity.ID,
-	}); err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: link blob to tree: %w", err)
+	// ── 4. Persist all tree entities (root + subtrees) ────────────────────────
+	var rootTreeEntityID string
+	for _, tr := range treeRecords {
+		te, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
+			AgencyID: m.agencyID,
+			TypeID:   "Tree",
+			Properties: map[string]any{
+				"sha":        tr.sha,
+				"path":       tr.path,
+				"entries":    tr.entries,
+				"data":       base64.StdEncoding.EncodeToString(tr.rawData),
+				"size":       tr.size,
+				"created_at": now,
+			},
+		})
+		if err != nil {
+			return Commit{}, fmt.Errorf("WriteFile: create tree entity path=%q: %w", tr.path, err)
+		}
+		if tr.sha == rootTreeHash.String() {
+			rootTreeEntityID = te.ID
+		}
 	}
 
-	// 3. Create the Commit entity.
-	commitProps := map[string]any{
-		"sha":             commitSHA,
-		"message":         message,
-		"author_name":     req.AuthorName,
-		"author_email":    req.AuthorEmail,
-		"author_at":       now,
-		"committer_name":  req.AuthorName,
-		"committer_email": req.AuthorEmail,
-		"committed_at":    now,
-		"created_at":      now,
-		// GIT-017a: raw git object bytes (base64) required by arangoStorer.EncodedObject.
-		"data": commitDataB64,
-		"size": commitMemObj.Size(),
+	// ── 5. Encode and persist the Commit entity ───────────────────────────────
+	gitCommitObj := &object.Commit{
+		TreeHash:     rootTreeHash,
+		ParentHashes: parentHashes,
+		Author:       object.Signature{Name: req.AuthorName, Email: req.AuthorEmail, When: commitTime},
+		Committer:    object.Signature{Name: req.AuthorName, Email: req.AuthorEmail, When: commitTime},
+		Message:      message,
 	}
+	commitMemObj := &plumbing.MemoryObject{}
+	if err := gitCommitObj.Encode(commitMemObj); err != nil {
+		return Commit{}, fmt.Errorf("WriteFile: encode commit: %w", err)
+	}
+	commitR, _ := commitMemObj.Reader()
+	commitRaw, _ := io.ReadAll(commitR)
+	_ = commitR.Close()
+	commitDataB64 := base64.StdEncoding.EncodeToString(commitRaw)
+	commitSHA := commitMemObj.Hash().String()
 
 	commitRels := []entitygraph.EntityRelationshipRequest{
 		{Name: "belongs_to_repository", ToID: repo.ID},
-		{Name: "has_tree", ToID: treeEntity.ID},
+		{Name: "has_tree", ToID: rootTreeEntityID},
 	}
 	if len(parentIDs) > 0 {
-		commitRels = append(commitRels, entitygraph.EntityRelationshipRequest{
-			Name: "has_parent",
-			ToID: parentIDs[0],
-		})
+		commitRels = append(commitRels, entitygraph.EntityRelationshipRequest{Name: "has_parent", ToID: parentIDs[0]})
 	}
 
 	commitEntity, err := m.dm.CreateEntity(ctx, entitygraph.CreateEntityRequest{
-		AgencyID:      m.agencyID,
-		TypeID:        "Commit",
-		Properties:    commitProps,
+		AgencyID: m.agencyID,
+		TypeID:   "Commit",
+		Properties: map[string]any{
+			"sha":             commitSHA,
+			"message":         message,
+			"author_name":     req.AuthorName,
+			"author_email":    req.AuthorEmail,
+			"author_at":       now,
+			"committer_name":  req.AuthorName,
+			"committer_email": req.AuthorEmail,
+			"committed_at":    now,
+			"created_at":      now,
+			"data":            commitDataB64,
+			"size":            commitMemObj.Size(),
+		},
 		Relationships: commitRels,
 	})
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: create commit: %w", err)
 	}
 
-	// Create explicit has_tree edge (commit → tree) so TraverseGraph can
-	// locate the tree via outbound traversal with Name="has_tree".
-	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
-		AgencyID: m.agencyID,
-		Name:     "has_tree",
-		FromID:   commitEntity.ID,
-		ToID:     treeEntity.ID,
-	}); err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: link has_tree: %w", err)
+	// ── 6. Wire edges ─────────────────────────────────────────────────────────
+	for _, rel := range []struct{ name, from, to string }{
+		{"has_tree", commitEntity.ID, rootTreeEntityID},
+		{"belongs_to_commit", rootTreeEntityID, commitEntity.ID},
+	} {
+		if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID, Name: rel.name, FromID: rel.from, ToID: rel.to,
+		}); err != nil {
+			return Commit{}, fmt.Errorf("WriteFile: link %s: %w", rel.name, err)
+		}
 	}
-
-	// Create explicit has_parent edge (commit → parentCommit) so
-	// walkCommitChain can follow the has_parent chain for Log.
 	if len(parentIDs) > 0 {
 		if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
-			AgencyID: m.agencyID,
-			Name:     "has_parent",
-			FromID:   commitEntity.ID,
-			ToID:     parentIDs[0],
+			AgencyID: m.agencyID, Name: "has_parent", FromID: commitEntity.ID, ToID: parentIDs[0],
 		}); err != nil {
 			return Commit{}, fmt.Errorf("WriteFile: link has_parent: %w", err)
 		}
 	}
-
-	// Tree → belongs_to_commit (root tree).
-	if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
-		AgencyID: m.agencyID,
-		Name:     "belongs_to_commit",
-		FromID:   treeEntity.ID,
-		ToID:     commitEntity.ID,
-	}); err != nil {
-		return Commit{}, fmt.Errorf("WriteFile: link tree to commit: %w", err)
+	// Wire root tree → has_blob → every blob so allBlobsAtCommit finds them all.
+	for path, blobEntityID := range blobEntityByPath {
+		if _, err := m.dm.CreateRelationship(ctx, entitygraph.CreateRelationshipRequest{
+			AgencyID: m.agencyID, Name: "has_blob", FromID: rootTreeEntityID, ToID: blobEntityID,
+		}); err != nil {
+			log.Printf("WriteFile: link has_blob path=%q: %v (non-fatal)", path, err)
+		}
 	}
 
-	// 4. Advance branch HEAD.
+	// ── 7. Advance branch HEAD ────────────────────────────────────────────────
 	if _, err := m.advanceBranchHead(ctx, branch.ID, commitEntity.ID, ""); err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: advance branch head: %w", err)
 	}
