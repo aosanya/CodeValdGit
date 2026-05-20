@@ -104,11 +104,12 @@ type BranchCreatePayload struct {
 	// Repository is the human-readable name of the target repository.
 	Repository string `json:"repository"`
 	// Name is the branch name to create (e.g. "feature/UTIL-001-widget").
-	// Also accepted as "branch_name" for LLM compatibility.
+	// Also accepted as "branch_name" or "branch" for LLM compatibility.
 	Name string `json:"name"`
-	// BranchName is an LLM-emitted alias for Name; used when the model writes
-	// "branch_name" instead of "name". Resolved in UnmarshalJSON.
+	// BranchName is an LLM-emitted alias for Name.
 	BranchName string `json:"branch_name,omitempty"`
+	// Branch is an LLM-emitted alias for Name (e.g. when the model writes "branch": "feature/...").
+	Branch string `json:"branch,omitempty"`
 	// FromBranch is the source branch name; defaults to the repo default branch.
 	// Also accepted as "base_branch".
 	FromBranch string `json:"from_branch,omitempty"`
@@ -120,6 +121,9 @@ type BranchCreatePayload struct {
 func (p *BranchCreatePayload) Resolve() {
 	if p.Name == "" && p.BranchName != "" {
 		p.Name = p.BranchName
+	}
+	if p.Name == "" && p.Branch != "" {
+		p.Name = p.Branch
 	}
 	if p.FromBranch == "" && p.BaseBranch != "" {
 		p.FromBranch = p.BaseBranch
@@ -149,7 +153,10 @@ type FileWritePayload struct {
 	// Repository is the human-readable name of the target repository.
 	Repository string `json:"repository"`
 	// BranchName is the name of the branch to write to.
+	// Also accepted as "branch" for LLM compatibility.
 	BranchName string `json:"branch_name"`
+	// Branch is an LLM-emitted alias for BranchName.
+	Branch string `json:"branch,omitempty"`
 	// Path is the file path relative to the repository root, e.g. "src/app/foo.ts".
 	Path string `json:"path"`
 	// Content is the full file content to write.
@@ -162,6 +169,13 @@ type FileWritePayload struct {
 	AuthorEmail string `json:"author_email,omitempty"`
 	// Keywords are optional keyword annotations to tag the resulting blob with.
 	Keywords []FileWriteKeyword `json:"keywords,omitempty"`
+}
+
+// Resolve merges the "branch" alias into BranchName so callers only check BranchName.
+func (p *FileWritePayload) Resolve() {
+	if p.BranchName == "" && p.Branch != "" {
+		p.BranchName = p.Branch
+	}
 }
 
 // FileWriteKeyword tags the written blob with a Keyword entity in the git graph.

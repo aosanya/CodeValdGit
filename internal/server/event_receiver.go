@@ -91,6 +91,7 @@ func (s *EventReceiverServer) handleFileWrite(ctx context.Context, rawPayload st
 		log.Printf("codevaldgit: handleFileWrite: unmarshal: %v", err)
 		return
 	}
+	p.Resolve()
 	if p.Repository == "" || p.BranchName == "" || p.Path == "" {
 		log.Printf("codevaldgit: handleFileWrite: missing repository, branch_name, or path")
 		return

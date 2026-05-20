@@ -32,6 +32,7 @@ import (
 // single port (see GIT-009 / cmd/main.go).
 type GitHTTPHandler struct {
 	srv     transport.Transport
+	backend codevaldgit.Backend
 	indexer PushIndexer // nil = skip post-receive graph indexing
 }
 
@@ -54,7 +55,7 @@ type PushIndexer interface {
 // indexer may be nil — post-receive graph indexing is skipped when nil.
 func NewGitHTTPHandler(b codevaldgit.Backend, indexer PushIndexer) *GitHTTPHandler {
 	loader := &backendLoader{b: b}
-	return &GitHTTPHandler{srv: gogitserver.NewServer(loader), indexer: indexer}
+	return &GitHTTPHandler{srv: gogitserver.NewServer(loader), backend: b, indexer: indexer}
 }
 
 // ServeHTTP implements http.Handler.
@@ -239,6 +240,15 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 		}
 	}
 
+	// Fast-path: go-git's ReceivePack requires a packfile and fails with
+	// "empty packfile" when all commands are deletes (no objects to transfer).
+	// Handle delete-only pushes directly via RemoveReference.
+	if isDeleteOnly(req) {
+		h.receivePackDeletes(w, agencyID, repoName, req)
+		log.Printf("[receive-pack][%s/%s] handler complete (delete-only)", agencyID, repoName)
+		return
+	}
+
 	log.Printf("[receive-pack][%s/%s] calling ReceivePack with %d command(s)", agencyID, repoName, len(req.Commands))
 	// Use a background context so that a client disconnect / HTTP write timeout
 	// does not cancel the pack write mid-flight — we still need to persist all
@@ -299,6 +309,50 @@ func (h *GitHTTPHandler) receivePack(w http.ResponseWriter, r *http.Request, age
 	w.Header().Set("Content-Type", "application/x-git-receive-pack-result")
 	w.WriteHeader(http.StatusOK)
 
+	_ = status.Encode(w)
+}
+
+// isDeleteOnly reports whether all commands in req are ref deletions (New == zero hash).
+func isDeleteOnly(req *packp.ReferenceUpdateRequest) bool {
+	if len(req.Commands) == 0 {
+		return false
+	}
+	for _, cmd := range req.Commands {
+		if cmd != nil && !cmd.New.IsZero() {
+			return false
+		}
+	}
+	return true
+}
+
+// receivePackDeletes handles a delete-only receive-pack by calling RemoveReference
+// directly on the storer, bypassing go-git's ReceivePack which requires a packfile.
+func (h *GitHTTPHandler) receivePackDeletes(w http.ResponseWriter, agencyID, repoName string, req *packp.ReferenceUpdateRequest) {
+	ctx := context.Background()
+	sto, _, err := h.backend.OpenStorer(ctx, agencyID, repoName)
+	if err != nil {
+		log.Printf("[receive-pack][%s/%s] receivePackDeletes: open storer: %v", agencyID, repoName, err)
+		http.Error(w, "internal error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	status := packp.NewReportStatus()
+	status.UnpackStatus = "ok"
+	for _, cmd := range req.Commands {
+		if cmd == nil {
+			continue
+		}
+		cs := &packp.CommandStatus{ReferenceName: cmd.Name, Status: "ok"}
+		if rmErr := sto.RemoveReference(cmd.Name); rmErr != nil {
+			cs.Status = rmErr.Error()
+		}
+		log.Printf("[receive-pack][%s/%s] delete ref=%s err=%v", agencyID, repoName, cmd.Name, cs.Error())
+		status.CommandStatuses = append(status.CommandStatuses, cs)
+	}
+
+	setNoCacheHeaders(w)
+	w.Header().Set("Content-Type", "application/x-git-receive-pack-result")
+	w.WriteHeader(http.StatusOK)
 	_ = status.Encode(w)
 }
 
