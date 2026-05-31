@@ -178,6 +178,11 @@ func DefaultGitSchema() types.Schema {
 					// so that Smart HTTP (git clone/fetch) can resolve refs without
 					// traversing the points_to relationship.
 					{Name: "sha", Type: types.PropertyTypeString},
+					// head_commit_id is the entity ID of the Commit this branch points
+					// to. Denormalised from the points_to edge for fast gRPC responses
+					// (Branch.GetHeadCommitId). Written by advanceBranchHead on every
+					// WriteFile / MergeBranch / push completion.
+					{Name: "head_commit_id", Type: types.PropertyTypeString},
 					// status tracks the lazy-import state of the branch content.
 					// Valid values: "stub" | "fetching" | "fetched" | "fetch_failed".
 					//   stub        — branch name + tip SHA known; no files/commits stored yet

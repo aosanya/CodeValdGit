@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	codevaldgit "github.com/aosanya/CodeValdGit"
 	pb "github.com/aosanya/CodeValdGit/gen/go/codevaldgit/v1"
@@ -39,6 +40,19 @@ func (s *Server) GetBranch(ctx context.Context, req *pb.GetBranchRequest) (*pb.B
 	return branchToProto(branch), nil
 }
 
+// GetBranchByName implements pb.GitServiceServer.
+func (s *Server) GetBranchByName(ctx context.Context, req *pb.GetBranchByNameRequest) (*pb.Branch, error) {
+	repoID, err := s.resolveRepoID(ctx, "", req.GetRepositoryName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	branch, err := s.mgr.GetBranchByName(ctx, repoID, req.GetBranchName())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return branchToProto(branch), nil
+}
+
 // ListBranches implements pb.GitServiceServer.
 func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
 	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
@@ -65,8 +79,28 @@ func (s *Server) DeleteBranch(ctx context.Context, req *pb.DeleteBranchRequest) 
 }
 
 // MergeBranch implements pb.GitServiceServer.
+// Accepts either branch_id directly OR repository_name + branch_name (populated
+// by Cross from the URL path POST /git/.../branches/{branchName}/merge); when
+// branch_id is empty it resolves the branch via GetBranchByName first.
 func (s *Server) MergeBranch(ctx context.Context, req *pb.MergeBranchRequest) (*pb.Branch, error) {
-	branch, err := s.mgr.MergeBranch(ctx, req.GetBranchId())
+	branchID := req.GetBranchId()
+	if branchID == "" {
+		repoName := req.GetRepositoryName()
+		branchName := req.GetBranchName()
+		if repoName == "" || branchName == "" {
+			return nil, toGRPCError(fmt.Errorf("MergeBranch: branch_id or (repository_name + branch_name) required"))
+		}
+		repoID, err := s.resolveRepoID(ctx, "", repoName)
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		b, err := s.mgr.GetBranchByName(ctx, repoID, branchName)
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		branchID = b.ID
+	}
+	branch, err := s.mgr.MergeBranch(ctx, branchID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

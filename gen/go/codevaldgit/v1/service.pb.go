@@ -1514,8 +1514,19 @@ func (*DeleteBranchResponse) Descriptor() ([]byte, []int) {
 }
 
 type MergeBranchRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BranchId      string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	BranchId string                 `protobuf:"bytes,1,opt,name=branch_id,json=branchId,proto3" json:"branch_id,omitempty"`
+	// repository_name + branch_name are populated by Cross from the URL path
+	// (POST /git/{agencyId}/repositories/{repoName}/branches/{branchName}/merge).
+	// The handler resolves them to branch_id when branch_id is empty.
+	RepositoryName string `protobuf:"bytes,2,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	BranchName     string `protobuf:"bytes,3,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	// merge_into and message come from the JSON body. merge_into is currently
+	// a no-op (the manager always merges into the repository's default branch)
+	// but reserved here so future targets are wire-compatible. message is
+	// reserved for the merge commit message.
+	MergeInto     string `protobuf:"bytes,4,opt,name=merge_into,json=mergeInto,proto3" json:"merge_into,omitempty"`
+	Message       string `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1553,6 +1564,34 @@ func (*MergeBranchRequest) Descriptor() ([]byte, []int) {
 func (x *MergeBranchRequest) GetBranchId() string {
 	if x != nil {
 		return x.BranchId
+	}
+	return ""
+}
+
+func (x *MergeBranchRequest) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *MergeBranchRequest) GetBranchName() string {
+	if x != nil {
+		return x.BranchName
+	}
+	return ""
+}
+
+func (x *MergeBranchRequest) GetMergeInto() string {
+	if x != nil {
+		return x.MergeInto
+	}
+	return ""
+}
+
+func (x *MergeBranchRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
 	}
 	return ""
 }
@@ -4595,9 +4634,15 @@ const file_codevaldgit_v1_service_proto_rawDesc = "" +
 	"\bbranches\x18\x01 \x03(\v2\x16.codevaldgit.v1.BranchR\bbranches\"2\n" +
 	"\x13DeleteBranchRequest\x12\x1b\n" +
 	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\"\x16\n" +
-	"\x14DeleteBranchResponse\"1\n" +
+	"\x14DeleteBranchResponse\"\xb4\x01\n" +
 	"\x12MergeBranchRequest\x12\x1b\n" +
-	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\"\xcc\x01\n" +
+	"\tbranch_id\x18\x01 \x01(\tR\bbranchId\x12'\n" +
+	"\x0frepository_name\x18\x02 \x01(\tR\x0erepositoryName\x12\x1f\n" +
+	"\vbranch_name\x18\x03 \x01(\tR\n" +
+	"branchName\x12\x1d\n" +
+	"\n" +
+	"merge_into\x18\x04 \x01(\tR\tmergeInto\x12\x18\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\"\xcc\x01\n" +
 	"\x10CreateTagRequest\x12#\n" +
 	"\rrepository_id\x18\x01 \x01(\tR\frepositoryId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +

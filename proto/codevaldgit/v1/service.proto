@@ -381,6 +381,17 @@ message DeleteBranchResponse {}
 
 message MergeBranchRequest {
   string branch_id = 1;
+  // repository_name + branch_name are populated by Cross from the URL path
+  // (POST /git/{agencyId}/repositories/{repoName}/branches/{branchName}/merge).
+  // The handler resolves them to branch_id when branch_id is empty.
+  string repository_name = 2;
+  string branch_name     = 3;
+  // merge_into and message come from the JSON body. merge_into is currently
+  // a no-op (the manager always merges into the repository's default branch)
+  // but reserved here so future targets are wire-compatible. message is
+  // reserved for the merge commit message.
+  string merge_into = 4;
+  string message    = 5;
 }
 
 // Tag management
