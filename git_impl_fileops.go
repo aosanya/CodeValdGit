@@ -260,11 +260,23 @@ func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commi
 	}
 
 	// ── 5. Encode and persist the Commit entity ───────────────────────────────
+	// Fall back to a bot identity when the event payload didn't carry an
+	// actor — go-git renders empty signatures as "Author: <>" which leaves
+	// commits unattributable. Any downstream tool that filters / blames by
+	// author then has nothing to bind to.
+	authorName := req.AuthorName
+	if authorName == "" {
+		authorName = "codevald-bot"
+	}
+	authorEmail := req.AuthorEmail
+	if authorEmail == "" {
+		authorEmail = "bot@codevald.local"
+	}
 	gitCommitObj := &object.Commit{
 		TreeHash:     rootTreeHash,
 		ParentHashes: parentHashes,
-		Author:       object.Signature{Name: req.AuthorName, Email: req.AuthorEmail, When: commitTime},
-		Committer:    object.Signature{Name: req.AuthorName, Email: req.AuthorEmail, When: commitTime},
+		Author:       object.Signature{Name: authorName, Email: authorEmail, When: commitTime},
+		Committer:    object.Signature{Name: authorName, Email: authorEmail, When: commitTime},
 		Message:      message,
 	}
 	commitMemObj := &plumbing.MemoryObject{}

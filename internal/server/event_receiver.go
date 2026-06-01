@@ -64,9 +64,25 @@ func (s *EventReceiverServer) handleBranchCreate(ctx context.Context, rawPayload
 		return
 	}
 
+	// Resolve from_branch (when the AI specifies it) to a branch entity ID so
+	// CreateBranch can copy that branch's HEAD onto the new branch instead of
+	// silently defaulting to the storer's current head. Without this every
+	// new feature branch inherits whatever feature branch was last touched,
+	// breaking isolation (BUG-09-019).
+	var fromBranchID string
+	if p.FromBranch != "" {
+		fromBranch, fbErr := s.mgr.GetBranchByName(ctx, repo.ID, p.FromBranch)
+		if fbErr != nil {
+			log.Printf("codevaldgit: handleBranchCreate: resolve from_branch %q: %v — falling back to repo default", p.FromBranch, fbErr)
+		} else {
+			fromBranchID = fromBranch.ID
+		}
+	}
+
 	branch, err := s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
 		RepositoryID: repo.ID,
 		Name:         p.Name,
+		FromBranchID: fromBranchID,
 	})
 	if err != nil {
 		log.Printf("codevaldgit: handleBranchCreate: CreateBranch %q in repo %q: %v", p.Name, p.Repository, err)
