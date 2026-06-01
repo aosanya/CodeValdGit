@@ -1,9 +1,9 @@
 # BUG-09-020 — Task completes before all `git.file.write` events flush
 
-**Status:** 🟢 Phase 1 fixed (2026-06-01) — Phases 2 + 3 remain open as belt-and-braces
+**Status:** 🟢 All three phases fixed (Phase 1 + Phase 2 + Phase 3 — 2026-06-01)
 **Severity:** High — committed branch is missing files the AI declared; compile passes incorrectly against an incomplete tree
-**Owner:** CodeValdGit (Phase 1 ✅ done); CodeValdWork + CodeValdAI (Phase 2 — dispatcher counter); CodeValdFunctions (Phase 3 — compile-flutter defensive check)
-**Estimated effort:** Phase 1 ~6h ✅ done, Phase 2 ~6h, Phase 3 ~2h
+**Owner:** CodeValdGit (Phase 1 ✅ done); CodeValdWork + CodeValdAI (Phase 2 ✅ done); CodeValdFunctions (Phase 3 ✅ done)
+**Estimated effort:** Phase 1 ~6h ✅ done, Phase 2 ~6h ✅ done, Phase 3 ~2h ✅ done
 **Source finding:** [`/4-QA/agencies/utility-app-builder/bugs/09-mvp-sf-pipeline-findings.md`](../../../../CodeValdCross/documentation/4-QA/agencies/utility-app-builder/bugs/09-mvp-sf-pipeline-findings.md)
 
 ---
@@ -56,22 +56,34 @@ This matches the evidence exactly: 5 writes → 2 files on branch (two writes ha
 2. ✅ Concurrency regression: [`TestBUG09020_ConcurrentWriteFilesAllLand`](../../../git_concurrency_test.go) fires 10 concurrent `WriteFile` calls on the same branch and asserts all 10 files are reachable from the branch HEAD via `ReadFile`. Passes with the lock; without the lock, would fail with only the last-writer's file present.
 3. Trade-off: per-agency lock means writes to different branches within the same agency now serialise. Per CLAUDE.md "one running instance = one agency", contention is bounded by the AI's per-agency write rate. Finer-grained per-branch locking can be added later if measured contention demands it.
 
-### Phase 2 — CodeValdWork + CodeValdAI: make task completion wait for all writes (~6h)
+### Phase 2 — CodeValdWork + CodeValdAI: make task completion wait for all writes (~6h, done 2026-06-01)
 
-4. In `CodeValdWork/internal/server/event_dispatcher.go` (the dispatcher that turns `ai.task.completed` into `work.todo.completed`), add a "pending write balance" counter per todo run:
-   - Increment when a `git.file.write` is observed with the todo's run_id
-   - Decrement when matching `git.file.written` arrives
-   - Hold the `work.todo.completed` publish until the counter reaches 0 (30s timeout that publishes anyway + logs a warning if exceeded)
-5. The `ai.task.completed` payload must carry the list of write IDs the todo emitted. Add `EmittedWrites []string` to `CodeValdAI/models.go` AgentRun and populate it from the action parser.
+4. ✅ CodeValdAI now publishes the ordered list of paths it emitted via `git.file.write` on the `ai.task.completed` payload. Implementation:
+   - `EmittedWrites []string` added to [`AgentRun`](../../../../CodeValdAI/models.go) (persisted as a typed array property in the AgentRun schema, see [`schema.go`](../../../../CodeValdAI/schema.go)).
+   - `EmittedWrites []string` added to [`TaskCompletedPayload`](../../../../CodeValdAI/events.go).
+   - [`dispatchActions`](../../../../CodeValdAI/execute.go) now returns `(hasSubtasks, emittedWrites)` and `ExecuteRunStreaming` persists `emitted_writes` on the run entity before publishing `ai.task.completed`.
+5. ✅ CodeValdWork's dispatcher now gates `work.todo.completed` on receipt of every matching `git.file.written` event. Implementation:
+   - New [`writeTracker`](../../../../CodeValdWork/internal/server/event_writes.go) keyed by `run_id`; records expected paths and fires a deferred callback when every path has been confirmed.
+   - [`handleAITaskStatus`](../../../../CodeValdWork/internal/server/event_dispatcher.go) defers its Todo status transition (and the `work.todo.completed` publish that flows from it) through the tracker whenever an `ai.task.completed` payload carries non-empty `EmittedWrites`.
+   - `git.file.written` is consumed via a new [`handleFileWritten`](../../../../CodeValdWork/internal/server/event_writes.go) handler and added to the default `WORK_SUBSCRIBE_TOPICS` list in [`internal/config/config.go`](../../../../CodeValdWork/internal/config/config.go).
+   - 30 s gate timeout (`writeGateTimeout`) fires the deferred callback anyway and logs a warning so a lost `git.file.written` cannot stall the pipeline.
+   - Pre-arrival buffer covers the rare case where a `git.file.written` reaches the dispatcher before the `ai.task.completed` it answers.
+   - Unit tests: [`TestWriteTracker_FiresAfterAllPathsConfirmed`](../../../../CodeValdWork/internal/server/event_writes_test.go), `TestWriteTracker_FiresOnTimeout`, `TestWriteTracker_PreArrivalBuffer`, `TestWriteTracker_OnlyFiresOnce` — pass under `-race`.
 
-### Phase 3 — CodeValdFunctions: defensive read-side check (~2h, cheap belt-and-braces)
+### Phase 3 — CodeValdFunctions: defensive read-side check (~2h, done 2026-06-01)
 
-6. In `CodeValdFunctions/functions/compile-flutter`, after `git clone`, call `GET /pubsub/{agencyId}/events?topic=git.file.written&after_timestamp=<branch_create_time>` and compare paths to what's in tmpdir. Missing path → retry the clone once after 2s; if still missing, return `status=infrastructure-error` instead of `issues-found`.
+6. ✅ [`compile-flutter`](../../../../CodeValdFunctions/functions/compile-flutter) now cross-checks the cloned tree against the `git.file.written` event log immediately after `git clone`:
+   - `pubsub_expected_paths()` queries `GET /pubsub/{agencyId}/events?topic=git.file.written&after_timestamp=<task.createdAt>` (falls back to `now - 1h` if the task lookup didn't yield `createdAt`) and collects the set of paths CodeValdGit reports as written on the analysed branch.
+   - `missing_from_tree()` returns the subset of those paths absent from `tmpdir`.
+   - On missing paths: sleep 2 s, re-clone, re-check. If still missing, emit `status=infrastructure-error` with the missing paths in the result body so the merge guard treats this as a pipeline failure rather than a code defect.
+   - Defensive only: any pubsub query failure (network, gateway absent) logs a warning and skips the check rather than erroring — Phase 1's per-agency write lock is the primary correctness guarantee; Phase 3 is purely a backstop.
 
 ## Verification
 
-- ✅ Unit-level: [`TestBUG09020_ConcurrentWriteFilesAllLand`](../../../git_concurrency_test.go) passes with `-race`.
+- ✅ Unit-level (Phase 1): [`TestBUG09020_ConcurrentWriteFilesAllLand`](../../../git_concurrency_test.go) passes with `-race`.
+- ✅ Unit-level (Phase 2): writeTracker tests in [`event_writes_test.go`](../../../../CodeValdWork/internal/server/event_writes_test.go) pass with `-race`.
 - ⏳ End-to-end: re-run the MVP-SF-003 reproducer to confirm `count(git.file.written) == count(git.file.write) == count(files on branch)`. Add as a /09-work-03 verdict line.
+- ⏳ End-to-end Phase 3: with the per-agency lock removed (simulate the race by reverting `WriteFile`'s mutex temporarily), confirm `compile-flutter` returns `status=infrastructure-error` rather than `issues-found` when the clone is short of declared files.
 
 ## Dependencies on other gaps
 
