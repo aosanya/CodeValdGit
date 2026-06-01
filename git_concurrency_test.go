@@ -5,8 +5,11 @@ package codevaldgit_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
+
+	codevaldgit "github.com/aosanya/CodeValdGit"
 )
 
 // TestGIT011_ConcurrentMerges verifies that two goroutines merging different
@@ -40,6 +43,61 @@ func TestGIT011_ConcurrentMerges(t *testing.T) {
 	for i, err := range errs {
 		if err != nil {
 			t.Errorf("goroutine %d MergeBranch failed: %v", i, err)
+		}
+	}
+}
+
+// TestBUG09020_ConcurrentWriteFilesAllLand verifies the BUG-09-020 fix: when N
+// goroutines fire WriteFile against the same branch in parallel, the per-agency
+// RefLocker serialises them so that each commit chains onto the previous one
+// and every file ends up reachable from the branch HEAD. Without the lock,
+// each goroutine would read the same parent HEAD, build a sibling commit, and
+// the unsynchronised advanceBranchHead would leave the branch tip pointing at
+// only the last-writer's commit — losing the other N-1 files.
+func TestBUG09020_ConcurrentWriteFilesAllLand(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	mgr, _, repoID, _ := newTestManagerAndSeedRepo(t)
+	branchID := createTaskBranch(t, mgr, repoID, "bug09020-concurrent-writes")
+
+	const n = 10
+	paths := make([]string, n)
+	for i := range paths {
+		paths[i] = fmt.Sprintf("dir/file_%02d.txt", i)
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			_, errs[idx] = mgr.WriteFile(ctx, codevaldgit.WriteFileRequest{
+				BranchID:   branchID,
+				Path:       paths[idx],
+				Content:    fmt.Sprintf("content-%02d", idx),
+				AuthorName: "test-author",
+			})
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("WriteFile %d failed: %v", i, err)
+		}
+	}
+
+	// All N files must be reachable from the branch HEAD. This is the
+	// equivalent of `git ls-tree -r <branch>` from the bug reproducer.
+	for _, p := range paths {
+		blob, err := mgr.ReadFile(ctx, branchID, p)
+		if err != nil {
+			t.Errorf("ReadFile %q after concurrent writes: %v", p, err)
+			continue
+		}
+		if blob.Path != p {
+			t.Errorf("ReadFile %q returned blob with Path=%q", p, blob.Path)
 		}
 	}
 }

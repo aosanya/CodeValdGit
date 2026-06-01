@@ -137,9 +137,36 @@ func buildNestedTrees(files map[string]plumbing.Hash) (plumbing.Hash, []treeReco
 // Each call builds a complete nested git tree that includes all files from
 // the parent commit plus the new file, so the branch accumulates files
 // correctly across successive writes.
+//
+// The entire operation runs inside the per-agency [RefLocker] lock so that
+// concurrent writes (e.g. multiple `git.file.write` events fanned out as
+// goroutines by [internal/server.EventReceiverServer.handleFileWrite]) chain
+// commits onto each other instead of racing the branch ref. Without this,
+// each goroutine reads the same parent HEAD, builds a sibling commit, and
+// the unsynchronised [advanceBranchHead] call leaves the branch pointing at
+// only the last-writer's commit — BUG-09-020.
+//
 // Returns [ErrBranchNotFound] if the branch does not exist.
 // Returns [ErrRepoNotInitialised] if no repository entity exists.
 func (m *gitManager) WriteFile(ctx context.Context, req WriteFileRequest) (Commit, error) {
+	var result Commit
+	lockErr := m.locker.WithMergeLock(ctx, m.agencyID, func() error {
+		c, err := m.writeFileLocked(ctx, req)
+		if err != nil {
+			return err
+		}
+		result = c
+		return nil
+	})
+	if lockErr != nil {
+		return Commit{}, lockErr
+	}
+	return result, nil
+}
+
+// writeFileLocked is the body of WriteFile that must run under the per-agency
+// RefLocker. Do not call directly outside of WriteFile.
+func (m *gitManager) writeFileLocked(ctx context.Context, req WriteFileRequest) (Commit, error) {
 	branch, err := m.GetBranch(ctx, req.BranchID)
 	if err != nil {
 		return Commit{}, fmt.Errorf("WriteFile: %w", err)

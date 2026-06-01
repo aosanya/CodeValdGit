@@ -1,9 +1,9 @@
 # BUG-09-020 — Task completes before all `git.file.write` events flush
 
-**Status:** 📋 Open
+**Status:** 🟢 Phase 1 fixed (2026-06-01) — Phases 2 + 3 remain open as belt-and-braces
 **Severity:** High — committed branch is missing files the AI declared; compile passes incorrectly against an incomplete tree
-**Owner:** CodeValdGit (Phase 1 — primary fix); CodeValdWork + CodeValdAI (Phase 2 — dispatcher counter); CodeValdFunctions (Phase 3 — compile-flutter defensive check)
-**Estimated effort:** Phase 1 ~6h, Phase 2 ~6h, Phase 3 ~2h
+**Owner:** CodeValdGit (Phase 1 ✅ done); CodeValdWork + CodeValdAI (Phase 2 — dispatcher counter); CodeValdFunctions (Phase 3 — compile-flutter defensive check)
+**Estimated effort:** Phase 1 ~6h ✅ done, Phase 2 ~6h, Phase 3 ~2h
 **Source finding:** [`/4-QA/agencies/utility-app-builder/bugs/09-mvp-sf-pipeline-findings.md`](../../../../CodeValdCross/documentation/4-QA/agencies/utility-app-builder/bugs/09-mvp-sf-pipeline-findings.md)
 
 ---
@@ -29,25 +29,32 @@
 **MVP-SF-001:**
 - 8 × `git.file.written` events; 6 files on disk
 
-## Root cause
+## Root cause (corrected 2026-06-01)
 
-`git.file.written` is published by [`internal/server/event_receiver.go:handleFileWrite`](../../../internal/server/event_receiver.go) **after** the entity-graph commit, but the entity-graph write and the bare-git ref store are not synchronised within the same write boundary:
+The original write-up assumed an asynchronous bare-repo pack-file flush. That premise was wrong: the production server wires [`gitarangodb.NewArangoStorerBackend`](../../../storage/arangodb/) as the only storer — there is no filesystem bare repo, no pack file, no asynchronous flush. Every git object is an ArangoDB entity written synchronously inside [`WriteFile`](../../../git_impl_fileops.go).
 
-1. AI emits `git.file.write` → handled by CodeValdGit
-2. CodeValdGit creates Blob + Tree + Commit entities + emits `git.file.written` ✓
-3. The go-git storer also writes to the bare-repo pack files **asynchronously** — this races
-4. `work.todo.completed` fires (CodeValdAI publishes when its run terminates, independent of step 3)
-5. compile-flutter clones via smart-HTTP, reads from step 3's bare repo, sees only what flushed in time
+The actual race is in CodeValdGit itself:
 
-`git.file.written` is **not** an acknowledgement that smart-HTTP will serve the file. It only confirms the entity row exists.
+1. AI emits N `git.file.write` events for the same branch.
+2. [`event_receiver.go:NotifyEvent`](../../../internal/server/event_receiver.go) fans out each as `go s.handleFileWrite(...)` — fully parallel goroutines, no per-branch serialisation.
+3. Each goroutine calls [`WriteFile`](../../../git_impl_fileops.go), which:
+   - reads `branch.HeadCommitID` (all N goroutines see the *same* parent)
+   - builds a tree = parent's files + its one new file
+   - creates a Commit pointing at that shared parent (sibling commits, not a chain)
+   - calls `advanceBranchHead(branchID, newCommitID, "")` — empty `expectedHeadCommitID`, **no CAS guard**
+4. The N unsynchronised `advanceBranchHead` calls race; the branch tip ends up at whichever commit ran last. The other N-1 commits exist as orphan objects but the branch ref doesn't reference them.
+5. `git.file.written` is published from every goroutine regardless — so the event count is correct but the branch contents are not.
+6. compile-flutter clones via smart-HTTP and sees only whatever the last-writer commit captured.
+
+This matches the evidence exactly: 5 writes → 2 files on branch (two writes happened to chain by luck of the scheduler; three were overwritten).
 
 ## Concrete fix plan
 
-### Phase 1 — CodeValdGit: make `git.file.written` actually mean "durable" (~6h, preferred)
+### Phase 1 — CodeValdGit: serialise concurrent WriteFile calls (~1h, done 2026-06-01)
 
-1. In [`git_impl_fileops.go:WriteFile`](../../../git_impl_fileops.go), after `advanceBranchHead` succeeds, fsync the underlying bare-repo pack file (the `BareRepoStorer` we wrap exposes the file handle; go-git's `storage.Storer` has no generic Flush).
-2. Only publish `git.file.written` after the bare-repo flush completes.
-3. Verification: re-run the reproducer; counts must match.
+1. ✅ Wrap [`WriteFile`](../../../git_impl_fileops.go) in the existing per-agency [`RefLocker.WithMergeLock`](../../../git.go) (same primitive already used by `MergeBranch`). Body extracted to `writeFileLocked`. Concurrent goroutines now serialise on the same per-agency mutex, so each write sees the previous write's commit as its parent and chains correctly.
+2. ✅ Concurrency regression: [`TestBUG09020_ConcurrentWriteFilesAllLand`](../../../git_concurrency_test.go) fires 10 concurrent `WriteFile` calls on the same branch and asserts all 10 files are reachable from the branch HEAD via `ReadFile`. Passes with the lock; without the lock, would fail with only the last-writer's file present.
+3. Trade-off: per-agency lock means writes to different branches within the same agency now serialise. Per CLAUDE.md "one running instance = one agency", contention is bounded by the AI's per-agency write rate. Finer-grained per-branch locking can be added later if measured contention demands it.
 
 ### Phase 2 — CodeValdWork + CodeValdAI: make task completion wait for all writes (~6h)
 
@@ -61,10 +68,10 @@
 
 6. In `CodeValdFunctions/functions/compile-flutter`, after `git clone`, call `GET /pubsub/{agencyId}/events?topic=git.file.written&after_timestamp=<branch_create_time>` and compare paths to what's in tmpdir. Missing path → retry the clone once after 2s; if still missing, return `status=infrastructure-error` instead of `issues-found`.
 
-## Verification once fixed
+## Verification
 
-- Reproducer above: write count == written count == file count on branch
-- Add /09-work-03 verdict line: `count(git.file.written) == count(git.file.write) == count(files on branch)`
+- ✅ Unit-level: [`TestBUG09020_ConcurrentWriteFilesAllLand`](../../../git_concurrency_test.go) passes with `-race`.
+- ⏳ End-to-end: re-run the MVP-SF-003 reproducer to confirm `count(git.file.written) == count(git.file.write) == count(files on branch)`. Add as a /09-work-03 verdict line.
 
 ## Dependencies on other gaps
 
