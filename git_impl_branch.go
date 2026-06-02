@@ -54,6 +54,9 @@ func (m *gitManager) CreateBranch(ctx context.Context, req CreateBranchRequest) 
 		"created_at":     now,
 		"updated_at":     now,
 	}
+	if req.WorkflowRunID != "" {
+		branchProps["workflow_run_id"] = req.WorkflowRunID
+	}
 	// Copy sha from the source branch so IterReferences can advertise this
 	// branch via git smart HTTP. Without sha the branch is invisible to git.
 	// sourceBranch.SHA is populated from the entity's "sha" property which is
@@ -246,7 +249,37 @@ func (m *gitManager) MergeBranch(ctx context.Context, branchID string) (Branch, 
 	// references) from source branch blobs to the default branch.
 	m.replicateDocEdges(ctx, sourceBranch.ID, defaultBranchEntity.ID, sourceBranch.HeadCommitID)
 
+	// FEAT-20260602-001: emit the long-declared TopicBranchMerged event so the
+	// closure aggregator can observe the merge. workflow_run_id is read off
+	// the source branch — the originating WorkflowRun is the run that produced
+	// the branch's commits.
+	m.publish(ctx, TopicBranchMerged, BranchMergedPayload{
+		BranchID:      sourceBranch.ID,
+		RepoID:        repo.ID,
+		WorkflowRunID: sourceBranch.WorkflowRunID,
+	})
+
 	return updated, nil
+}
+
+// ListBranchesFiltered returns Branch entities for the specified repository
+// filtered by [BranchFilter]. When filter.WorkflowRunID is non-empty only
+// branches with the matching workflow_run_id property are returned.
+func (m *gitManager) ListBranchesFiltered(ctx context.Context, repoID string, filter BranchFilter) ([]Branch, error) {
+	branches, err := m.ListBranches(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	if filter.WorkflowRunID == "" {
+		return branches, nil
+	}
+	out := branches[:0]
+	for _, b := range branches {
+		if b.WorkflowRunID == filter.WorkflowRunID {
+			out = append(out, b)
+		}
+	}
+	return out, nil
 }
 
 // ── Branch internal helpers ───────────────────────────────────────────────────

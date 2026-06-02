@@ -1,6 +1,6 @@
 # FEAT-20260602-001 — `workflow_run_id` propagation in CodeValdGit
 
-**Status:** 📋 Not Started
+**Status:** ✅ Done (2026-06-02, branch `feature/Dev-GIT-001_workflow-run-id-propagation`)
 **Severity:** High — sibling of the umbrella; branches and merge-requests are the most observable side-effects of a pipeline (state lives in git, not just the DB), so the rollback transaction *must* be able to enumerate them
 **Owner:** CodeValdGit
 **Estimated effort:** ~1.5 days (schema + Branch/MergeRequest proto + handler propagation + list filter + integration tests)

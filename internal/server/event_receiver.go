@@ -80,20 +80,25 @@ func (s *EventReceiverServer) handleBranchCreate(ctx context.Context, rawPayload
 	}
 
 	branch, err := s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
-		RepositoryID: repo.ID,
-		Name:         p.Name,
-		FromBranchID: fromBranchID,
+		RepositoryID:  repo.ID,
+		Name:          p.Name,
+		FromBranchID:  fromBranchID,
+		WorkflowRunID: p.WorkflowRunID,
 	})
 	if err != nil {
 		log.Printf("codevaldgit: handleBranchCreate: CreateBranch %q in repo %q: %v", p.Name, p.Repository, err)
 		return
 	}
-	log.Printf("codevaldgit: handleBranchCreate: created branch %q (id=%s) in repo %q", branch.Name, branch.ID, p.Repository)
+	log.Printf("codevaldgit: handleBranchCreate: created branch %q (id=%s) in repo %q wfr=%q", branch.Name, branch.ID, p.Repository, branch.WorkflowRunID)
 
 	eventbus.SafePublish(ctx, s.pub, eventbus.Event{
 		Topic:    codevaldgit.TopicBranchFetched,
 		AgencyID: s.agencyID,
-		Payload:  codevaldgit.BranchFetchedPayload{BranchID: branch.ID, RepoID: repo.ID},
+		Payload: codevaldgit.BranchFetchedPayload{
+			BranchID:      branch.ID,
+			RepoID:        repo.ID,
+			WorkflowRunID: branch.WorkflowRunID,
+		},
 	})
 }
 
@@ -121,11 +126,14 @@ func (s *EventReceiverServer) handleFileWrite(ctx context.Context, rawPayload st
 
 	branch, err := s.mgr.GetBranchByName(ctx, repo.ID, p.BranchName)
 	if err != nil {
-		// Branch does not exist — create it from the repo default branch.
+		// Branch does not exist — create it from the repo default branch. Carry
+		// the workflow_run_id forward so the auto-created branch stays linked
+		// to the run that asked for the write (FEAT-20260602-001 chain-through).
 		log.Printf("codevaldgit: handleFileWrite: branch %q not found, creating", p.BranchName)
 		branch, err = s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
-			RepositoryID: repo.ID,
-			Name:         p.BranchName,
+			RepositoryID:  repo.ID,
+			Name:          p.BranchName,
+			WorkflowRunID: p.WorkflowRunID,
 		})
 		if err != nil {
 			log.Printf("codevaldgit: handleFileWrite: CreateBranch %q: %v", p.BranchName, err)
@@ -157,11 +165,12 @@ func (s *EventReceiverServer) handleFileWrite(ctx context.Context, rawPayload st
 		Topic:    codevaldgit.TopicFileWritten,
 		AgencyID: s.agencyID,
 		Payload: codevaldgit.FileWrittenPayload{
-			RunID:      p.RunID,
-			Repository: p.Repository,
-			BranchName: p.BranchName,
-			Path:       p.Path,
-			CommitSHA:  commit.SHA,
+			RunID:         p.RunID,
+			Repository:    p.Repository,
+			BranchName:    p.BranchName,
+			Path:          p.Path,
+			CommitSHA:     commit.SHA,
+			WorkflowRunID: p.WorkflowRunID,
 		},
 	})
 }

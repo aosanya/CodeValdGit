@@ -98,6 +98,43 @@ type GitManager interface {
 	// Returns [ErrBranchNotFound] if no branch with that ID exists.
 	MergeBranch(ctx context.Context, branchID string) (Branch, error)
 
+	// ListBranchesFiltered returns Branch entities for the specified repository
+	// filtered by [BranchFilter]. When filter.WorkflowRunID is non-empty only
+	// branches with the matching workflow_run_id property are returned.
+	// Returns [ErrRepoNotInitialised] if no repository with that ID exists.
+	ListBranchesFiltered(ctx context.Context, repoID string, filter BranchFilter) ([]Branch, error)
+
+	// ── Merge Request Management (FEAT-20260602-001) ──────────────────────────
+
+	// CreateMergeRequest opens a new [MergeRequest] for the given source branch.
+	// When req.TargetBranchID is empty the repository's default branch is used.
+	// Publishes [TopicMergeRequested] on success.
+	// Returns [ErrRepoNotInitialised] if the repository does not exist.
+	// Returns [ErrBranchNotFound] if the source or target branch does not exist.
+	CreateMergeRequest(ctx context.Context, req CreateMergeRequestRequest) (MergeRequest, error)
+
+	// GetMergeRequest retrieves a [MergeRequest] entity by its entitygraph ID.
+	// Returns [ErrMergeRequestNotFound] if no MR with that ID exists.
+	GetMergeRequest(ctx context.Context, mrID string) (MergeRequest, error)
+
+	// ListMergeRequests returns [MergeRequest] entities matching the given
+	// filter. An empty filter returns every MR for the agency.
+	ListMergeRequests(ctx context.Context, filter MergeRequestFilter) ([]MergeRequest, error)
+
+	// CompleteMergeRequest performs the merge of the MR's source branch into
+	// its target branch, transitions the MR status to "merged", and publishes
+	// [TopicMergeCompleted]. On failure transitions to "failed" and publishes
+	// [TopicMergeFailed].
+	// Returns [ErrMergeRequestNotFound] if no MR with that ID exists.
+	// Returns [ErrMergeRequestNotOpen] if the MR is not in "open" status.
+	CompleteMergeRequest(ctx context.Context, mrID string) (MergeRequest, error)
+
+	// CloseMergeRequest transitions an open MR to "closed" without merging.
+	// Used to abandon an MR. No event is published.
+	// Returns [ErrMergeRequestNotFound] if no MR with that ID exists.
+	// Returns [ErrMergeRequestNotOpen] if the MR is not in "open" status.
+	CloseMergeRequest(ctx context.Context, mrID string) (MergeRequest, error)
+
 	// ── Tag Management ────────────────────────────────────────────────────────
 
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.

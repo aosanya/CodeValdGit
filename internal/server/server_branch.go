@@ -18,9 +18,10 @@ func (s *Server) CreateBranch(ctx context.Context, req *pb.CreateBranchRequest) 
 		return nil, toGRPCError(err)
 	}
 	branch, err := s.mgr.CreateBranch(ctx, codevaldgit.CreateBranchRequest{
-		RepositoryID: repoID,
-		Name:         req.GetName(),
-		FromBranchID: req.GetFromBranchId(),
+		RepositoryID:  repoID,
+		Name:          req.GetName(),
+		FromBranchID:  req.GetFromBranchId(),
+		WorkflowRunID: req.GetWorkflowRunId(),
 	})
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -54,12 +55,16 @@ func (s *Server) GetBranchByName(ctx context.Context, req *pb.GetBranchByNameReq
 }
 
 // ListBranches implements pb.GitServiceServer.
+// When req.workflow_run_id is non-empty, results are filtered to branches that
+// were created within the given orchestrated run (FEAT-20260602-001).
 func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
 	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
-	branches, err := s.mgr.ListBranches(ctx, repoID)
+	branches, err := s.mgr.ListBranchesFiltered(ctx, repoID, codevaldgit.BranchFilter{
+		WorkflowRunID: req.GetWorkflowRunId(),
+	})
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

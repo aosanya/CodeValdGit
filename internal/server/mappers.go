@@ -26,13 +26,35 @@ func repoToProto(r codevaldgit.Repository) *pb.Repository {
 // branchToProto converts a domain Branch to its proto representation.
 func branchToProto(b codevaldgit.Branch) *pb.Branch {
 	return &pb.Branch{
-		Id:           b.ID,
-		RepositoryId: b.RepositoryID,
-		Name:         b.Name,
-		IsDefault:    b.IsDefault,
-		HeadCommitId: b.HeadCommitID,
-		CreatedAt:    parseTimestamp(b.CreatedAt),
-		UpdatedAt:    parseTimestamp(b.UpdatedAt),
+		Id:            b.ID,
+		RepositoryId:  b.RepositoryID,
+		Name:          b.Name,
+		IsDefault:     b.IsDefault,
+		HeadCommitId:  b.HeadCommitID,
+		WorkflowRunId: b.WorkflowRunID,
+		CreatedAt:     parseTimestamp(b.CreatedAt),
+		UpdatedAt:     parseTimestamp(b.UpdatedAt),
+	}
+}
+
+// mergeRequestToProto converts a domain MergeRequest to its proto representation.
+func mergeRequestToProto(m codevaldgit.MergeRequest) *pb.MergeRequest {
+	return &pb.MergeRequest{
+		Id:               m.ID,
+		RepositoryId:     m.RepositoryID,
+		Title:            m.Title,
+		Description:      m.Description,
+		SourceBranchId:   m.SourceBranchID,
+		SourceBranchName: m.SourceBranchName,
+		TargetBranchId:   m.TargetBranchID,
+		TargetBranchName: m.TargetBranchName,
+		Status:           m.Status,
+		MergedCommitSha:  m.MergedCommitSHA,
+		AuthorName:       m.AuthorName,
+		ErrorMessage:     m.ErrorMessage,
+		WorkflowRunId:    m.WorkflowRunID,
+		CreatedAt:        parseTimestamp(m.CreatedAt),
+		UpdatedAt:        parseTimestamp(m.UpdatedAt),
 	}
 }
 

@@ -89,12 +89,81 @@ type Branch struct {
 	// entity so IterReferences can advertise the ref without an extra lookup.
 	SHA string `json:"sha,omitempty"`
 
+	// WorkflowRunID links this branch to its originating WorkflowRun
+	// (FEAT-20260602-001). Empty for branches created outside any orchestrated
+	// run — e.g. the default branch created by InitRepo or imports.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+
 	// CreatedAt is the ISO 8601 timestamp when the branch was created.
 	CreatedAt string `json:"created_at"`
 
 	// UpdatedAt is the ISO 8601 timestamp when the branch ref was last updated.
 	UpdatedAt string `json:"updated_at"`
 }
+
+// MergeRequest captures a request to merge a source branch into a target
+// branch. Status transitions: "open" → "merged" | "closed" | "failed".
+// WorkflowRunID links the MR back to its originating WorkflowRun
+// (FEAT-20260602-001) so rollback and the closure view can enumerate every
+// MR a single run produced.
+type MergeRequest struct {
+	// ID is the unique entitygraph identifier for this merge request.
+	ID string `json:"id"`
+
+	// RepositoryID is the entitygraph ID of the owning Repository.
+	RepositoryID string `json:"repository_id"`
+
+	// Title is the human-readable summary of the change. Required at create time.
+	Title string `json:"title"`
+
+	// Description is an optional longer-form explanation.
+	Description string `json:"description,omitempty"`
+
+	// SourceBranchID is the entitygraph ID of the branch whose commits are
+	// being requested for merge.
+	SourceBranchID string `json:"source_branch_id"`
+
+	// SourceBranchName is the human-readable label of the source branch.
+	SourceBranchName string `json:"source_branch_name,omitempty"`
+
+	// TargetBranchID is the entitygraph ID of the branch the source will be
+	// merged into. Empty defaults to the repository's default branch.
+	TargetBranchID string `json:"target_branch_id,omitempty"`
+
+	// TargetBranchName is the human-readable label of the target branch.
+	TargetBranchName string `json:"target_branch_name,omitempty"`
+
+	// Status is one of: "open", "merged", "closed", "failed".
+	Status string `json:"status"`
+
+	// MergedCommitSHA is populated when Status transitions to "merged" and
+	// holds the SHA of the resulting target-branch HEAD commit.
+	MergedCommitSHA string `json:"merged_commit_sha,omitempty"`
+
+	// AuthorName is the agent or user who opened the MR. Optional.
+	AuthorName string `json:"author_name,omitempty"`
+
+	// ErrorMessage is populated only when Status == "failed".
+	ErrorMessage string `json:"error_message,omitempty"`
+
+	// WorkflowRunID links this MR to its originating WorkflowRun
+	// (FEAT-20260602-001). Empty for manually opened MRs.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+
+	// CreatedAt is the ISO 8601 timestamp when the MR was opened.
+	CreatedAt string `json:"created_at"`
+
+	// UpdatedAt is the ISO 8601 timestamp of the last status transition.
+	UpdatedAt string `json:"updated_at"`
+}
+
+// MergeRequestStatus values for [MergeRequest.Status].
+const (
+	MergeRequestStatusOpen   = "open"
+	MergeRequestStatusMerged = "merged"
+	MergeRequestStatusClosed = "closed"
+	MergeRequestStatusFailed = "failed"
+)
 
 // Tag is an immutable named ref pointing to a [Commit]. Once created, the
 // target commit must never change. Lightweight tags record only a name and
@@ -271,6 +340,58 @@ type CreateBranchRequest struct {
 	// FromBranchID is the entitygraph ID of the source branch from which the
 	// new branch is created. When empty, the repository's default branch is used.
 	FromBranchID string `json:"from_branch_id,omitempty"`
+
+	// WorkflowRunID links the new branch to its originating WorkflowRun
+	// (FEAT-20260602-001). When empty the branch carries no run context.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+}
+
+// CreateMergeRequestRequest carries the parameters for [GitManager.CreateMergeRequest].
+type CreateMergeRequestRequest struct {
+	// RepositoryID is the entitygraph ID of the owning Repository. Required.
+	RepositoryID string `json:"repository_id"`
+
+	// Title is the human-readable summary of the change. Required.
+	Title string `json:"title"`
+
+	// Description is an optional longer-form explanation.
+	Description string `json:"description,omitempty"`
+
+	// SourceBranchID is the entitygraph ID of the source branch. Required.
+	SourceBranchID string `json:"source_branch_id"`
+
+	// TargetBranchID is the entitygraph ID of the target branch. When empty
+	// the repository's default branch is used.
+	TargetBranchID string `json:"target_branch_id,omitempty"`
+
+	// AuthorName records the agent or user opening the MR. Optional.
+	AuthorName string `json:"author_name,omitempty"`
+
+	// WorkflowRunID links the MR to its originating WorkflowRun. Optional.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+}
+
+// MergeRequestFilter constrains the result set returned by
+// [GitManager.ListMergeRequests]. All fields are optional.
+type MergeRequestFilter struct {
+	// RepositoryID restricts results to a single repository when set.
+	RepositoryID string `json:"repository_id,omitempty"`
+
+	// Status restricts results to MRs with the given status when set.
+	// Valid values: "open", "merged", "closed", "failed".
+	Status string `json:"status,omitempty"`
+
+	// WorkflowRunID restricts results to MRs created within the given
+	// orchestrated run when set. Empty disables the filter.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+}
+
+// BranchFilter constrains the result set returned by [GitManager.ListBranches].
+// All fields are optional; zero values mean "no constraint".
+type BranchFilter struct {
+	// WorkflowRunID restricts results to branches created within the given
+	// orchestrated run. Empty disables the filter.
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
 }
 
 // CreateTagRequest carries the parameters for [GitManager.CreateTag].

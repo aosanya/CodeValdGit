@@ -315,7 +315,16 @@ to CodeValdCross via its `CrossPublisher`:
 | Branch fetched/created | `git.branch.fetched` | `CreateBranch` or async `FetchBranch` job | `BranchFetchedPayload` |
 | Branch merged | `git.branch.merged` | `MergeBranch` | `BranchMergedPayload` |
 | Merge conflict | `git.conflict.detected` | `MergeBranch` (auto-resolve failed) | `MergeConflictPayload` |
+| Merge request opened | `git.merge.requested` | `CreateMergeRequest` | `MergeRequestRequestedPayload` |
+| Merge request completed | `git.merge.completed` | `CompleteMergeRequest` (success) | `MergeRequestCompletedPayload` |
+| Merge request failed | `git.merge.failed` | `CompleteMergeRequest` (merge error) | `MergeRequestFailedPayload` |
 | File committed | `git.file.written` | `handleFileWrite` (via `git.file.write` command) | `FileWrittenPayload` |
+
+All payloads above carry an optional `workflow_run_id` field (FEAT-20260602-001) so
+the cross-service closure aggregator can attribute each event to its originating
+`WorkflowRun`. The Branch and MergeRequest entities each persist `workflow_run_id`
+as a typed property; gRPC `ListBranches` and `ListMergeRequests` accept the
+field as a filter.
 
 ### Command topics consumed by CodeValdGit
 

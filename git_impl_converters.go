@@ -32,14 +32,15 @@ func entityToRepository(e entitygraph.Entity, agencyID string) Repository {
 func entityToBranch(e entitygraph.Entity, repositoryID string) Branch {
 	p := e.Properties
 	return Branch{
-		ID:           e.ID,
-		RepositoryID: repositoryID,
-		Name:         entitygraph.StringProp(p, "name"),
-		IsDefault:    entitygraph.BoolProp(p, "is_default"),
-		HeadCommitID: entitygraph.StringProp(p, "head_commit_id"),
-		SHA:          entitygraph.StringProp(p, "sha"),
-		CreatedAt:    entitygraph.StringProp(p, "created_at"),
-		UpdatedAt:    entitygraph.StringProp(p, "updated_at"),
+		ID:            e.ID,
+		RepositoryID:  repositoryID,
+		Name:          entitygraph.StringProp(p, "name"),
+		IsDefault:     entitygraph.BoolProp(p, "is_default"),
+		HeadCommitID:  entitygraph.StringProp(p, "head_commit_id"),
+		SHA:           entitygraph.StringProp(p, "sha"),
+		WorkflowRunID: entitygraph.StringProp(p, "workflow_run_id"),
+		CreatedAt:     entitygraph.StringProp(p, "created_at"),
+		UpdatedAt:     entitygraph.StringProp(p, "updated_at"),
 	}
 }
 

@@ -31,6 +31,11 @@ const (
 	GitService_ListBranches_FullMethodName         = "/codevaldgit.v1.GitService/ListBranches"
 	GitService_DeleteBranch_FullMethodName         = "/codevaldgit.v1.GitService/DeleteBranch"
 	GitService_MergeBranch_FullMethodName          = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateMergeRequest_FullMethodName   = "/codevaldgit.v1.GitService/CreateMergeRequest"
+	GitService_GetMergeRequest_FullMethodName      = "/codevaldgit.v1.GitService/GetMergeRequest"
+	GitService_ListMergeRequests_FullMethodName    = "/codevaldgit.v1.GitService/ListMergeRequests"
+	GitService_CompleteMergeRequest_FullMethodName = "/codevaldgit.v1.GitService/CompleteMergeRequest"
+	GitService_CloseMergeRequest_FullMethodName    = "/codevaldgit.v1.GitService/CloseMergeRequest"
 	GitService_CreateTag_FullMethodName            = "/codevaldgit.v1.GitService/CreateTag"
 	GitService_GetTag_FullMethodName               = "/codevaldgit.v1.GitService/GetTag"
 	GitService_ListTags_FullMethodName             = "/codevaldgit.v1.GitService/ListTags"
@@ -109,6 +114,28 @@ type GitServiceClient interface {
 	// Error: ABORTED with MergeConflictInfo detail on content conflict.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	MergeBranch(ctx context.Context, in *MergeBranchRequest, opts ...grpc.CallOption) (*Branch, error)
+	// CreateMergeRequest opens a new MergeRequest for the given source branch.
+	// Returns the newly created MergeRequest in "open" status.
+	// Error: NOT_FOUND if the repository or source branch does not exist.
+	CreateMergeRequest(ctx context.Context, in *CreateMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error)
+	// GetMergeRequest retrieves a MergeRequest entity by its ID.
+	// Error: NOT_FOUND if no merge request with that ID exists.
+	GetMergeRequest(ctx context.Context, in *GetMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error)
+	// ListMergeRequests returns MergeRequest entities matching the given filter
+	// (repository, status, workflow_run_id). Empty filter returns every MR for
+	// the agency.
+	ListMergeRequests(ctx context.Context, in *ListMergeRequestsRequest, opts ...grpc.CallOption) (*ListMergeRequestsResponse, error)
+	// CompleteMergeRequest performs the actual merge of the source branch into
+	// the target branch and transitions the MR to "merged". Publishes
+	// git.merge.completed (or git.merge.failed on error).
+	// Error: NOT_FOUND if the MR does not exist.
+	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
+	CompleteMergeRequest(ctx context.Context, in *CompleteMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error)
+	// CloseMergeRequest transitions an open MR to "closed" without merging.
+	// Used to abandon an MR. Publishes no event.
+	// Error: NOT_FOUND if the MR does not exist.
+	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
+	CloseMergeRequest(ctx context.Context, in *CloseMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error)
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.
 	// Error: ALREADY_EXISTS if a tag with the given name exists.
 	CreateTag(ctx context.Context, in *CreateTagRequest, opts ...grpc.CallOption) (*Tag, error)
@@ -334,6 +361,56 @@ func (c *gitServiceClient) MergeBranch(ctx context.Context, in *MergeBranchReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Branch)
 	err := c.cc.Invoke(ctx, GitService_MergeBranch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) CreateMergeRequest(ctx context.Context, in *CreateMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeRequest)
+	err := c.cc.Invoke(ctx, GitService_CreateMergeRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) GetMergeRequest(ctx context.Context, in *GetMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeRequest)
+	err := c.cc.Invoke(ctx, GitService_GetMergeRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) ListMergeRequests(ctx context.Context, in *ListMergeRequestsRequest, opts ...grpc.CallOption) (*ListMergeRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMergeRequestsResponse)
+	err := c.cc.Invoke(ctx, GitService_ListMergeRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) CompleteMergeRequest(ctx context.Context, in *CompleteMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeRequest)
+	err := c.cc.Invoke(ctx, GitService_CompleteMergeRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) CloseMergeRequest(ctx context.Context, in *CloseMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeRequest)
+	err := c.cc.Invoke(ctx, GitService_CloseMergeRequest_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -659,6 +736,28 @@ type GitServiceServer interface {
 	// Error: ABORTED with MergeConflictInfo detail on content conflict.
 	// Error: NOT_FOUND if no branch with that ID exists.
 	MergeBranch(context.Context, *MergeBranchRequest) (*Branch, error)
+	// CreateMergeRequest opens a new MergeRequest for the given source branch.
+	// Returns the newly created MergeRequest in "open" status.
+	// Error: NOT_FOUND if the repository or source branch does not exist.
+	CreateMergeRequest(context.Context, *CreateMergeRequestRequest) (*MergeRequest, error)
+	// GetMergeRequest retrieves a MergeRequest entity by its ID.
+	// Error: NOT_FOUND if no merge request with that ID exists.
+	GetMergeRequest(context.Context, *GetMergeRequestRequest) (*MergeRequest, error)
+	// ListMergeRequests returns MergeRequest entities matching the given filter
+	// (repository, status, workflow_run_id). Empty filter returns every MR for
+	// the agency.
+	ListMergeRequests(context.Context, *ListMergeRequestsRequest) (*ListMergeRequestsResponse, error)
+	// CompleteMergeRequest performs the actual merge of the source branch into
+	// the target branch and transitions the MR to "merged". Publishes
+	// git.merge.completed (or git.merge.failed on error).
+	// Error: NOT_FOUND if the MR does not exist.
+	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
+	CompleteMergeRequest(context.Context, *CompleteMergeRequestRequest) (*MergeRequest, error)
+	// CloseMergeRequest transitions an open MR to "closed" without merging.
+	// Used to abandon an MR. Publishes no event.
+	// Error: NOT_FOUND if the MR does not exist.
+	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
+	CloseMergeRequest(context.Context, *CloseMergeRequestRequest) (*MergeRequest, error)
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.
 	// Error: ALREADY_EXISTS if a tag with the given name exists.
 	CreateTag(context.Context, *CreateTagRequest) (*Tag, error)
@@ -805,6 +904,21 @@ func (UnimplementedGitServiceServer) DeleteBranch(context.Context, *DeleteBranch
 }
 func (UnimplementedGitServiceServer) MergeBranch(context.Context, *MergeBranchRequest) (*Branch, error) {
 	return nil, status.Error(codes.Unimplemented, "method MergeBranch not implemented")
+}
+func (UnimplementedGitServiceServer) CreateMergeRequest(context.Context, *CreateMergeRequestRequest) (*MergeRequest, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMergeRequest not implemented")
+}
+func (UnimplementedGitServiceServer) GetMergeRequest(context.Context, *GetMergeRequestRequest) (*MergeRequest, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMergeRequest not implemented")
+}
+func (UnimplementedGitServiceServer) ListMergeRequests(context.Context, *ListMergeRequestsRequest) (*ListMergeRequestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMergeRequests not implemented")
+}
+func (UnimplementedGitServiceServer) CompleteMergeRequest(context.Context, *CompleteMergeRequestRequest) (*MergeRequest, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteMergeRequest not implemented")
+}
+func (UnimplementedGitServiceServer) CloseMergeRequest(context.Context, *CloseMergeRequestRequest) (*MergeRequest, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseMergeRequest not implemented")
 }
 func (UnimplementedGitServiceServer) CreateTag(context.Context, *CreateTagRequest) (*Tag, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTag not implemented")
@@ -1120,6 +1234,96 @@ func _GitService_MergeBranch_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GitServiceServer).MergeBranch(ctx, req.(*MergeBranchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CreateMergeRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMergeRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CreateMergeRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CreateMergeRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CreateMergeRequest(ctx, req.(*CreateMergeRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_GetMergeRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMergeRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).GetMergeRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_GetMergeRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).GetMergeRequest(ctx, req.(*GetMergeRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_ListMergeRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMergeRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).ListMergeRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_ListMergeRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).ListMergeRequests(ctx, req.(*ListMergeRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CompleteMergeRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteMergeRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CompleteMergeRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CompleteMergeRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CompleteMergeRequest(ctx, req.(*CompleteMergeRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_CloseMergeRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseMergeRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).CloseMergeRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_CloseMergeRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).CloseMergeRequest(ctx, req.(*CloseMergeRequestRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1664,6 +1868,26 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MergeBranch",
 			Handler:    _GitService_MergeBranch_Handler,
+		},
+		{
+			MethodName: "CreateMergeRequest",
+			Handler:    _GitService_CreateMergeRequest_Handler,
+		},
+		{
+			MethodName: "GetMergeRequest",
+			Handler:    _GitService_GetMergeRequest_Handler,
+		},
+		{
+			MethodName: "ListMergeRequests",
+			Handler:    _GitService_ListMergeRequests_Handler,
+		},
+		{
+			MethodName: "CompleteMergeRequest",
+			Handler:    _GitService_CompleteMergeRequest_Handler,
+		},
+		{
+			MethodName: "CloseMergeRequest",
+			Handler:    _GitService_CloseMergeRequest_Handler,
 		},
 		{
 			MethodName: "CreateTag",
