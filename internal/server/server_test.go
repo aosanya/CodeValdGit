@@ -66,6 +66,16 @@ type fakeGitManager struct {
 	listMergeRequests    func(ctx context.Context, filter codevaldgit.MergeRequestFilter) ([]codevaldgit.MergeRequest, error)
 	completeMergeRequest func(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error)
 	closeMergeRequest    func(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error)
+
+	// FEAT-20260602-004 hook.
+	rollbackByWorkflowRun func(ctx context.Context, workflowRunID string) (codevaldgit.RollbackResult, error)
+}
+
+func (f *fakeGitManager) RollbackByWorkflowRun(ctx context.Context, workflowRunID string) (codevaldgit.RollbackResult, error) {
+	if f.rollbackByWorkflowRun != nil {
+		return f.rollbackByWorkflowRun(ctx, workflowRunID)
+	}
+	return codevaldgit.RollbackResult{WorkflowRunID: workflowRunID}, nil
 }
 
 func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error) {

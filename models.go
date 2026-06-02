@@ -159,10 +159,11 @@ type MergeRequest struct {
 
 // MergeRequestStatus values for [MergeRequest.Status].
 const (
-	MergeRequestStatusOpen   = "open"
-	MergeRequestStatusMerged = "merged"
-	MergeRequestStatusClosed = "closed"
-	MergeRequestStatusFailed = "failed"
+	MergeRequestStatusOpen       = "open"
+	MergeRequestStatusMerged     = "merged"
+	MergeRequestStatusClosed     = "closed"
+	MergeRequestStatusFailed     = "failed"
+	MergeRequestStatusRolledBack = "rolled_back"
 )
 
 // Tag is an immutable named ref pointing to a [Commit]. Once created, the
@@ -392,6 +393,34 @@ type BranchFilter struct {
 	// WorkflowRunID restricts results to branches created within the given
 	// orchestrated run. Empty disables the filter.
 	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+}
+
+// RollbackResult summarises the per-workflow-run rollback executed by
+// [GitManager.RollbackByWorkflowRun]. All counters are filled even when zero so
+// callers can distinguish a no-op rollback (run produced nothing in Git) from
+// an actual unwind.
+type RollbackResult struct {
+	// WorkflowRunID is the run that was rolled back. Echoed back for clients
+	// that aggregate results across services.
+	WorkflowRunID string `json:"workflow_run_id"`
+
+	// BranchesDeleted is the number of non-default Branch entities hard-deleted
+	// because they were created during the run. Default branches are always
+	// preserved even when they carry a matching workflow_run_id.
+	BranchesDeleted int `json:"branches_deleted"`
+
+	// MergeRequestsRolledBack is the number of MergeRequest entities whose
+	// status was transitioned to "rolled_back". Includes MRs that were
+	// previously open, merged, closed, or failed — the rollback is the
+	// terminal-but-recoverable audit state and is idempotent on re-entry.
+	MergeRequestsRolledBack int `json:"merge_requests_rolled_back"`
+
+	// DefaultBranchesSkipped is the number of default branches that carried a
+	// matching workflow_run_id but were preserved. Non-zero values are
+	// informational only — callers that consume the value should log it as
+	// a warning so operators can investigate why a default branch was tagged
+	// to a transient run.
+	DefaultBranchesSkipped int `json:"default_branches_skipped"`
 }
 
 // CreateTagRequest carries the parameters for [GitManager.CreateTag].

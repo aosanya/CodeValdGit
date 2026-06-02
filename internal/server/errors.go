@@ -64,6 +64,8 @@ func toGRPCError(err error) error {
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, codevaldgit.ErrMergeRequestNotOpen):
 		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, codevaldgit.ErrWorkflowRunIDRequired):
+		return status.Error(codes.InvalidArgument, err.Error())
 	default:
 		return status.Errorf(codes.Internal, "internal error: %v", err)
 	}

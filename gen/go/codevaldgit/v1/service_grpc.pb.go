@@ -19,50 +19,51 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GitService_InitRepo_FullMethodName             = "/codevaldgit.v1.GitService/InitRepo"
-	GitService_ListRepositories_FullMethodName     = "/codevaldgit.v1.GitService/ListRepositories"
-	GitService_GetRepository_FullMethodName        = "/codevaldgit.v1.GitService/GetRepository"
-	GitService_GetRepositoryByName_FullMethodName  = "/codevaldgit.v1.GitService/GetRepositoryByName"
-	GitService_DeleteRepo_FullMethodName           = "/codevaldgit.v1.GitService/DeleteRepo"
-	GitService_PurgeRepo_FullMethodName            = "/codevaldgit.v1.GitService/PurgeRepo"
-	GitService_CreateBranch_FullMethodName         = "/codevaldgit.v1.GitService/CreateBranch"
-	GitService_GetBranch_FullMethodName            = "/codevaldgit.v1.GitService/GetBranch"
-	GitService_GetBranchByName_FullMethodName      = "/codevaldgit.v1.GitService/GetBranchByName"
-	GitService_ListBranches_FullMethodName         = "/codevaldgit.v1.GitService/ListBranches"
-	GitService_DeleteBranch_FullMethodName         = "/codevaldgit.v1.GitService/DeleteBranch"
-	GitService_MergeBranch_FullMethodName          = "/codevaldgit.v1.GitService/MergeBranch"
-	GitService_CreateMergeRequest_FullMethodName   = "/codevaldgit.v1.GitService/CreateMergeRequest"
-	GitService_GetMergeRequest_FullMethodName      = "/codevaldgit.v1.GitService/GetMergeRequest"
-	GitService_ListMergeRequests_FullMethodName    = "/codevaldgit.v1.GitService/ListMergeRequests"
-	GitService_CompleteMergeRequest_FullMethodName = "/codevaldgit.v1.GitService/CompleteMergeRequest"
-	GitService_CloseMergeRequest_FullMethodName    = "/codevaldgit.v1.GitService/CloseMergeRequest"
-	GitService_CreateTag_FullMethodName            = "/codevaldgit.v1.GitService/CreateTag"
-	GitService_GetTag_FullMethodName               = "/codevaldgit.v1.GitService/GetTag"
-	GitService_ListTags_FullMethodName             = "/codevaldgit.v1.GitService/ListTags"
-	GitService_DeleteTag_FullMethodName            = "/codevaldgit.v1.GitService/DeleteTag"
-	GitService_WriteFile_FullMethodName            = "/codevaldgit.v1.GitService/WriteFile"
-	GitService_ReadFile_FullMethodName             = "/codevaldgit.v1.GitService/ReadFile"
-	GitService_DeleteFile_FullMethodName           = "/codevaldgit.v1.GitService/DeleteFile"
-	GitService_ListDirectory_FullMethodName        = "/codevaldgit.v1.GitService/ListDirectory"
-	GitService_Log_FullMethodName                  = "/codevaldgit.v1.GitService/Log"
-	GitService_Diff_FullMethodName                 = "/codevaldgit.v1.GitService/Diff"
-	GitService_ImportRepo_FullMethodName           = "/codevaldgit.v1.GitService/ImportRepo"
-	GitService_GetImportStatus_FullMethodName      = "/codevaldgit.v1.GitService/GetImportStatus"
-	GitService_CancelImport_FullMethodName         = "/codevaldgit.v1.GitService/CancelImport"
-	GitService_FetchBranch_FullMethodName          = "/codevaldgit.v1.GitService/FetchBranch"
-	GitService_GetFetchBranchStatus_FullMethodName = "/codevaldgit.v1.GitService/GetFetchBranchStatus"
-	GitService_CreateKeyword_FullMethodName        = "/codevaldgit.v1.GitService/CreateKeyword"
-	GitService_GetKeyword_FullMethodName           = "/codevaldgit.v1.GitService/GetKeyword"
-	GitService_ListKeywords_FullMethodName         = "/codevaldgit.v1.GitService/ListKeywords"
-	GitService_GetKeywordTree_FullMethodName       = "/codevaldgit.v1.GitService/GetKeywordTree"
-	GitService_UpdateKeyword_FullMethodName        = "/codevaldgit.v1.GitService/UpdateKeyword"
-	GitService_DeleteKeyword_FullMethodName        = "/codevaldgit.v1.GitService/DeleteKeyword"
-	GitService_CreateEdge_FullMethodName           = "/codevaldgit.v1.GitService/CreateEdge"
-	GitService_DeleteEdge_FullMethodName           = "/codevaldgit.v1.GitService/DeleteEdge"
-	GitService_GetNeighborhood_FullMethodName      = "/codevaldgit.v1.GitService/GetNeighborhood"
-	GitService_SearchByKeywords_FullMethodName     = "/codevaldgit.v1.GitService/SearchByKeywords"
-	GitService_QueryGraph_FullMethodName           = "/codevaldgit.v1.GitService/QueryGraph"
-	GitService_SearchBlobs_FullMethodName          = "/codevaldgit.v1.GitService/SearchBlobs"
+	GitService_InitRepo_FullMethodName              = "/codevaldgit.v1.GitService/InitRepo"
+	GitService_ListRepositories_FullMethodName      = "/codevaldgit.v1.GitService/ListRepositories"
+	GitService_GetRepository_FullMethodName         = "/codevaldgit.v1.GitService/GetRepository"
+	GitService_GetRepositoryByName_FullMethodName   = "/codevaldgit.v1.GitService/GetRepositoryByName"
+	GitService_DeleteRepo_FullMethodName            = "/codevaldgit.v1.GitService/DeleteRepo"
+	GitService_PurgeRepo_FullMethodName             = "/codevaldgit.v1.GitService/PurgeRepo"
+	GitService_CreateBranch_FullMethodName          = "/codevaldgit.v1.GitService/CreateBranch"
+	GitService_GetBranch_FullMethodName             = "/codevaldgit.v1.GitService/GetBranch"
+	GitService_GetBranchByName_FullMethodName       = "/codevaldgit.v1.GitService/GetBranchByName"
+	GitService_ListBranches_FullMethodName          = "/codevaldgit.v1.GitService/ListBranches"
+	GitService_DeleteBranch_FullMethodName          = "/codevaldgit.v1.GitService/DeleteBranch"
+	GitService_MergeBranch_FullMethodName           = "/codevaldgit.v1.GitService/MergeBranch"
+	GitService_CreateMergeRequest_FullMethodName    = "/codevaldgit.v1.GitService/CreateMergeRequest"
+	GitService_GetMergeRequest_FullMethodName       = "/codevaldgit.v1.GitService/GetMergeRequest"
+	GitService_ListMergeRequests_FullMethodName     = "/codevaldgit.v1.GitService/ListMergeRequests"
+	GitService_CompleteMergeRequest_FullMethodName  = "/codevaldgit.v1.GitService/CompleteMergeRequest"
+	GitService_CloseMergeRequest_FullMethodName     = "/codevaldgit.v1.GitService/CloseMergeRequest"
+	GitService_RollbackByWorkflowRun_FullMethodName = "/codevaldgit.v1.GitService/RollbackByWorkflowRun"
+	GitService_CreateTag_FullMethodName             = "/codevaldgit.v1.GitService/CreateTag"
+	GitService_GetTag_FullMethodName                = "/codevaldgit.v1.GitService/GetTag"
+	GitService_ListTags_FullMethodName              = "/codevaldgit.v1.GitService/ListTags"
+	GitService_DeleteTag_FullMethodName             = "/codevaldgit.v1.GitService/DeleteTag"
+	GitService_WriteFile_FullMethodName             = "/codevaldgit.v1.GitService/WriteFile"
+	GitService_ReadFile_FullMethodName              = "/codevaldgit.v1.GitService/ReadFile"
+	GitService_DeleteFile_FullMethodName            = "/codevaldgit.v1.GitService/DeleteFile"
+	GitService_ListDirectory_FullMethodName         = "/codevaldgit.v1.GitService/ListDirectory"
+	GitService_Log_FullMethodName                   = "/codevaldgit.v1.GitService/Log"
+	GitService_Diff_FullMethodName                  = "/codevaldgit.v1.GitService/Diff"
+	GitService_ImportRepo_FullMethodName            = "/codevaldgit.v1.GitService/ImportRepo"
+	GitService_GetImportStatus_FullMethodName       = "/codevaldgit.v1.GitService/GetImportStatus"
+	GitService_CancelImport_FullMethodName          = "/codevaldgit.v1.GitService/CancelImport"
+	GitService_FetchBranch_FullMethodName           = "/codevaldgit.v1.GitService/FetchBranch"
+	GitService_GetFetchBranchStatus_FullMethodName  = "/codevaldgit.v1.GitService/GetFetchBranchStatus"
+	GitService_CreateKeyword_FullMethodName         = "/codevaldgit.v1.GitService/CreateKeyword"
+	GitService_GetKeyword_FullMethodName            = "/codevaldgit.v1.GitService/GetKeyword"
+	GitService_ListKeywords_FullMethodName          = "/codevaldgit.v1.GitService/ListKeywords"
+	GitService_GetKeywordTree_FullMethodName        = "/codevaldgit.v1.GitService/GetKeywordTree"
+	GitService_UpdateKeyword_FullMethodName         = "/codevaldgit.v1.GitService/UpdateKeyword"
+	GitService_DeleteKeyword_FullMethodName         = "/codevaldgit.v1.GitService/DeleteKeyword"
+	GitService_CreateEdge_FullMethodName            = "/codevaldgit.v1.GitService/CreateEdge"
+	GitService_DeleteEdge_FullMethodName            = "/codevaldgit.v1.GitService/DeleteEdge"
+	GitService_GetNeighborhood_FullMethodName       = "/codevaldgit.v1.GitService/GetNeighborhood"
+	GitService_SearchByKeywords_FullMethodName      = "/codevaldgit.v1.GitService/SearchByKeywords"
+	GitService_QueryGraph_FullMethodName            = "/codevaldgit.v1.GitService/QueryGraph"
+	GitService_SearchBlobs_FullMethodName           = "/codevaldgit.v1.GitService/SearchBlobs"
 )
 
 // GitServiceClient is the client API for GitService service.
@@ -136,6 +137,17 @@ type GitServiceClient interface {
 	// Error: NOT_FOUND if the MR does not exist.
 	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
 	CloseMergeRequest(ctx context.Context, in *CloseMergeRequestRequest, opts ...grpc.CallOption) (*MergeRequest, error)
+	// RollbackByWorkflowRun is the Git leg of the cross-service workflow-run
+	// rollback owned by CodeValdWork. Hard-deletes every non-default Branch
+	// entity tagged with the given workflow_run_id and flips every
+	// MergeRequest tagged with the same run to status "rolled_back"
+	// (merged_commit_sha is preserved for audit).
+	//
+	// Idempotent: re-invocation on a previously rolled-back run returns a
+	// RollbackResult with zero counters and no events.
+	//
+	// Error: INVALID_ARGUMENT if workflow_run_id is empty.
+	RollbackByWorkflowRun(ctx context.Context, in *RollbackByWorkflowRunRequest, opts ...grpc.CallOption) (*RollbackByWorkflowRunResponse, error)
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.
 	// Error: ALREADY_EXISTS if a tag with the given name exists.
 	CreateTag(ctx context.Context, in *CreateTagRequest, opts ...grpc.CallOption) (*Tag, error)
@@ -411,6 +423,16 @@ func (c *gitServiceClient) CloseMergeRequest(ctx context.Context, in *CloseMerge
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MergeRequest)
 	err := c.cc.Invoke(ctx, GitService_CloseMergeRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gitServiceClient) RollbackByWorkflowRun(ctx context.Context, in *RollbackByWorkflowRunRequest, opts ...grpc.CallOption) (*RollbackByWorkflowRunResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RollbackByWorkflowRunResponse)
+	err := c.cc.Invoke(ctx, GitService_RollbackByWorkflowRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -758,6 +780,17 @@ type GitServiceServer interface {
 	// Error: NOT_FOUND if the MR does not exist.
 	// Error: FAILED_PRECONDITION if the MR is not in "open" status.
 	CloseMergeRequest(context.Context, *CloseMergeRequestRequest) (*MergeRequest, error)
+	// RollbackByWorkflowRun is the Git leg of the cross-service workflow-run
+	// rollback owned by CodeValdWork. Hard-deletes every non-default Branch
+	// entity tagged with the given workflow_run_id and flips every
+	// MergeRequest tagged with the same run to status "rolled_back"
+	// (merged_commit_sha is preserved for audit).
+	//
+	// Idempotent: re-invocation on a previously rolled-back run returns a
+	// RollbackResult with zero counters and no events.
+	//
+	// Error: INVALID_ARGUMENT if workflow_run_id is empty.
+	RollbackByWorkflowRun(context.Context, *RollbackByWorkflowRunRequest) (*RollbackByWorkflowRunResponse, error)
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.
 	// Error: ALREADY_EXISTS if a tag with the given name exists.
 	CreateTag(context.Context, *CreateTagRequest) (*Tag, error)
@@ -919,6 +952,9 @@ func (UnimplementedGitServiceServer) CompleteMergeRequest(context.Context, *Comp
 }
 func (UnimplementedGitServiceServer) CloseMergeRequest(context.Context, *CloseMergeRequestRequest) (*MergeRequest, error) {
 	return nil, status.Error(codes.Unimplemented, "method CloseMergeRequest not implemented")
+}
+func (UnimplementedGitServiceServer) RollbackByWorkflowRun(context.Context, *RollbackByWorkflowRunRequest) (*RollbackByWorkflowRunResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RollbackByWorkflowRun not implemented")
 }
 func (UnimplementedGitServiceServer) CreateTag(context.Context, *CreateTagRequest) (*Tag, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTag not implemented")
@@ -1324,6 +1360,24 @@ func _GitService_CloseMergeRequest_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GitServiceServer).CloseMergeRequest(ctx, req.(*CloseMergeRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GitService_RollbackByWorkflowRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RollbackByWorkflowRunRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitServiceServer).RollbackByWorkflowRun(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitService_RollbackByWorkflowRun_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitServiceServer).RollbackByWorkflowRun(ctx, req.(*RollbackByWorkflowRunRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1888,6 +1942,10 @@ var GitService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CloseMergeRequest",
 			Handler:    _GitService_CloseMergeRequest_Handler,
+		},
+		{
+			MethodName: "RollbackByWorkflowRun",
+			Handler:    _GitService_RollbackByWorkflowRun_Handler,
 		},
 		{
 			MethodName: "CreateTag",

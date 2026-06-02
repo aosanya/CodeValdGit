@@ -135,6 +135,23 @@ type GitManager interface {
 	// Returns [ErrMergeRequestNotOpen] if the MR is not in "open" status.
 	CloseMergeRequest(ctx context.Context, mrID string) (MergeRequest, error)
 
+	// ── Workflow-run rollback (FEAT-20260602-004) ─────────────────────────────
+
+	// RollbackByWorkflowRun is the Git leg of the cross-service workflow-run
+	// rollback coordinator owned by CodeValdWork. It hard-deletes every
+	// non-default Branch entity tagged with the given workflow_run_id and
+	// flips every MergeRequest tagged with the same run to status
+	// "rolled_back" (preserving merged_commit_sha for audit).
+	//
+	// The operation is idempotent: re-invoking it on a previously-rolled-back
+	// run is a no-op for already-deleted branches and already-rolled-back MRs.
+	//
+	// A [TopicMergeRolledBack] event fires for every MR transition and a
+	// single [TopicWorkflowRunRolledBack] summary event fires at the end.
+	//
+	// Returns [ErrWorkflowRunIDRequired] if workflowRunID is empty.
+	RollbackByWorkflowRun(ctx context.Context, workflowRunID string) (RollbackResult, error)
+
 	// ── Tag Management ────────────────────────────────────────────────────────
 
 	// CreateTag creates an immutable Tag entity pointing to the specified commit.
