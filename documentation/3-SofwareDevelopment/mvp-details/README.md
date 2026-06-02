@@ -155,6 +155,7 @@ for the full analysis:
 | [grpc-proto.md](grpc-proto.md) | GIT-021 — proto + gRPC handlers + route registration for documentation layer |
 | [git-graph-sync.md](git-graph-sync.md) | GIT-025 — `.git-graph/` push sync (file-driven keyword + edge authoring) |
 | [graph-query.md](graph-query.md) | GIT-026 — `POST .../graph/query` multi-filter signal-sorted graph query |
+| [git-failure-modes.md](git-failure-modes.md) | Typed git failure events (`git.branch.failed`, `git.conflict.detected`, `git.merge.failed`, `git.file.write_failed`), field contracts for synthesized success events per [Cross FEAT-20260602-005](../../../../CodeValdCross/documentation/3-SofwareDevelopment/mvp-details/FEAT-20260602-005_failure_pipelines_synthesized_success.md) |
 
 > **DR-023 / DR-024 pivot** — The documentation layer no longer uses four named
 > Blob→Blob edge types (`documents`, `documented_by`, `depends_on`, `imported_by`).
