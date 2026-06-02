@@ -58,6 +58,18 @@ const (
 	// [TopicFileWrite]. Consumed by CodeValdAI to update the run debrief.
 	// Payload: [FileWrittenPayload].
 	TopicFileWritten = "git.file.written"
+
+	// TopicMergeRolledBack fires for each [MergeRequest] whose status is flipped
+	// to "rolled_back" by [GitManager.RollbackByWorkflowRun].
+	// Payload: [MergeRequestRolledBackPayload].
+	TopicMergeRolledBack = "git.merge.rolled_back"
+
+	// TopicWorkflowRunRolledBack fires once per
+	// [GitManager.RollbackByWorkflowRun] call carrying the aggregate counters.
+	// Consumed by the CodeValdWork rollback coordinator to surface the leg's
+	// result and by the closure aggregator to mark Git as quiesced.
+	// Payload: [WorkflowRunRolledBackPayload].
+	TopicWorkflowRunRolledBack = "git.workflow_run.rolled_back"
 )
 
 // AllTopics is the closed list of topics this service publishes.
@@ -73,6 +85,8 @@ func AllTopics() []string {
 		TopicMergeRequested,
 		TopicMergeCompleted,
 		TopicMergeFailed,
+		TopicMergeRolledBack,
+		TopicWorkflowRunRolledBack,
 		TopicFileWritten,
 	}
 }
@@ -214,6 +228,32 @@ type MergeRequestFailedPayload struct {
 	ErrorMessage   string `json:"error_message"`
 	// WorkflowRunID links the MR to its originating WorkflowRun (FEAT-20260602-001).
 	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+}
+
+// MergeRequestRolledBackPayload is the [eventbus.Event.Payload] for
+// [TopicMergeRolledBack]. Emitted once per [MergeRequest] flipped to
+// "rolled_back" by [GitManager.RollbackByWorkflowRun] (FEAT-20260602-004).
+// PriorStatus carries the status the MR was in before the rollback so
+// downstream consumers can distinguish "we undid a merged MR" from "we
+// abandoned an open MR".
+type MergeRequestRolledBackPayload struct {
+	MergeRequestID  string `json:"merge_request_id"`
+	RepoID          string `json:"repo_id"`
+	SourceBranchID  string `json:"source_branch_id"`
+	PriorStatus     string `json:"prior_status"`
+	MergedCommitSHA string `json:"merged_commit_sha,omitempty"`
+	WorkflowRunID   string `json:"workflow_run_id"`
+}
+
+// WorkflowRunRolledBackPayload is the [eventbus.Event.Payload] for
+// [TopicWorkflowRunRolledBack]. Emitted once per
+// [GitManager.RollbackByWorkflowRun] call, regardless of whether the run
+// produced any Git artifacts. Counters mirror [RollbackResult].
+type WorkflowRunRolledBackPayload struct {
+	WorkflowRunID           string `json:"workflow_run_id"`
+	BranchesDeleted         int    `json:"branches_deleted"`
+	MergeRequestsRolledBack int    `json:"merge_requests_rolled_back"`
+	DefaultBranchesSkipped  int    `json:"default_branches_skipped"`
 }
 
 // FileWritePayload is the [eventbus.Event.Payload] for [TopicFileWrite].

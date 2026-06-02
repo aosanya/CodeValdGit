@@ -115,3 +115,10 @@ var ErrMergeRequestNotFound = errors.New("merge request not found")
 // ErrMergeRequestNotOpen is returned by [GitManager.CompleteMergeRequest] and
 // [GitManager.CloseMergeRequest] when the target MR is not in "open" status.
 var ErrMergeRequestNotOpen = errors.New("merge request is not open")
+
+// ── Workflow-run rollback errors (FEAT-20260602-004) ─────────────────────────
+
+// ErrWorkflowRunIDRequired is returned by [GitManager.RollbackByWorkflowRun]
+// when the workflow_run_id argument is empty. A blank ID would match every
+// branch/MR that has no run context — a footgun the manager refuses to fire.
+var ErrWorkflowRunIDRequired = errors.New("workflow_run_id is required")

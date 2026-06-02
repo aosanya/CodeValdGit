@@ -116,6 +116,7 @@ func gitRoutes() []types.RouteInfo {
 	all = append(all, importRoutes()...)
 	all = append(all, fetchBranchRoutes()...)
 	all = append(all, docsRoutes()...)
+	all = append(all, rollbackRoutes()...)
 	for _, r := range all {
 		log.Printf("[registrar] route: %s %s → %s", r.Method, r.Pattern, r.GrpcMethod)
 	}

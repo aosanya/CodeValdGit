@@ -225,6 +225,20 @@ service GitService {
   // Error: FAILED_PRECONDITION if the MR is not in "open" status.
   rpc CloseMergeRequest (CloseMergeRequestRequest) returns (MergeRequest);
 
+  // ── Workflow-Run Rollback (FEAT-20260602-004) ─────────────────────────────
+
+  // RollbackByWorkflowRun is the Git leg of the cross-service workflow-run
+  // rollback owned by CodeValdWork. Hard-deletes every non-default Branch
+  // entity tagged with the given workflow_run_id and flips every
+  // MergeRequest tagged with the same run to status "rolled_back"
+  // (merged_commit_sha is preserved for audit).
+  //
+  // Idempotent: re-invocation on a previously rolled-back run returns a
+  // RollbackResult with zero counters and no events.
+  //
+  // Error: INVALID_ARGUMENT if workflow_run_id is empty.
+  rpc RollbackByWorkflowRun (RollbackByWorkflowRunRequest) returns (RollbackByWorkflowRunResponse);
+
   // ── Tag Management ────────────────────────────────────────────────────────
 
   // CreateTag creates an immutable Tag entity pointing to the specified commit.
@@ -497,6 +511,28 @@ message CompleteMergeRequestRequest {
 
 message CloseMergeRequestRequest {
   string merge_request_id = 1;
+}
+
+// Workflow-run rollback (FEAT-20260602-004)
+
+message RollbackByWorkflowRunRequest {
+  // workflow_run_id is the run whose Git artifacts will be rolled back.
+  // Required — an empty value is rejected with INVALID_ARGUMENT to avoid
+  // matching every artifact without a run context.
+  string workflow_run_id = 1;
+}
+
+// RollbackByWorkflowRunResponse summarises the per-run unwind. All counters
+// are populated even when zero so callers can distinguish "no-op" from
+// "actual rollback".
+message RollbackByWorkflowRunResponse {
+  string workflow_run_id              = 1;
+  int32  branches_deleted             = 2;
+  int32  merge_requests_rolled_back   = 3;
+  // default_branches_skipped is non-zero only when a default branch carries
+  // the matching workflow_run_id — an unexpected condition the handler
+  // refuses to act on. Callers should surface a warning when > 0.
+  int32  default_branches_skipped     = 4;
 }
 
 // Tag management
