@@ -104,3 +104,14 @@ var ErrInvalidRelationship = errors.New("invalid documentation relationship name
 // time this merge read the expected HEAD and when it attempted the update.
 // Callers should retry the merge after re-reading the latest branch state.
 var ErrMergeConcurrencyConflict = errors.New("merge conflict: default branch HEAD changed concurrently")
+
+// ── Merge request errors (FEAT-20260602-001) ─────────────────────────────────
+
+// ErrMergeRequestNotFound is returned by [GitManager.GetMergeRequest],
+// [GitManager.CompleteMergeRequest], and [GitManager.CloseMergeRequest] when
+// no MergeRequest entity with the given ID exists for this agency.
+var ErrMergeRequestNotFound = errors.New("merge request not found")
+
+// ErrMergeRequestNotOpen is returned by [GitManager.CompleteMergeRequest] and
+// [GitManager.CloseMergeRequest] when the target MR is not in "open" status.
+var ErrMergeRequestNotOpen = errors.New("merge request is not open")

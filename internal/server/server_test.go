@@ -58,6 +58,14 @@ type fakeGitManager struct {
 	deleteEdge          func(ctx context.Context, req codevaldgit.DeleteEdgeRequest) error
 	getNeighborhood     func(ctx context.Context, branchID, entityID string, depth int) (codevaldgit.GraphResult, error)
 	searchByKeywords    func(ctx context.Context, req codevaldgit.SearchByKeywordsRequest) (codevaldgit.GraphResult, error)
+
+	// FEAT-20260602-001 hooks.
+	listBranchesFiltered func(ctx context.Context, repoID string, filter codevaldgit.BranchFilter) ([]codevaldgit.Branch, error)
+	createMergeRequest   func(ctx context.Context, req codevaldgit.CreateMergeRequestRequest) (codevaldgit.MergeRequest, error)
+	getMergeRequest      func(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error)
+	listMergeRequests    func(ctx context.Context, filter codevaldgit.MergeRequestFilter) ([]codevaldgit.MergeRequest, error)
+	completeMergeRequest func(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error)
+	closeMergeRequest    func(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error)
 }
 
 func (f *fakeGitManager) InitRepo(ctx context.Context, req codevaldgit.CreateRepoRequest) (codevaldgit.Repository, error) {
@@ -291,6 +299,69 @@ func (f *fakeGitManager) IndexPushedBranch(_ context.Context, _, _, _, _ string)
 
 func (f *fakeGitManager) SearchBlobs(_ context.Context, _ codevaldgit.SearchBlobsRequest) ([]codevaldgit.BlobSearchResult, error) {
 	return nil, nil
+}
+
+func (f *fakeGitManager) ListBranchesFiltered(ctx context.Context, repoID string, filter codevaldgit.BranchFilter) ([]codevaldgit.Branch, error) {
+	if f.listBranchesFiltered != nil {
+		return f.listBranchesFiltered(ctx, repoID, filter)
+	}
+	branches, err := f.ListBranches(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	if filter.WorkflowRunID == "" {
+		return branches, nil
+	}
+	out := branches[:0]
+	for _, b := range branches {
+		if b.WorkflowRunID == filter.WorkflowRunID {
+			out = append(out, b)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeGitManager) CreateMergeRequest(ctx context.Context, req codevaldgit.CreateMergeRequestRequest) (codevaldgit.MergeRequest, error) {
+	if f.createMergeRequest != nil {
+		return f.createMergeRequest(ctx, req)
+	}
+	return codevaldgit.MergeRequest{
+		ID:             "mr-1",
+		RepositoryID:   req.RepositoryID,
+		Title:          req.Title,
+		SourceBranchID: req.SourceBranchID,
+		TargetBranchID: req.TargetBranchID,
+		Status:         codevaldgit.MergeRequestStatusOpen,
+		WorkflowRunID:  req.WorkflowRunID,
+	}, nil
+}
+
+func (f *fakeGitManager) GetMergeRequest(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error) {
+	if f.getMergeRequest != nil {
+		return f.getMergeRequest(ctx, mrID)
+	}
+	return codevaldgit.MergeRequest{ID: mrID, Status: codevaldgit.MergeRequestStatusOpen}, nil
+}
+
+func (f *fakeGitManager) ListMergeRequests(ctx context.Context, filter codevaldgit.MergeRequestFilter) ([]codevaldgit.MergeRequest, error) {
+	if f.listMergeRequests != nil {
+		return f.listMergeRequests(ctx, filter)
+	}
+	return nil, nil
+}
+
+func (f *fakeGitManager) CompleteMergeRequest(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error) {
+	if f.completeMergeRequest != nil {
+		return f.completeMergeRequest(ctx, mrID)
+	}
+	return codevaldgit.MergeRequest{ID: mrID, Status: codevaldgit.MergeRequestStatusMerged}, nil
+}
+
+func (f *fakeGitManager) CloseMergeRequest(ctx context.Context, mrID string) (codevaldgit.MergeRequest, error) {
+	if f.closeMergeRequest != nil {
+		return f.closeMergeRequest(ctx, mrID)
+	}
+	return codevaldgit.MergeRequest{ID: mrID, Status: codevaldgit.MergeRequestStatusClosed}, nil
 }
 
 // ── test server setup ─────────────────────────────────────────────────────────

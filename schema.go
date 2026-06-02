@@ -4,12 +4,15 @@
 // for CodeValdGit. cmd/main.go seeds this schema idempotently on startup via
 // GitSchemaManager.SetSchema.
 //
-// The schema declares nine TypeDefinitions:
+// The schema declares ten TypeDefinitions:
 //   - Agency         — root entity; one per agency ID (mutable)
 //   - Repository     — a versioned codebase owned by an Agency; an Agency can
 //     have multiple Repositories (mutable)
 //   - Branch         — named ref pointing to a Commit; owns the branch lifecycle (mutable);
 //     carries a status field for lazy import v2 (stub/fetching/fetched/fetch_failed)
+//     and workflow_run_id linking it to its originating WorkflowRun
+//   - MergeRequest   — request to merge a source branch into a target branch;
+//     status: open|merged|closed|failed; carries workflow_run_id (FEAT-20260602-001)
 //   - Tag            — immutable named ref pointing to a Commit (immutable)
 //   - Commit         — immutable snapshot with author, message, and pointer to a Tree (immutable)
 //   - Tree           — immutable directory listing at a specific point in time (immutable)
@@ -34,6 +37,7 @@
 //   - Repository           → "git_repositories" document collection (one per agency; mutable)
 //   - Commit, Tree, Blob   → "git_objects" document collection (immutable, content-addressed by SHA)
 //   - Keyword              → "git_keywords" document collection (mutable; taxonomy labels)
+//   - MergeRequest         → "git_merge_requests" document collection (mutable lifecycle)
 //   - GitInternalState     → "git_internal" document collection (go-git internal: config, index, shallow)
 //   - ImportJob            → "git_importjobs" document collection (async import lifecycle)
 //   - FetchBranchJob       → "git_fetchjobs" document collection (async on-demand branch fetch lifecycle)
@@ -160,6 +164,14 @@ func DefaultGitSchema() types.Schema {
 						ToMany:      true,
 						Inverse:     "belongs_to_repository",
 					},
+					{
+						Name:        "has_merge_request",
+						Label:       "Merge Requests",
+						PathSegment: "merge-requests",
+						ToType:      "MergeRequest",
+						ToMany:      true,
+						Inverse:     "belongs_to_repository",
+					},
 				},
 			},
 			{
@@ -195,6 +207,10 @@ func DefaultGitSchema() types.Schema {
 					// was imported from. Used by FetchBranch to re-clone the bare repo
 					// if bare_clone_path is no longer on disk. Empty for local branches.
 					{Name: "source_url", Type: types.PropertyTypeString},
+					// workflow_run_id links this branch to the WorkflowRun that produced
+					// it (FEAT-20260602-001). Empty when the branch was created outside
+					// any orchestrated run (e.g. via direct git push or InitRepo's default).
+					{Name: "workflow_run_id", Type: types.PropertyTypeString},
 					{Name: "created_at", Type: types.PropertyTypeString},
 					{Name: "updated_at", Type: types.PropertyTypeString},
 				},
@@ -216,6 +232,78 @@ func DefaultGitSchema() types.Schema {
 						ToMany:      false,
 						Required:    true,
 						Inverse:     "has_branch",
+					},
+				},
+			},
+			{
+				Name:              "MergeRequest",
+				DisplayName:       "Merge Request",
+				PathSegment:       "merge-requests",
+				EntityIDParam:     "mergeRequestId",
+				StorageCollection: "git_merge_requests",
+				// MergeRequest captures an in-flight or completed request to merge a
+				// source branch into a target branch. Lifecycle: open → merged | closed.
+				// workflow_run_id links the MR back to its originating WorkflowRun so
+				// the cross-service closure can enumerate every MR a run produced.
+				Properties: []types.PropertyDefinition{
+					// title is the human-readable summary of the change.
+					{Name: "title", Type: types.PropertyTypeString, Required: true},
+					// description is an optional longer-form explanation.
+					{Name: "description", Type: types.PropertyTypeString},
+					// source_branch_id is the entitygraph ID of the branch whose
+					// commits are being requested for merge. Required.
+					{Name: "source_branch_id", Type: types.PropertyTypeString, Required: true},
+					// source_branch_name is the human-readable label of the source
+					// branch, captured at MR creation for display without an extra lookup.
+					{Name: "source_branch_name", Type: types.PropertyTypeString},
+					// target_branch_id is the entitygraph ID of the branch the source
+					// will be merged into. Empty defaults to the repository's default branch.
+					{Name: "target_branch_id", Type: types.PropertyTypeString},
+					// target_branch_name is the human-readable label of the target branch.
+					{Name: "target_branch_name", Type: types.PropertyTypeString},
+					// status is the current MR lifecycle state.
+					// Valid values: "open" | "merged" | "closed" | "failed".
+					{Name: "status", Type: types.PropertyTypeString, Required: true},
+					// merged_commit_sha is populated when status transitions to "merged"
+					// and carries the SHA of the resulting target-branch HEAD commit.
+					{Name: "merged_commit_sha", Type: types.PropertyTypeString},
+					// author_name is the agent or user who opened the MR. Optional.
+					{Name: "author_name", Type: types.PropertyTypeString},
+					// error_message is populated only when status == "failed".
+					{Name: "error_message", Type: types.PropertyTypeString},
+					// workflow_run_id links this MR to its originating WorkflowRun
+					// (FEAT-20260602-001). Empty for manually opened MRs.
+					{Name: "workflow_run_id", Type: types.PropertyTypeString},
+					{Name: "created_at", Type: types.PropertyTypeString},
+					{Name: "updated_at", Type: types.PropertyTypeString},
+				},
+				Relationships: []types.RelationshipDefinition{
+					// belongs_to_repository scopes the MR to a single repository.
+					{
+						Name:        "belongs_to_repository",
+						Label:       "Repository",
+						PathSegment: "repository",
+						ToType:      "Repository",
+						ToMany:      false,
+						Required:    true,
+						Inverse:     "has_merge_request",
+					},
+					// has_source_branch links the MR to its source Branch.
+					{
+						Name:        "has_source_branch",
+						Label:       "Source Branch",
+						PathSegment: "source-branch",
+						ToType:      "Branch",
+						ToMany:      false,
+						Required:    true,
+					},
+					// has_target_branch links the MR to its target Branch.
+					{
+						Name:        "has_target_branch",
+						Label:       "Target Branch",
+						PathSegment: "target-branch",
+						ToType:      "Branch",
+						ToMany:      false,
 					},
 				},
 			},

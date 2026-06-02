@@ -27,13 +27,39 @@ message Repository {
 // Branch is a named ref pointing to a Commit entity.
 // Task branches follow the naming convention "task/{task_id}".
 message Branch {
-  string                    id             = 1;
-  string                    repository_id  = 2;
-  string                    name           = 3;
-  bool                      is_default     = 4;
-  string                    head_commit_id = 5;
-  google.protobuf.Timestamp created_at     = 6;
-  google.protobuf.Timestamp updated_at     = 7;
+  string                    id               = 1;
+  string                    repository_id    = 2;
+  string                    name             = 3;
+  bool                      is_default       = 4;
+  string                    head_commit_id   = 5;
+  google.protobuf.Timestamp created_at       = 6;
+  google.protobuf.Timestamp updated_at       = 7;
+  // workflow_run_id links this branch to its originating WorkflowRun
+  // (FEAT-20260602-001). Empty for branches created outside any run.
+  string                    workflow_run_id  = 8;
+}
+
+// MergeRequest captures a request to merge a source branch into a target
+// branch. Status transitions: open → merged | closed | failed.
+// workflow_run_id links the MR back to its originating WorkflowRun
+// (FEAT-20260602-001).
+message MergeRequest {
+  string                    id                  = 1;
+  string                    repository_id       = 2;
+  string                    title               = 3;
+  string                    description         = 4;
+  string                    source_branch_id    = 5;
+  string                    source_branch_name  = 6;
+  string                    target_branch_id    = 7;
+  string                    target_branch_name  = 8;
+  // status is one of: "open", "merged", "closed", "failed".
+  string                    status              = 9;
+  string                    merged_commit_sha   = 10;
+  string                    author_name         = 11;
+  string                    error_message      = 12;
+  string                    workflow_run_id     = 13;
+  google.protobuf.Timestamp created_at          = 14;
+  google.protobuf.Timestamp updated_at          = 15;
 }
 
 // Tag is an immutable named ref pointing to a Commit entity.
@@ -169,6 +195,35 @@ service GitService {
   // Error: ABORTED with MergeConflictInfo detail on content conflict.
   // Error: NOT_FOUND if no branch with that ID exists.
   rpc MergeBranch (MergeBranchRequest) returns (Branch);
+
+  // ── Merge Request Management (FEAT-20260602-001) ─────────────────────────
+
+  // CreateMergeRequest opens a new MergeRequest for the given source branch.
+  // Returns the newly created MergeRequest in "open" status.
+  // Error: NOT_FOUND if the repository or source branch does not exist.
+  rpc CreateMergeRequest (CreateMergeRequestRequest) returns (MergeRequest);
+
+  // GetMergeRequest retrieves a MergeRequest entity by its ID.
+  // Error: NOT_FOUND if no merge request with that ID exists.
+  rpc GetMergeRequest (GetMergeRequestRequest) returns (MergeRequest);
+
+  // ListMergeRequests returns MergeRequest entities matching the given filter
+  // (repository, status, workflow_run_id). Empty filter returns every MR for
+  // the agency.
+  rpc ListMergeRequests (ListMergeRequestsRequest) returns (ListMergeRequestsResponse);
+
+  // CompleteMergeRequest performs the actual merge of the source branch into
+  // the target branch and transitions the MR to "merged". Publishes
+  // git.merge.completed (or git.merge.failed on error).
+  // Error: NOT_FOUND if the MR does not exist.
+  // Error: FAILED_PRECONDITION if the MR is not in "open" status.
+  rpc CompleteMergeRequest (CompleteMergeRequestRequest) returns (MergeRequest);
+
+  // CloseMergeRequest transitions an open MR to "closed" without merging.
+  // Used to abandon an MR. Publishes no event.
+  // Error: NOT_FOUND if the MR does not exist.
+  // Error: FAILED_PRECONDITION if the MR is not in "open" status.
+  rpc CloseMergeRequest (CloseMergeRequestRequest) returns (MergeRequest);
 
   // ── Tag Management ────────────────────────────────────────────────────────
 
@@ -355,6 +410,9 @@ message CreateBranchRequest {
   string name            = 2;
   string from_branch_id  = 3;
   string repository_name = 4;
+  // workflow_run_id (FEAT-20260602-001) links the new branch to its
+  // originating WorkflowRun. Empty disables the link.
+  string workflow_run_id = 5;
 }
 
 message GetBranchRequest {
@@ -369,6 +427,9 @@ message GetBranchByNameRequest {
 message ListBranchesRequest {
   string repository_id   = 1;
   string repository_name = 2;
+  // workflow_run_id (FEAT-20260602-001) restricts results to branches created
+  // within the given orchestrated run. Empty disables the filter.
+  string workflow_run_id = 3;
 }
 message ListBranchesResponse {
   repeated Branch branches = 1;
@@ -392,6 +453,50 @@ message MergeBranchRequest {
   // reserved for the merge commit message.
   string merge_into = 4;
   string message    = 5;
+  // workflow_run_id (FEAT-20260602-001) is propagated onto the
+  // git.branch.merged event payload. Empty disables the link.
+  string workflow_run_id = 6;
+}
+
+// Merge request management (FEAT-20260602-001)
+
+message CreateMergeRequestRequest {
+  string repository_id    = 1;
+  string repository_name  = 2;
+  string title            = 3;
+  string description      = 4;
+  string source_branch_id = 5;
+  // source_branch_name is an alternative to source_branch_id for callers that
+  // only know the human-readable name; the handler resolves it to an ID.
+  string source_branch_name = 6;
+  string target_branch_id = 7;
+  string target_branch_name = 8;
+  string author_name      = 9;
+  string workflow_run_id  = 10;
+}
+
+message GetMergeRequestRequest {
+  string merge_request_id = 1;
+}
+
+message ListMergeRequestsRequest {
+  string repository_id   = 1;
+  string repository_name = 2;
+  // status (optional) one of: "open", "merged", "closed", "failed".
+  string status          = 3;
+  // workflow_run_id restricts results to MRs created within the given run.
+  string workflow_run_id = 4;
+}
+message ListMergeRequestsResponse {
+  repeated MergeRequest merge_requests = 1;
+}
+
+message CompleteMergeRequestRequest {
+  string merge_request_id = 1;
+}
+
+message CloseMergeRequestRequest {
+  string merge_request_id = 1;
 }
 
 // Tag management
@@ -432,6 +537,9 @@ message WriteFileRequest {
   string author_name  = 5;
   string author_email = 6;
   string message      = 7;
+  // workflow_run_id (FEAT-20260602-001) is propagated onto the
+  // git.file.written event payload. Empty disables the link.
+  string workflow_run_id = 8;
 }
 
 message ReadFileRequest {

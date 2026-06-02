@@ -34,7 +34,7 @@ git branch -d feature/GIT-XXX_description
 
 | Task ID | Title | Status | Depends On |
 |---|---|---|---|
-| FEAT-20260602-001 | `workflow_run_id` on `Branch` / `MergeRequest` + every `git.*` event payload (Git sibling of the [Cross umbrella](../../../CodeValdCross/documentation/3-SofwareDevelopment/mvp-details/FEAT-20260602-001_workflow_run_id_propagation_umbrella.md)) | 📋 Not Started | FEAT-20260602-001 in CodeValdFunctions (start-pipeline) |
+| FEAT-20260602-001 | `workflow_run_id` on `Branch` / `MergeRequest` + every `git.*` event payload (Git sibling of the [Cross umbrella](../../../CodeValdCross/documentation/3-SofwareDevelopment/mvp-details/FEAT-20260602-001_workflow_run_id_propagation_umbrella.md)) | ✅ Done | FEAT-20260602-001 in CodeValdFunctions (start-pipeline) |
 
 See [mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md](mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md).
 
