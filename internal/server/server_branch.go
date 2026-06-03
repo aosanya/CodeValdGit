@@ -57,10 +57,16 @@ func (s *Server) GetBranchByName(ctx context.Context, req *pb.GetBranchByNameReq
 // ListBranches implements pb.GitServiceServer.
 // When req.workflow_run_id is non-empty, results are filtered to branches that
 // were created within the given orchestrated run (FEAT-20260602-001).
+// When no repository is specified (closure aggregator path), the query is
+// cross-repository — all branches for the run across all repositories.
 func (s *Server) ListBranches(ctx context.Context, req *pb.ListBranchesRequest) (*pb.ListBranchesResponse, error) {
-	repoID, err := s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
-	if err != nil {
-		return nil, toGRPCError(err)
+	var repoID string
+	if req.GetRepositoryId() != "" || req.GetRepositoryName() != "" {
+		var err error
+		repoID, err = s.resolveRepoID(ctx, req.GetRepositoryId(), req.GetRepositoryName())
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
 	}
 	branches, err := s.mgr.ListBranchesFiltered(ctx, repoID, codevaldgit.BranchFilter{
 		WorkflowRunID: req.GetWorkflowRunId(),

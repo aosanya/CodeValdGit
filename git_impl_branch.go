@@ -265,7 +265,12 @@ func (m *gitManager) MergeBranch(ctx context.Context, branchID string) (Branch, 
 // ListBranchesFiltered returns Branch entities for the specified repository
 // filtered by [BranchFilter]. When filter.WorkflowRunID is non-empty only
 // branches with the matching workflow_run_id property are returned.
+// When repoID is empty and filter.WorkflowRunID is set the query is
+// cross-repository (used by the WorkflowRun closure aggregator in Cross).
 func (m *gitManager) ListBranchesFiltered(ctx context.Context, repoID string, filter BranchFilter) ([]Branch, error) {
+	if repoID == "" && filter.WorkflowRunID != "" {
+		return m.listBranchesByWorkflowRunID(ctx, filter.WorkflowRunID)
+	}
 	branches, err := m.ListBranches(ctx, repoID)
 	if err != nil {
 		return nil, err
@@ -278,6 +283,27 @@ func (m *gitManager) ListBranchesFiltered(ctx context.Context, repoID string, fi
 		if b.WorkflowRunID == filter.WorkflowRunID {
 			out = append(out, b)
 		}
+	}
+	return out, nil
+}
+
+// listBranchesByWorkflowRunID returns all Branch entities across all
+// repositories whose workflow_run_id property matches runID. Used by the
+// closure aggregator path where no repository is specified.
+func (m *gitManager) listBranchesByWorkflowRunID(ctx context.Context, runID string) ([]Branch, error) {
+	entities, err := m.dm.ListEntities(ctx, entitygraph.EntityFilter{
+		AgencyID: m.agencyID,
+		TypeID:   "Branch",
+		Properties: map[string]any{
+			"workflow_run_id": runID,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Branch, len(entities))
+	for i, e := range entities {
+		out[i] = entityToBranch(e, "")
 	}
 	return out, nil
 }
