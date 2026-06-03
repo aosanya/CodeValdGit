@@ -35,8 +35,9 @@ git branch -d feature/GIT-XXX_description
 | Task ID | Title | Status | Depends On |
 |---|---|---|---|
 | FEAT-20260602-001 | `workflow_run_id` on `Branch` / `MergeRequest` + every `git.*` event payload (Git sibling of the [Cross umbrella](../../../CodeValdCross/documentation/3-SofwareDevelopment/mvp-details/FEAT-20260602-001_workflow_run_id_propagation_umbrella.md)) | ✅ Done | FEAT-20260602-001 in CodeValdFunctions (start-pipeline) |
+| GIT-026 | `ReadFile` / `ListDirectory` — read path for branch file trees; AI agents currently have no way to read back files they wrote; blocks agent verification and frontend file browsers | ✅ Done | ~~GIT-011~~ ✅ |
 
-See [mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md](mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md).
+See [mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md](mvp-details/FEAT-20260602-001_workflow_run_id_in_git.md), [mvp-details/GIT-026_readfile_listdirectory.md](mvp-details/GIT-026_readfile_listdirectory.md).
 
 ---
 
