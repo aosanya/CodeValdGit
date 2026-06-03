@@ -950,7 +950,7 @@ func TestGitManager_Diff(t *testing.T) {
 	// Write a different file on the feature branch.
 	mustWriteFile(t, mgr, feature.ID, "file-b.txt", "content b")
 
-	// Diff from main (has file-a.txt) to feature (has file-b.txt).
+	// Diff from main (has file-a.txt) to feature (has file-a.txt + file-b.txt).
 	diffs, err := mgr.Diff(ctx, def.ID, feature.ID)
 	if err != nil {
 		t.Fatalf("Diff: %v", err)
@@ -965,9 +965,9 @@ func TestGitManager_Diff(t *testing.T) {
 	if d, ok := diffMap["file-b.txt"]; !ok || d.Operation != "added" {
 		t.Errorf("file-b.txt: want Operation=added, got %+v (ok=%v)", diffMap["file-b.txt"], ok)
 	}
-	// file-a.txt exists in main but not in feature → "deleted".
-	if d, ok := diffMap["file-a.txt"]; !ok || d.Operation != "deleted" {
-		t.Errorf("file-a.txt: want Operation=deleted, got %+v (ok=%v)", d, ok)
+	// file-a.txt is inherited by feature from main (same SHA) → not in the diff.
+	if _, ok := diffMap["file-a.txt"]; ok {
+		t.Errorf("file-a.txt: expected absent from diff (shared by both branches), got %+v", diffMap["file-a.txt"])
 	}
 }
 
