@@ -1,75 +1,77 @@
 package codevaldgit
 
+import "github.com/aosanya/CodeValdSharedLib/eventbus"
+
 // Event topic constants — the closed set CodeValdGit publishes.
 const (
 	// TopicRepoCreated fires after a Repository entity is created by InitRepo.
 	// Payload: [RepoCreatedPayload].
-	TopicRepoCreated = "git.repo.created"
+	TopicRepoCreated = eventbus.DomainGit + "repo.created"
 
 	// TopicRepoImported fires when an async ImportRepo job completes successfully.
 	// Payload: [RepoImportedPayload].
-	TopicRepoImported = "git.repo.imported"
+	TopicRepoImported = eventbus.DomainGit + "repo.imported"
 
 	// TopicRepoImportFailed fires when an async ImportRepo job fails.
 	// Payload: [RepoImportFailedPayload].
-	TopicRepoImportFailed = "git.repo.import.failed"
+	TopicRepoImportFailed = eventbus.DomainGit + "repo.import.failed"
 
 	// TopicRepoImportCancelled fires when an async ImportRepo job is cancelled.
 	// Payload: [RepoImportCancelledPayload].
-	TopicRepoImportCancelled = "git.repo.import.cancelled"
+	TopicRepoImportCancelled = eventbus.DomainGit + "repo.import.cancelled"
 
 	// TopicBranchCreate is consumed by CodeValdGit to create a branch on demand.
 	// Published by CodeValdAI when the LLM emits a git.branch.create action.
 	// Payload: [BranchCreatePayload].
-	TopicBranchCreate = "git.branch.create"
+	TopicBranchCreate = eventbus.DomainGit + "branch.create"
 
 	// TopicBranchFetched fires when an async FetchBranch job completes successfully,
 	// or when a branch is directly created via [TopicBranchCreate].
 	// Payload: [BranchFetchedPayload].
-	TopicBranchFetched = "git.branch.fetched"
+	TopicBranchFetched = eventbus.DomainGit + "branch.fetched"
 
 	// TopicBranchMerged fires after a branch is successfully merged into the
 	// repository default branch. Payload: [BranchMergedPayload].
-	TopicBranchMerged = "git.branch.merged"
+	TopicBranchMerged = eventbus.DomainGit + "branch.merged"
 
 	// TopicMergeConflict fires when MergeBranch encounters a conflict that
 	// cannot be auto-resolved. Payload: [MergeConflictPayload].
-	TopicMergeConflict = "git.conflict.detected"
+	TopicMergeConflict = eventbus.DomainGit + "conflict.detected"
 
 	// TopicMergeRequested fires when a new [MergeRequest] is opened.
 	// Payload: [MergeRequestRequestedPayload].
-	TopicMergeRequested = "git.merge.requested"
+	TopicMergeRequested = eventbus.DomainGit + "merge.requested"
 
 	// TopicMergeCompleted fires when a [MergeRequest] is successfully merged
 	// into its target branch. Payload: [MergeRequestCompletedPayload].
-	TopicMergeCompleted = "git.merge.completed"
+	TopicMergeCompleted = eventbus.DomainGit + "merge.completed"
 
 	// TopicMergeFailed fires when a [MergeRequest] terminates in the failed
 	// state. Payload: [MergeRequestFailedPayload].
-	TopicMergeFailed = "git.merge.failed"
+	TopicMergeFailed = eventbus.DomainGit + "merge.failed"
 
 	// TopicFileWrite is consumed by CodeValdGit to write (or update) a file on
 	// a branch. Published by CodeValdAI when the LLM emits a git.file.write action.
 	// Each write creates a real commit in the ArangoDB-backed git repository.
 	// Payload: [FileWritePayload].
-	TopicFileWrite = "git.file.write"
+	TopicFileWrite = eventbus.DomainGit + "file.write"
 
 	// TopicFileWritten fires after CodeValdGit successfully writes a file via
 	// [TopicFileWrite]. Consumed by CodeValdAI to update the run debrief.
 	// Payload: [FileWrittenPayload].
-	TopicFileWritten = "git.file.written"
+	TopicFileWritten = eventbus.DomainGit + "file.written"
 
 	// TopicMergeRolledBack fires for each [MergeRequest] whose status is flipped
 	// to "rolled_back" by [GitManager.RollbackByWorkflowRun].
 	// Payload: [MergeRequestRolledBackPayload].
-	TopicMergeRolledBack = "git.merge.rolled_back"
+	TopicMergeRolledBack = eventbus.DomainGit + "merge.rolled_back"
 
 	// TopicWorkflowRunRolledBack fires once per
 	// [GitManager.RollbackByWorkflowRun] call carrying the aggregate counters.
 	// Consumed by the CodeValdWork rollback coordinator to surface the leg's
 	// result and by the closure aggregator to mark Git as quiesced.
 	// Payload: [WorkflowRunRolledBackPayload].
-	TopicWorkflowRunRolledBack = "git.workflow_run.rolled_back"
+	TopicWorkflowRunRolledBack = eventbus.DomainGit + "workflow_run.rolled_back"
 )
 
 // AllTopics is the closed list of topics this service publishes.
